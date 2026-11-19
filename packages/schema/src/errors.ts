@@ -105,6 +105,38 @@ const MESSAGES_EN = {
     `the body has no "## ${p.section}" section`,
   'concept_body.duplicate_section': (p: { section: string }) =>
     `the body has more than one "## ${p.section}" section; only the first one is used`,
+  // ── 通用字段错误（1.3 新增）──
+  'field.not_positive_integer': (p: { value: number }) =>
+    `must be an integer of at least 1, got ${String(p.value)}`,
+  'field.out_of_range': (p: { value: number; min: number; max: number }) =>
+    `must be between ${String(p.min)} and ${String(p.max)}, got ${String(p.value)}`,
+  'field.empty_list': fixed('must not be an empty list'),
+
+  // ── 1.3：Criteria、Session、Evidence、Mastery ──
+  'criteria.no_dimensions': fixed(
+    'criteria must assess at least one dimension; write null only for dimensions that are not assessed',
+  ),
+  'session.score_outside_dimensions': (p: { dimension: string }) =>
+    `has a score, but "${String(p.dimension)}" is not one of the dimensions this question tests`,
+  'session.completed_before_started': (p: {
+    started_at: string;
+    completed_at: string;
+  }) =>
+    `completed_at (${String(p.completed_at)}) is earlier than started_at (${String(p.started_at)})`,
+  'evidence.no_dimensions': fixed(
+    'at least one dimension must have a score; write null only for dimensions that were not tested',
+  ),
+  'evidence.note_required': fixed(
+    'evidence without a session (session_id: null) needs a note saying where it comes from, ' +
+      'for example "final exam: 92/100"',
+  ),
+  'evaluator.invalid_model': (p: { value: string }) =>
+    `"${p.value}" is not a model reference; expected "<provider>:<model>", for example "ollama:qwen3-14b"`,
+  'explanation.invalid_code': (p: { value: string }) =>
+    `"${p.value}" is not a valid explanation code; use lowercase letters, digits and underscores, ` +
+    `separated by dots (for example "state.mastered")`,
+  'mastery.evidence_ids_not_sorted': (p: { value: string; previous: string }) =>
+    `evidence_ids must be in ascending order; "${p.value}" comes after "${p.previous}"`,
 } as const;
 
 /** 本包所有错误的错误码。 */

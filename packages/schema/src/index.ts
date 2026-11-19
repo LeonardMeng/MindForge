@@ -40,3 +40,14 @@ export {
   ConceptStatus,
 } from './concept.js';
 export { parseConceptBody, type ConceptBody } from './concept-body.js';
+export { Criteria, CriterionDimension } from './criteria.js';
+export { AssessmentItem, AssessmentSession } from './session.js';
+export { AssessmentType, Evaluator, Evidence } from './evidence.js';
+export {
+  ExplanationItem,
+  MASTERY_STATES,
+  MasteryChangeCause,
+  MasteryHistoryEntry,
+  MasteryProjection,
+  MasteryState,
+} from './mastery.js';

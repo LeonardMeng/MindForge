@@ -31,7 +31,7 @@
 ## 当前状态
 
 - **当前里程碑：** M1
-- **下一个任务：** 1.3
+- **下一个任务：** 1.4
 - **阻塞项：** 无
 
 ---
@@ -88,7 +88,7 @@
 - **验收**：用 README 第 7 节的示例作为测试样例，全部能通过校验；缺少 `id`、`prerequisites` 不是数组等错误都给出可读的报错信息（带字段路径）。
 - **不做**：读写文件。
 
-### [ ] 1.3 🔍 Schema：Criteria、Session、Evidence、Mastery
+### [x] 1.3 🔍 Schema：Criteria、Session、Evidence、Mastery
 - **包**：`schema`
 - **依赖**：1.1
 - **产出**：`Criteria`（含 `version`、各维度的考察要点和阈值）、`AssessmentSession`、`Evidence`、`MasteryProjection`（含 `state`、`dimensions`、`confidence`、`rules_version`、`evidence_ids`、`explanation`）、`MasteryHistoryEntry`。
@@ -594,6 +594,8 @@
 - （来自 1.1，1.5 处理）自定义检查（`.check()`）不会出现在导出的 JSON Schema 里。已验证可以用 `.meta({ pattern, maxLength })` 补上，1.5 导出时处理。
 - （来自 1.2，1.5 处理）列表字段用 `z.unknown().check(…).pipe(z.array(…))` 实现（为了给出“写成列表”的提示和同时报出元素错误与重复项），导出 JSON Schema 时要确认用的是输出端（`io: "output"`），得到的是数组类型。
 - （来自 1.2，4.3 决定）插件名目前按 Slug 规则。第三方插件如果用 npm 的 scope 包名（比如 `@someone/agent-x`），插件名的规则要不要放宽；同一个插件要不要支持多个实例。
+- （来自 1.3，3.7 处理）两台设备各自往同一个 `mastery/history/<slug>.jsonl` 末尾追加时，Git 文本合并会冲突。方向：让 history 也能逐字节确定，由 merge driver 根据证据重算（和投影一样），而不是做文本合并。`cause: rules`（规则升级）时 `at` 怎么确定，到 3.7 再决定。
+- （来自 1.3）进行中的评测会话以后可以暂存在 `.mastery/runtime/` 里，用于崩溃后恢复，不进入权威数据。
 - （来自 1.1）`packages/schema/src/testing.ts` 的测试构造函数目前只在 schema 包内部使用。其他包的测试要用时，再决定放在哪里（比如 `testkit` 包），不从 schema 的公共 API 导出。
 
 ---
@@ -611,3 +613,4 @@
 | 2026-11-20 | 1.1 | `task/1.1-schema-common` | 新建 `@mastery/schema`（依赖 zod 4.6）：`SchemaVersion`、`Slug`、`GlobalConceptRef`、`Ulid`、`IsoDateTime`、`DimensionScores` 等 branded schema；结构化错误码和英文消息表；测试用构造函数；116 个测试 | 1.2 要处理的例外、`IsoDate`、JSON Schema 等见“待整理” |
 | 2026-11-20 | 1.2 | `task/1.2-schema-workspace-concept` | `WorkspaceConfig`、`ProjectConfig`、`ConceptFrontmatter`（未知字段原样保留并给警告）、`parseConceptBody()`（按行解析，识别代码块）；zod 自带错误映射成 `field.*` 错误码，新增 `validate()` 和 `formatSchemaIssue()`。**修改了 1.1 测试里 8 处断言**（经人确认）：`ids.test.ts` 3 处、`dimensions.test.ts` 4 处由 `zod.invalid_type` / `zod.unrecognized_keys` 改为 `field.invalid_type` / `field.unknown`，含义不变；`errors.test.ts` 1 处测试原本验证“zod 错误码加 `zod.` 前缀”，该行为已去掉，改为验证“映射成 `field.*` 错误码”。原因：错误码不再随 zod 版本变化。共 206 个测试 | 跨字段检查只在字段本身无错时运行（已写进包 README）；JSON Schema 和插件名规则见“待整理” |
 | 2026-11-20 | ADR-0013 | `task/1.3-schema-evidence-mastery`（单独提交） | 文件格式约定写成 ADR-0013；dependency-cruiser 新增 `schema-runtime-only-zod`，README 第 6 节加硬性禁止第 6 条；确认 schema 没有依赖 ULID 库 | ADR-0013 理由里有一句整理时补充的内容，标了“待确认” |
+| 2026-11-20 | 1.3 | `task/1.3-schema-evidence-mastery` | `Criteria`、`AssessmentSession`（每道题带原始 `scores`）、`Evidence`（`session_id`、`note` 必须写出，手动录入要写 `note`）、`MasteryProjection`（结构化 `explanation`，`evidence_ids` 升序）、`MasteryHistoryEntry`（`cause` 为 evidence / time / rules）；按 `kind` 区分的对象用自定义分发，保证缺字段报 `field.required`；README 第 7 节 Evidence 示例补上 `"note": null`；共 344 个测试 | history 的合并方式、进行中会话的暂存见“待整理” |

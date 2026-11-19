@@ -284,6 +284,7 @@ status: active
   },
   "confidence": 0.88,
   "evaluator": { "kind": "agent", "id": "agent-evaluator", "model": "ollama:qwen3-14b" },
+  "note": null,
   "created_at": "2026-11-19T10:00:00Z"
 }
 ```

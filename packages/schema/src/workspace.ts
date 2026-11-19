@@ -1,17 +1,13 @@
 import { z } from 'zod';
 
 import { pushIssue } from './errors.js';
-import { NonEmptyString, SchemaVersionV1 } from './fields.js';
+import { isPlainObject, NonEmptyString, SchemaVersionV1 } from './fields.js';
 import { Slug } from './ids.js';
 
 /** 插件名：Slug 规则，前面可以加 `~` 表示禁用。 */
 const PLUGIN_NAME_PATTERN = /^~?[a-z0-9]+(-[a-z0-9]+)*$/;
 /** 插件名（不含 `~`）的最大长度，和 Slug 一致。 */
 const PLUGIN_NAME_MAX_LENGTH = 64;
-
-function isPlainObject(value: unknown): boolean {
-  return typeof value === 'object' && value !== null && !Array.isArray(value);
-}
 
 /**
  * `plugins`：插件名 → 插件配置对象。
