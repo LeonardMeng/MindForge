@@ -31,7 +31,7 @@
 ## 当前状态
 
 - **当前里程碑：** M1
-- **下一个任务：** 1.7
+- **下一个任务：** 1.8
 - **阻塞项：** 无
 
 ---
@@ -116,7 +116,7 @@
 - **验收**：迁移链测试通过；未知版本报错。
 - **不做**：改写磁盘文件。
 
-### [ ] 1.7 Platform 端口和内存实现
+### [x] 1.7 Platform 端口和内存实现
 - **包**：`platform`、`platform-memory`
 - **依赖**：0.2
 - **产出**：接口 `FileSystem`（read / write / rename / list / stat / remove / mkdir / watch）、`Clock`、`IdGenerator`、`Lock`；内存实现，可以模拟写入中途崩溃。
@@ -605,6 +605,8 @@
 - （来自 1.6，1.9 实现）修改一个旧版本的可修改文件（比如 Blindspot）时，写回的是当前版本。这是正常保存，不违反 ADR-0005 的“只有 `mastery migrate` 才改写磁盘”，那条说的是不要在读的时候顺手改写。Evidence 这类只能追加的文件不会被修改，所以会一直保持原来的版本，直到用户运行 `mastery migrate`。
 - （来自 1.6，2.5 实现）如果某个 Concept 有任何证据是 `version_too_new`，就不重算这个 Concept 的掌握度，也不写投影，并提示用户升级 Mastery OS。否则会因为漏算证据而写出错误的投影，再通过 Git 同步到其他设备。
 - （来自 1.6，1.11 处理）Profile 和 Device 的几种文件也要登记进 `packages/schema/src/file-kinds.ts` 和 `versions.ts`。
+- （来自 1.7，1.15 处理）`mastery init` 和 `mastery profile init` 生成的 `.gitignore` 要包含 `.mastery-tmp-*`，防止崩溃留下的临时文件被提交。
+- （来自 1.7，4.1 实现）同一个 Workspace 目录，同一时间只能有一个进程做写操作，用 1.7 的 Lock 端口实现（比如 `.mastery/runtime/write.lock`）。只读的 CLI 命令（validate、status、search）不需要拿锁。
 - （来自 1.4，7.2 处理）验证证据和干预的关联：优先考虑在 Intervention 里记录验证证据的 id（Intervention 文件本来就可以修改），这样不用改 Evidence 的格式，关联关系也只存一处。
 - （来自 1.4，8.3 决定）引入跨 Workspace 的前置依赖后，Blindspot 的 `prerequisite_id` 可能需要支持 `GlobalConceptRef`。
 - （来自 1.1）`packages/schema/src/testing.ts` 的测试构造函数目前只在 schema 包内部使用。其他包的测试要用时，再决定放在哪里（比如 `testkit` 包），不从 schema 的公共 API 导出。
@@ -629,3 +631,4 @@
 | 2026-11-20 | 1.4（补充） | `task/1.4-schema-blindspot-proposal` | Blindspot 增加状态 `merged` 和字段 `merged_into`（`merged` 时必须有值且不能指向自己，其他状态为 `null`）。错误码改名：`evaluator.invalid_model` → `actor.invalid_model`，`mastery.evidence_ids_not_sorted` → `field.not_sorted`，**修改了 4 处断言**（经人确认，含义不变）：1.3 的 `evidence.test.ts`、`mastery.test.ts` 各 1 处，1.4 的 `actor.test.ts`、`blindspot.test.ts` 各 1 处；`blindspot.test.ts` 里原来用 `merged` 作为非法状态的例子改用 `deleted`。ADR-0013 补充错误码命名规则。共 445 个测试 | 无 |
 | 2026-11-20 | 1.5 | `task/1.5-json-schema-protocol-docs` | `pnpm --filter @mastery/schema gen` 把 11 个文件 schema 导出到 `docs/protocol/schemas/`（输出稳定）；正则和数值范围集中到 `constraints.ts`，`.check()` 和 `.meta()` 共用；协议说明页 11 页加索引，列出 JSON Schema 检查不了的规则；JSON 示例由测试校验；CI 检查生成结果和提交的一致；`.prettierignore` 忽略生成的文件；eslint 对 `.mjs` 脚本关闭类型感知规则；共 473 个测试 | YAML 示例校验、zod 与 JSON Schema 一致性测试等见“待整理” |
 | 2026-11-20 | 1.6 | `task/1.6-schema-migrations` | `createMigrator()` 迁移框架（逐级升级、版本过新 / 无路径 / 步骤失败都有错误码，不修改输入）；`FILE_KINDS` 登记表和 `versions.ts`，文件 schema 和 JSON Schema 生成脚本都从这里读取（生成结果不变）；`migrate()`、`validateFile()`；`docs/adding-a-migration.md`（旧版本样例永久保留）；ROADMAP 1.6 的“v0 → v1”改为测试专用的 v1 → v2 → v3；共 545 个测试 | store、重算对版本过新文件的处理见“待整理” |
+| 2026-11-20 | 1.7 | `task/1.7-platform-ports` | 新建 `@mastery/platform`（`FileSystem`、`Clock`、`IdGenerator`、`Lock` 接口；`PlatformError` 和 `platform.*` 错误码；路径规则：`/` 分隔、NFC、Windows 不允许的名字；契约测试从 `/contract` 子路径导出，vitest 是可选的 peerDependency）和 `@mastery/platform-memory`（通过全部契约测试，可以模拟写入中途崩溃）；README 第 5、6 节和 dependency-cruiser 补上两个包的白名单；共 694 个测试 | `.gitignore` 的临时文件、Workspace 写锁见“待整理” |
