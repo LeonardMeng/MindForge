@@ -31,7 +31,7 @@
 ## 当前状态
 
 - **当前里程碑：** M0
-- **下一个任务：** 0.2
+- **下一个任务：** 0.3
 - **阻塞项：** 无
 
 ---
@@ -47,7 +47,7 @@
 - **验收**：`pnpm install && pnpm check` 通过；复制 `_template` 就能建新包。
 - **不做**：任何业务代码。
 
-### [ ] 0.2 依赖边界检查
+### [x] 0.2 依赖边界检查
 - **包**：根目录
 - **依赖**：0.1
 - **产出**：dependency-cruiser 配置，覆盖 README 第 6 节的全部规则（包括禁止 `node:*` 和禁止 `cordis`），接入 `pnpm lint`。
@@ -585,6 +585,10 @@
 - （来自 0.1）TypeScript 暂用 5.9。7.x（Go 原生实现）已发布，但 typescript-eslint 8.x 只支持 `<6.1`，tsup 的 `.d.ts` 生成也依赖 TS 的 JS API。等生态支持后再评估升级。
 - （来自 0.1）Vitest 暂用 4.1、tsup 暂用 8.5，它们的新大版本（Vitest 5、tsup 9）都刚发布一个月左右，稳定后再评估。
 - （2026-11-19 新增约束）ADR-0011 已定但还没有 ADR 文件。0.4 的验收只要求 ADR-0001 到 ADR-0006，建议 0.4 时一并写上。
+- （来自 0.2）README 第 6 节依赖图里没有列出的包（platform-memory、platform-node、platform-tauri、llm、providers/*、superagent、supervisor、rpc、cli、mcp、tools/*、ui-kit 等）暂时只受“硬性禁止”约束，没有白名单。按 README 第 12 节第 10 条，在建这些包的任务里补上。
+- （来自 0.2）测试同样不能用 `node:*`。将来测试要读 `fixtures/` 时，新建一个 `testkit` 包，作为唯一允许在测试里用 `node:*` 的例外，负责把 fixture 加载进 `platform-memory`。
+- （来自 0.2）dependency-cruiser 只看 import，看不到全局对象：Tauri 的 `window.__TAURI__`（以及 Node 的 `process`、`Buffer`，目前只靠 `types: []` 在类型层面挡住）需要另外的检查，比如 eslint 的 `no-restricted-globals`。
+- （来自 0.2）行内写法 `import { type X } from '…'` 会被 dependency-cruiser 当成“只引用类型”，但在 `verbatimModuleSyntax` 下运行时会留下一个空的副作用 import。可以考虑开启 eslint 的 `@typescript-eslint/no-import-type-side-effects`，统一写成 `import type`。
 
 ---
 
@@ -595,3 +599,4 @@
 | 日期 | 任务 | PR | 说明 | 遗留问题 |
 |---|---|---|---|---|
 | 2026-11-19 | 0.1 | `task/0.1-monorepo-skeleton` | pnpm workspace、TS strict 配置、Vitest 根配置、eslint + prettier、根脚本、`packages/_template` 和 `docs/adding-a-package.md` | 无；版本升级事项见“待整理” |
+| 2026-11-19 | 0.2 | `task/0.2-dependency-boundaries` | dependency-cruiser 覆盖 README 第 6 节全部规则（白名单、只引用类型、硬性禁止 1–5）并接入 `pnpm lint`；README 第 5、6、11、12 节同步更新 | 未列出包的白名单、全局对象检查等，见“待整理” |

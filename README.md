@@ -145,6 +145,7 @@ mastery-os/
 │   ├── platform/             Platform 端口接口（只有类型）
 │   ├── platform-memory/      内存实现，测试用
 │   ├── platform-node/        Node 实现，CLI 用
+│   ├── platform-tauri/       Tauri 实现的 TS 侧封装（Rust 部分在 apps/desktop/src-tauri）
 │   ├── store/                Markdown/YAML/JSON 读写、frontmatter、原子写、锁
 │   ├── core/                 Mastery Core（纯领域逻辑）
 │   ├── rules-v1/             掌握度规则 v1
@@ -186,8 +187,12 @@ device        ← schema, platform（读写 device.yaml，访问系统钥匙串�
 plugin-core   ← core, store, index, git, runtime 类型, cordis      ← Core 和 Cordis 唯一的交汇点
 runtime       ← cordis, schema, platform
 agents/*      ← cordis, llm 类型, plugin-core 暴露的 knowledge 接口类型
-ui-*          ← rpc, ui-kit（永远不 import runtime 或 core）
+ui-*          ← schema, rpc, ui-kit（永远不 import runtime、core、platform）
 ```
+
+**所有包都可以依赖 `schema`**，包括 `ui-*`（6.6 的编辑器要在保存前直接调用 schema 的校验函数）。上图中其他包的依赖列表里没有逐一写出 schema。
+
+没有出现在上图里的包，暂时只受下面“硬性禁止”的约束；新建包时要按第 12 节第 10 条补上它的依赖列表。
 
 硬性禁止：
 
@@ -437,7 +442,7 @@ models:
 pnpm install
 pnpm build            # 构建所有包
 pnpm test             # 所有测试
-pnpm lint             # eslint + prettier --check（0.2 起加上 dependency-cruiser）
+pnpm lint             # eslint + prettier --check + dependency-cruiser
 pnpm typecheck        # 类型检查（tsc）
 pnpm check            # = lint + typecheck + test，每个任务结束前必须通过
 
@@ -456,6 +461,7 @@ pnpm mastery -- validate fixtures/ws-transformers
 7. **结束前**：`pnpm check` 通过；在 ROADMAP 里勾选任务并填写“完成记录”；更新相关包的 README（如果有公共 API 变化）。
 8. **新增依赖要说明理由**。优先使用已经在技术栈里的库。
 9. **公共 API 都要有 TSDoc 注释**；导出类型集中在每个包的 `src/index.ts`。
+10. **新建包时，在同一个任务里把它的依赖白名单补进第 6 节**，并同步更新 `.dependency-cruiser.js`。
 
 ## 13. 术语对照
 

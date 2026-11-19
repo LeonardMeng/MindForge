@@ -25,6 +25,7 @@ rm -rf packages/schema/dist packages/schema/node_modules
 ## 3. 依赖
 
 - 依赖其他内部包时用 workspace 协议：`pnpm --filter @mastery/schema add @mastery/platform@workspace:*`。先查 README 第 6 节，确认这条依赖是允许的。
+- 如果新包还没出现在 README 第 6 节的依赖图里，要在同一个任务里补上它能依赖哪些包，并在 `.dependency-cruiser.js` 里加一条对应的 `allowlist(...)`（README 第 12 节第 10 条）。
 - TypeScript、Vitest、tsup、eslint 这类开发工具只装在根目录，包里不要重复安装。
 - 新增第三方依赖要在任务方案里写明理由（README 第 12.8 条）。
 
