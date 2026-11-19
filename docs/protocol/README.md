@@ -25,7 +25,7 @@ Profile 和 Device 的格式在任务 1.11 加入。
 
 这些规则来自 [ADR-0013](../adr/ADR-0013-file-format-conventions.md)：**同一个值只有一种写法**。
 
-- 每个结构化文件都带 `schema_version`，目前都是 `1`。旧版本的文件先迁移再校验（ADR-0005）。
+- 每个结构化文件都带 `schema_version`，目前都是 `1`。旧版本的文件先在内存里迁移再校验，只有执行 `mastery migrate` 时才改写磁盘（ADR-0005）。`schema_version` 比当前版本还新的文件，是新版本的 Mastery OS 写的，只能读，不能修改。
 - **slug**：小写字母、数字和单个连字符，长度 1–64，例如 `self-attention`。
 - **ULID**：26 个字符，**只用大写**，例如 `01JD3K8Q8Z6V7X2N4M5P9R0T1W`。
 - **时间**：只用 UTC，格式固定为 `YYYY-MM-DDTHH:mm:ssZ`，不带毫秒和时区偏移，例如 `2026-11-19T10:00:00Z`。

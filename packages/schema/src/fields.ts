@@ -22,9 +22,6 @@ export const NonEmptyString = z
   })
   .meta(patternMeta(NON_BLANK_PATTERN));
 
-/** 当前（也是唯一）支持的文件格式版本。读取旧版本文件要先经过迁移（1.6）。 */
-export const SchemaVersionV1 = z.literal(1);
-
 /** 大于等于 1 的整数，用于 criteria 版本、规则版本等。 */
 export const PositiveInteger = z
   .number()

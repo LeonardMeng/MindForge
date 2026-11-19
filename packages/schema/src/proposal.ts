@@ -5,12 +5,8 @@ import { Blindspot } from './blindspot.js';
 import { ConceptFrontmatter } from './concept.js';
 import { Criteria } from './criteria.js';
 import { pushIssue } from './errors.js';
-import {
-  listOf,
-  NonEmptyString,
-  SchemaVersionV1,
-  taggedUnion,
-} from './fields.js';
+import { listOf, NonEmptyString, taggedUnion } from './fields.js';
+import { schemaVersionOf } from './versions.js';
 import { IsoDateTime, Slug, Ulid } from './ids.js';
 import { Intervention } from './intervention.js';
 
@@ -137,7 +133,7 @@ export type ProposalOperation = z.infer<typeof ProposalOperation>;
  * - 提案时文件已被改动（并发冲突）怎么处理，留到 4.2。
  */
 export const Proposal = z.strictObject({
-  schema_version: SchemaVersionV1,
+  schema_version: schemaVersionOf('proposal'),
   id: Ulid,
   created_at: IsoDateTime,
   source: Actor,

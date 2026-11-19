@@ -14,75 +14,14 @@ import * as schema from '../dist/index.js';
 
 const OUT_DIR = join(import.meta.dirname, '../../../docs/protocol/schemas');
 
-/** 要导出的文件 schema：[输出文件名, schema, title, description]。 */
-const FILES = [
-  [
-    'workspace',
-    schema.WorkspaceConfig,
-    'workspace.yaml',
-    'Configuration of a Mastery OS workspace.',
-  ],
-  [
-    'project',
-    schema.ProjectConfig,
-    'projects/<slug>/project.yaml',
-    'A learning or research goal inside a workspace.',
-  ],
-  [
-    'concept-frontmatter',
-    schema.ConceptFrontmatter,
-    'concepts/<slug>.md (frontmatter)',
-    'YAML frontmatter of a concept. Unknown fields are kept for Obsidian compatibility.',
-  ],
-  [
-    'criteria',
-    schema.Criteria,
-    'assessments/<slug>/criteria.yaml',
-    'Versioned assessment criteria of a concept.',
-  ],
-  [
-    'assessment-session',
-    schema.AssessmentSession,
-    'assessments/<slug>/sessions/<ULID>.json',
-    'A completed assessment session. Append-only.',
-  ],
-  [
-    'evidence',
-    schema.Evidence,
-    'evidence/<slug>/<ULID>.json',
-    'One piece of evidence of mastery. Append-only.',
-  ],
-  [
-    'mastery-projection',
-    schema.MasteryProjection,
-    'mastery/<slug>.yaml',
-    'Mastery projection computed by Mastery Core. Derived data.',
-  ],
-  [
-    'mastery-history-entry',
-    schema.MasteryHistoryEntry,
-    'mastery/history/<slug>.jsonl (one line)',
-    'One line of the append-only mastery history.',
-  ],
-  [
-    'blindspot',
-    schema.Blindspot,
-    'blindspots/<ULID>.yaml',
-    'A suspected or confirmed knowledge gap, misconception or weakness.',
-  ],
-  [
-    'intervention',
-    schema.Intervention,
-    'interventions/<ULID>.yaml',
-    'A learning activity designed for a blindspot.',
-  ],
-  [
-    'proposal',
-    schema.Proposal,
-    'Proposal (storage to be decided in 4.2 / 6.8)',
-    'A set of changes submitted by an agent or the user to the knowledge service.',
-  ],
-];
+/**
+ * 要导出的文件 schema 都来自登记表 FILE_KINDS（src/file-kinds.ts），这里不再单独列一遍。
+ * 输出文件名是文件种类的名字，title 是文件位置。
+ */
+const FILES = schema.FILE_KIND_NAMES.map((kind) => {
+  const { schema: zodSchema, path, description } = schema.FILE_KINDS[kind];
+  return [kind, zodSchema, path, description];
+});
 
 /** 每个 schema 生成一个文件：`$schema`、`title`、`description` 在前，其余按 zod 的输出顺序。 */
 function render(zodSchema, title, description) {

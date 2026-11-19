@@ -1,7 +1,8 @@
 import { z } from 'zod';
 
 import { makeIssue, pushIssue, type SchemaIssue } from './errors.js';
-import { listOf, NonEmptyString, SchemaVersionV1 } from './fields.js';
+import { listOf, NonEmptyString } from './fields.js';
+import { schemaVersionOf } from './versions.js';
 import { Slug } from './ids.js';
 
 /** Concept 的状态（和掌握状态 MasteryState 是两回事）。 */
@@ -10,7 +11,7 @@ export const ConceptStatus = z.enum(['draft', 'active', 'archived']);
 export type ConceptStatus = z.infer<typeof ConceptStatus>;
 
 const CONCEPT_FRONTMATTER_SHAPE = {
-  schema_version: SchemaVersionV1,
+  schema_version: schemaVersionOf('concept-frontmatter'),
   /** Concept 的 slug，一旦确定就不再改；改名只改 `name`。 */
   id: Slug,
   name: NonEmptyString,

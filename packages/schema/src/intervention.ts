@@ -2,7 +2,8 @@ import { z } from 'zod';
 
 import { Actor } from './actor.js';
 import { pushIssue } from './errors.js';
-import { NonEmptyString, SchemaVersionV1 } from './fields.js';
+import { NonEmptyString } from './fields.js';
+import { schemaVersionOf } from './versions.js';
 import { IsoDateTime, Ulid } from './ids.js';
 
 /** 教学方法（7.2）：讲解、苏格拉底式提问、练习、反例。 */
@@ -30,7 +31,7 @@ export type InterventionStatus = z.infer<typeof InterventionStatus>;
  */
 export const Intervention = z
   .strictObject({
-    schema_version: SchemaVersionV1,
+    schema_version: schemaVersionOf('intervention'),
     id: Ulid,
     blindspot_id: Ulid,
     method: InterventionMethod,

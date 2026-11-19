@@ -63,3 +63,19 @@ export {
   MasteryProjection,
   MasteryState,
 } from './mastery.js';
+export {
+  createMigrator,
+  type MigrationResult,
+  type MigrationStep,
+  type MigrationTable,
+} from './migration.js';
+export { CURRENT_SCHEMA_VERSIONS, type FileKind } from './versions.js';
+export {
+  FILE_KIND_NAMES,
+  FILE_KINDS,
+  migrate,
+  validateFile,
+  type FileData,
+  type FileKindEntry,
+  type FileValidationResult,
+} from './file-kinds.js';

@@ -3,12 +3,8 @@ import { z } from 'zod';
 import { Actor } from './actor.js';
 import { DimensionScores } from './dimensions.js';
 import { pushIssue } from './errors.js';
-import {
-  NonEmptyString,
-  PositiveInteger,
-  SchemaVersionV1,
-  UnitInterval,
-} from './fields.js';
+import { NonEmptyString, PositiveInteger, UnitInterval } from './fields.js';
+import { schemaVersionOf } from './versions.js';
 import { IsoDateTime, Slug, Ulid } from './ids.js';
 
 /** 评测类型，权重从高到低：独立验证 > 练习 > 自评（2.3）。 */
@@ -35,7 +31,7 @@ export type Evaluator = Actor;
  */
 export const Evidence = z
   .strictObject({
-    schema_version: SchemaVersionV1,
+    schema_version: schemaVersionOf('evidence'),
     id: Ulid,
     concept_id: Slug,
     session_id: Ulid.nullable(),

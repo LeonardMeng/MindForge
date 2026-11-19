@@ -5,9 +5,9 @@ import {
   listOf,
   NonEmptyString,
   PositiveInteger,
-  SchemaVersionV1,
   UnitInterval,
 } from './fields.js';
+import { schemaVersionOf } from './versions.js';
 import { Slug } from './ids.js';
 
 /** 一个维度的评测标准：考察要点（不能为空）和达标阈值。 */
@@ -30,7 +30,7 @@ const CriterionOrNull = CriterionDimension.nullable();
  * - `concept_id` 是否和目录名一致，由 `mastery validate` 检查。
  */
 export const Criteria = z.strictObject({
-  schema_version: SchemaVersionV1,
+  schema_version: schemaVersionOf('criteria'),
   concept_id: Slug,
   version: PositiveInteger,
   dimensions: z

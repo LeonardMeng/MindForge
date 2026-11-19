@@ -2,7 +2,8 @@ import { z } from 'zod';
 
 import { Actor } from './actor.js';
 import { pushIssue } from './errors.js';
-import { EvidenceIds, NonEmptyString, SchemaVersionV1 } from './fields.js';
+import { EvidenceIds, NonEmptyString } from './fields.js';
+import { schemaVersionOf } from './versions.js';
 import { IsoDateTime, Slug, Ulid } from './ids.js';
 
 /** 盲区的类型。 */
@@ -43,7 +44,7 @@ export type BlindspotStatus = z.infer<typeof BlindspotStatus>;
  */
 export const Blindspot = z
   .strictObject({
-    schema_version: SchemaVersionV1,
+    schema_version: schemaVersionOf('blindspot'),
     id: Ulid,
     /** 在哪个 Concept 上发现的盲区。 */
     concept_id: Slug,

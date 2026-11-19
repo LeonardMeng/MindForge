@@ -2,12 +2,8 @@ import { z } from 'zod';
 
 import { DIMENSIONS, DimensionScores } from './dimensions.js';
 import { pushIssue } from './errors.js';
-import {
-  listOf,
-  NonEmptyString,
-  PositiveInteger,
-  SchemaVersionV1,
-} from './fields.js';
+import { listOf, NonEmptyString, PositiveInteger } from './fields.js';
+import { schemaVersionOf } from './versions.js';
 import { IsoDateTime, Slug, Ulid } from './ids.js';
 
 /**
@@ -52,7 +48,7 @@ export type AssessmentItem = z.infer<typeof AssessmentItem>;
  */
 export const AssessmentSession = z
   .strictObject({
-    schema_version: SchemaVersionV1,
+    schema_version: schemaVersionOf('assessment-session'),
     id: Ulid,
     concept_id: Slug,
     criteria_version: PositiveInteger,
