@@ -14,7 +14,7 @@ describe('Actor', () => {
   it('rejects an invalid model reference', () => {
     expect(
       issuesOf(Actor, { kind: 'agent', id: 'agent-teacher', model: 'qwen3' }),
-    ).toEqual([['model', 'evaluator.invalid_model']]);
+    ).toEqual([['model', 'actor.invalid_model']]);
   });
 
   it('rejects an unknown kind', () => {

@@ -11,6 +11,7 @@ const VALID = {
   status: 'suspected',
   description: '能写出公式，但遇到没见过的例子就不会用。',
   prerequisite_id: null,
+  merged_into: null,
   evidence_ids: ['01JD3K8Q8Z6V7X2N4M5P9R0T1W'],
   source: { kind: 'agent', id: 'agent-diagnoser', model: 'ollama:qwen3-14b' },
   created_at: '2026-11-20T08:00:00Z',
@@ -63,11 +64,12 @@ describe('Blindspot', () => {
     'status',
     'description',
     'prerequisite_id',
+    'merged_into',
     'evidence_ids',
     'source',
     'created_at',
   ])(
-    'requires %s (prerequisite_id must be written even when null)',
+    'requires %s (prerequisite_id and merged_into must be written even when null)',
     (field) => {
       const input: Record<string, unknown> = { ...VALID };
       delete input[field];
@@ -77,11 +79,50 @@ describe('Blindspot', () => {
 
   it.each([
     ['type', 'misconception'],
-    ['status', 'merged'],
+    ['status', 'deleted'],
   ])('rejects %s %j', (field, value) => {
     expect(issuesOf(Blindspot, { ...VALID, [field]: value })).toEqual([
       [field, 'field.invalid_option'],
     ]);
+  });
+
+  describe('merged_into', () => {
+    const MERGED = {
+      ...VALID,
+      status: 'merged',
+      merged_into: '01JD6B9A0A0A0A0A0A0A0A0A0A',
+    };
+
+    it('accepts a merged blindspot pointing at the one it was merged into', () => {
+      expect(codesOf(Blindspot, MERGED)).toEqual([]);
+    });
+
+    it('is required when merged', () => {
+      expect(issuesOf(Blindspot, { ...MERGED, merged_into: null })).toEqual([
+        ['merged_into', 'blindspot.merged_into_required'],
+      ]);
+    });
+
+    it.each(['suspected', 'confirmed', 'resolved'])(
+      'must be null when %s',
+      (status) => {
+        expect(issuesOf(Blindspot, { ...MERGED, status })).toEqual([
+          ['merged_into', 'blindspot.merged_into_not_allowed'],
+        ]);
+      },
+    );
+
+    it('cannot point at the blindspot itself', () => {
+      expect(issuesOf(Blindspot, { ...MERGED, merged_into: VALID.id })).toEqual(
+        [['merged_into', 'blindspot.merged_into_self']],
+      );
+    });
+
+    it('must be a ULID', () => {
+      expect(issuesOf(Blindspot, { ...MERGED, merged_into: 'other' })).toEqual([
+        ['merged_into', 'ulid.invalid_length'],
+      ]);
+    });
   });
 
   describe('prerequisite_id', () => {
@@ -130,7 +171,7 @@ describe('Blindspot', () => {
           '01JD3K8Q8Z6V7X2N4M5P9R0T1W',
         ],
       }),
-    ).toEqual([['evidence_ids.1', 'mastery.evidence_ids_not_sorted']]);
+    ).toEqual([['evidence_ids.1', 'field.not_sorted']]);
     expect(
       issuesOf(Blindspot, {
         ...VALID,

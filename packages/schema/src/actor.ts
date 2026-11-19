@@ -10,7 +10,7 @@ const MODEL_PATTERN = /^[a-z0-9]+(-[a-z0-9]+)*:\S+$/;
 /** 模型引用，例如 `ollama:qwen3-14b`。 */
 export const ModelRef = z.string().check((ctx) => {
   if (!MODEL_PATTERN.test(ctx.value)) {
-    pushIssue(ctx, 'evaluator.invalid_model', { value: ctx.value });
+    pushIssue(ctx, 'actor.invalid_model', { value: ctx.value });
   }
 });
 

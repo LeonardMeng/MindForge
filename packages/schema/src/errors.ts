@@ -111,6 +111,8 @@ const MESSAGES_EN = {
   'field.out_of_range': (p: { value: number; min: number; max: number }) =>
     `must be between ${String(p.min)} and ${String(p.max)}, got ${String(p.value)}`,
   'field.empty_list': fixed('must not be an empty list'),
+  'field.not_sorted': (p: { value: string; previous: string }) =>
+    `must be in ascending order; "${String(p.value)}" comes after "${String(p.previous)}"`,
 
   // ── 1.3：Criteria、Session、Evidence、Mastery ──
   'criteria.no_dimensions': fixed(
@@ -130,13 +132,11 @@ const MESSAGES_EN = {
     'evidence without a session (session_id: null) needs a note saying where it comes from, ' +
       'for example "final exam: 92/100"',
   ),
-  'evaluator.invalid_model': (p: { value: string }) =>
+  'actor.invalid_model': (p: { value: string }) =>
     `"${p.value}" is not a model reference; expected "<provider>:<model>", for example "ollama:qwen3-14b"`,
   'explanation.invalid_code': (p: { value: string }) =>
     `"${p.value}" is not a valid explanation code; use lowercase letters, digits and underscores, ` +
     `separated by dots (for example "state.mastered")`,
-  'mastery.evidence_ids_not_sorted': (p: { value: string; previous: string }) =>
-    `evidence_ids must be in ascending order; "${p.value}" comes after "${p.previous}"`,
 
   // ── 1.4：Blindspot、Intervention、Proposal ──
   'blindspot.prerequisite_required': fixed(
@@ -161,6 +161,14 @@ const MESSAGES_EN = {
     `but the new frontmatter has id "${String(p.id)}"`,
   'proposal.merge_includes_target': (p: { value: string }) =>
     `"${p.value}" is the merge target and cannot also be a source`,
+  'blindspot.merged_into_required': fixed(
+    'a merged blindspot must name the blindspot it was merged into',
+  ),
+  'blindspot.merged_into_not_allowed': (p: { status: string }) =>
+    `must be null for a blindspot that is ${String(p.status)}; only merged blindspots have merged_into`,
+  'blindspot.merged_into_self': fixed(
+    'a blindspot cannot be merged into itself',
+  ),
 } as const;
 
 /** 本包所有错误的错误码。 */

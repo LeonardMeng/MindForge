@@ -198,7 +198,7 @@ describe('Evidence', () => {
           Evidence,
           withEvaluator({ kind: 'agent', id: 'agent-evaluator', model }),
         ),
-      ).toEqual([['evaluator.model', 'evaluator.invalid_model']]);
+      ).toEqual([['evaluator.model', 'actor.invalid_model']]);
     });
 
     it.each(['id', 'model'])('requires %s for an agent', (field) => {

@@ -44,7 +44,7 @@ if (!result.success) {
 | `Evidence` | `evidence/<slug>/<ULID>.json` | 只追加。`session_id` 和 `note` 必须写出来，可以是 `null`；`session_id` 为 `null`（手动录入）时 `note` 必须写明来由；五个维度不能全是 `null`；`evaluator` 是 `{ kind: agent, id, model: "<provider>:<model>" }` 或 `{ kind: human }` |
 | `MasteryProjection` | `mastery/<slug>.yaml` | 派生数据，不带计算时间。`state`（六个状态之一）、`dimensions`、`confidence`、`rules_version`、`evidence_ids`（升序、不重复）、`explanation`（`[{ code, params }]`，code 由规则包定义） |
 | `MasteryHistoryEntry` | `mastery/history/<slug>.jsonl` 的一行 | 每行都带 `schema_version`；`cause` 是 `evidence`（`at` = 证据时间）、`time`（`at` = 算出的到期时刻）或 `rules` |
-| `Blindspot` | `blindspots/<ULID>.yaml` | `type`（knowledge / reasoning / application / prerequisite / retention）、`status`（suspected / confirmed / resolved）、`description`、`prerequisite_id`（必须写出来：`type` 为 prerequisite 时是缺失的前置 Concept，其他类型为 `null`）、`evidence_ids`（升序、不重复，可以是 `[]`）、`source` |
+| `Blindspot` | `blindspots/<ULID>.yaml` | `type`（knowledge / reasoning / application / prerequisite / retention）、`status`（suspected / confirmed / resolved / merged；`resolved` 表示缺口已补上，`merged` 表示并入了另一个盲区）、`merged_into`（必须写出来：`merged` 时是并入的盲区，不能是自己，其他状态为 `null`）、`description`、`prerequisite_id`（必须写出来：`type` 为 prerequisite 时是缺失的前置 Concept，其他类型为 `null`）、`evidence_ids`（升序、不重复，可以是 `[]`）、`source` |
 | `Intervention` | `interventions/<ULID>.yaml` | `blindspot_id`、`method`（explanation / socratic / practice / counterexample）、`content`、`status`（planned / completed / abandoned）、`closed_at`（planned 时为 `null`，否则为结束时间）、`source`；不写 `concept_id` |
 | `Proposal` | 存放位置待定（4.2 / 6.8） | agent 或用户提交的一组变更操作（`PROPOSAL_OPERATIONS`），更新类操作给出完整的新内容；**没有删除操作**，只能通过状态归档；`requires_approval` 只是提交者的请求，Core 只能把它从 `false` 升级为 `true` |
 | `parseConceptBody()` | `concepts/<slug>.md` 的正文 | 解析 `## Description` 和 `## Learning Objectives`（只认这两个英文二级标题）；识别 ``` 和 ~~~ 代码块；缺少或重复的章节给警告 |
@@ -72,6 +72,7 @@ if (!result.success) {
   - `field.invalid`：其他。
 - `message` 由英文消息表生成，不含字段路径；`formatSchemaIssue()` 把路径加在前面，写法如 `prerequisites[1]`、`plugins["~agent-x"]`。
 - 测试只断言错误码，不断言提示文字。
+- 错误码按它描述的概念命名（如 `actor.invalid_model`、`field.not_sorted`），不按第一个用到它的实体命名（ADR-0013）。
 
 ## 测试工具
 

@@ -35,6 +35,7 @@ const BLINDSPOT = {
   status: 'suspected',
   description: '遇到新例子不会用。',
   prerequisite_id: null,
+  merged_into: null,
   evidence_ids: [],
   source: { kind: 'agent', id: 'agent-diagnoser', model: 'ollama:qwen3-14b' },
   created_at: '2026-11-20T08:00:00Z',

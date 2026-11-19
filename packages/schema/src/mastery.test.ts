@@ -117,7 +117,7 @@ describe('MasteryProjection', () => {
             '01JD3K8Q8Z6V7X2N4M5P9R0T1W',
           ],
         }),
-      ).toEqual([['evidence_ids.1', 'mastery.evidence_ids_not_sorted']]);
+      ).toEqual([['evidence_ids.1', 'field.not_sorted']]);
     });
 
     it('must not repeat', () => {

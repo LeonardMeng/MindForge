@@ -188,9 +188,7 @@ export const EvidenceIds = listOf('evidence_ids', Ulid).check((ctx) => {
     const previous = ctx.value[index - 1];
     const value = ctx.value[index];
     if (previous !== undefined && value !== undefined && value < previous) {
-      pushIssue(ctx, 'mastery.evidence_ids_not_sorted', { value, previous }, [
-        index,
-      ]);
+      pushIssue(ctx, 'field.not_sorted', { value, previous }, [index]);
       return;
     }
   }
