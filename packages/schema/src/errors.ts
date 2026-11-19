@@ -169,6 +169,25 @@ const MESSAGES_EN = {
   'blindspot.merged_into_self': fixed(
     'a blindspot cannot be merged into itself',
   ),
+
+  // ── 1.6：迁移 ──
+  'migration.missing_version': fixed(
+    'the file has no schema_version; every structured file must have one',
+  ),
+  'migration.invalid_version': (p: { value: unknown }) =>
+    `schema_version must be an integer of at least 1, got ${JSON.stringify(p.value) ?? String(p.value)}`,
+  'migration.version_too_new': (p: { version: number; latest: number }) =>
+    `this file uses schema_version ${String(p.version)}, but this version of Mastery OS only ` +
+    `understands up to ${String(p.latest)}; upgrade Mastery OS to read it (the file is left unchanged)`,
+  'migration.no_path': (p: {
+    version: number;
+    missing_step: number;
+    latest: number;
+  }) =>
+    `there is no migration from schema_version ${String(p.missing_step)} to ` +
+    `${String(Number(p.missing_step) + 1)}, so version ${String(p.version)} cannot be upgraded to ${String(p.latest)}`,
+  'migration.step_failed': (p: { from: number; to: number; detail: string }) =>
+    `migration from schema_version ${String(p.from)} to ${String(p.to)} failed: ${String(p.detail)}`,
 } as const;
 
 /** 本包所有错误的错误码。 */

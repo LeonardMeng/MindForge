@@ -7,10 +7,10 @@ import {
   EvidenceIds,
   listOf,
   PositiveInteger,
-  SchemaVersionV1,
   taggedUnion,
   UnitInterval,
 } from './fields.js';
+import { schemaVersionOf } from './versions.js';
 import { IsoDateTime, Slug, Ulid } from './ids.js';
 
 /** 六个掌握状态，按 README 的顺序。 */
@@ -53,7 +53,7 @@ export type ExplanationItem = z.infer<typeof ExplanationItem>;
  * 投影必须逐字节相同（不变量 3）。下次复习日期留到 2.7 再加。
  */
 export const MasteryProjection = z.strictObject({
-  schema_version: SchemaVersionV1,
+  schema_version: schemaVersionOf('mastery-projection'),
   concept_id: Slug,
   state: MasteryState,
   dimensions: DimensionScores,
@@ -93,7 +93,7 @@ export type MasteryChangeCause = z.infer<typeof MasteryChangeCause>;
  * 每一行都带 `schema_version`，单独一行也能读懂。`at` 由证据和规则推导，不取“发现变化的时间”。
  */
 export const MasteryHistoryEntry = z.strictObject({
-  schema_version: SchemaVersionV1,
+  schema_version: schemaVersionOf('mastery-history-entry'),
   at: IsoDateTime,
   state: MasteryState,
   dimensions: DimensionScores,

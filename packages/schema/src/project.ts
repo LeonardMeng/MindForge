@@ -1,6 +1,7 @@
 import { z } from 'zod';
 
-import { listOf, NonEmptyString, SchemaVersionV1 } from './fields.js';
+import { listOf, NonEmptyString } from './fields.js';
+import { schemaVersionOf } from './versions.js';
 import { Slug } from './ids.js';
 
 /** Project 的状态。 */
@@ -20,7 +21,7 @@ export type ProjectStatus = z.infer<typeof ProjectStatus>;
  * 这些 slug 是否存在由 `mastery validate` 检查。需要更多字段时通过 `schema_version` 扩展。
  */
 export const ProjectConfig = z.strictObject({
-  schema_version: SchemaVersionV1,
+  schema_version: schemaVersionOf('project'),
   id: Slug,
   name: NonEmptyString,
   description: NonEmptyString.optional(),

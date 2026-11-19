@@ -74,6 +74,13 @@ if (!result.success) {
 - 测试只断言错误码，不断言提示文字。
 - 错误码按它描述的概念命名（如 `actor.invalid_model`、`field.not_sorted`），不按第一个用到它的实体命名（ADR-0013）。
 
+## 版本和迁移
+
+- 每种文件在 `src/file-kinds.ts` 的登记表 `FILE_KINDS` 里登记一次：schema、当前版本、位置、迁移步骤。当前版本号定义在 `src/versions.ts`。
+- `migrate(kind, data)`：从任意旧版本逐级升级到当前版本，只在内存里，不改写磁盘。版本过新时返回 `migration.version_too_new`，这样的文件只能读，不能修改或覆盖。
+- `validateFile(kind, data)`：先迁移，再按当前 schema 校验，读文件时用它。结果里的 `from < to` 说明这是旧格式的文件。
+- 加迁移的步骤和规则见 [`docs/adding-a-migration.md`](../../docs/adding-a-migration.md)。每一步迁移都必须配上永久保留的旧版本样例测试。
+
 ## JSON Schema 和协议文档
 
 `pnpm --filter @mastery/schema gen` 先构建，再运行 `scripts/gen-json-schema.mjs`，把所有文件 schema 导出为 JSON Schema（draft 2020-12，按输出端导出），写到 `docs/protocol/schemas/`。CI 会重新生成并检查和提交的文件是否一致，所以修改 schema 后要重新运行 `gen` 并提交结果。协议说明页在 `docs/protocol/`。

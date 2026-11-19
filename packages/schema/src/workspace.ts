@@ -6,7 +6,8 @@ import {
   SLUG_MAX_LENGTH,
 } from './constraints.js';
 import { pushIssue } from './errors.js';
-import { isPlainObject, NonEmptyString, SchemaVersionV1 } from './fields.js';
+import { isPlainObject, NonEmptyString } from './fields.js';
+import { schemaVersionOf } from './versions.js';
 import { Slug } from './ids.js';
 
 /**
@@ -59,7 +60,7 @@ const Plugins = z
  * SuperAgent 也是普通插件（比如 `superagent-default`），写在 `plugins` 里，没有单独的字段。
  */
 export const WorkspaceConfig = z.strictObject({
-  schema_version: SchemaVersionV1,
+  schema_version: schemaVersionOf('workspace'),
   /** Workspace 的 id，也是全局引用 `<id>:<slug>` 的前缀。 */
   id: Slug,
   name: NonEmptyString,

@@ -31,7 +31,7 @@
 ## 当前状态
 
 - **当前里程碑：** M1
-- **下一个任务：** 1.6
+- **下一个任务：** 1.7
 - **阻塞项：** 无
 
 ---
@@ -109,10 +109,10 @@
 - **验收**：生成的文件和提交的文件一致（CI 检查，防止忘记重新生成）。
 - **不做**：网站。
 
-### [ ] 1.6 Schema 迁移框架
+### [x] 1.6 Schema 迁移框架
 - **包**：`schema`
 - **依赖**：1.5
-- **产出**：`migrate(kind, data)`：从任意旧版本逐级升级到最新版本；版本过新时给出明确错误。用一个假的 v0 → v1 迁移做测试。
+- **产出**：`migrate(kind, data)`：从任意旧版本逐级升级到最新版本；版本过新时给出明确错误。用一个只在测试里存在的假迁移链（v1 → v2 → v3）做测试（`schema_version` 从 1 开始，没有 v0）。
 - **验收**：迁移链测试通过；未知版本报错。
 - **不做**：改写磁盘文件。
 
@@ -601,6 +601,10 @@
 - （来自 1.5，1.9 之后）协议文档里的 YAML 示例还没有自动校验。1.9 选定 YAML 库以后，加一个测试校验 `docs/protocol/*.md` 里的 YAML 示例。
 - （来自 1.5，1.9 选 YAML 库时注意）很多 YAML 库（比如 js-yaml 的默认模式）会把不加引号的 `2026-11-20T08:00:00Z` 转成 Date 对象。store 读写 YAML 时必须把时间保留为字符串，否则 `IsoDateTime` 校验不过，读后再写也无法逐字节不变。
 - （来自 1.5，M6 之前不做）让 VS Code 这类编辑器在用户编辑 `workspace.yaml`、Concept 的 frontmatter 时，直接用 `docs/protocol/schemas/` 里的 JSON Schema 做自动补全和实时校验。
+- （来自 1.6，1.9 实现）读到 `migration.version_too_new` 的文件时，这个文件只读，store 绝对不能修改或覆盖它。多台设备上的应用版本可能不同，旧版本的应用不能把新版本写的文件降级或写坏。
+- （来自 1.6，1.9 实现）修改一个旧版本的可修改文件（比如 Blindspot）时，写回的是当前版本。这是正常保存，不违反 ADR-0005 的“只有 `mastery migrate` 才改写磁盘”，那条说的是不要在读的时候顺手改写。Evidence 这类只能追加的文件不会被修改，所以会一直保持原来的版本，直到用户运行 `mastery migrate`。
+- （来自 1.6，2.5 实现）如果某个 Concept 有任何证据是 `version_too_new`，就不重算这个 Concept 的掌握度，也不写投影，并提示用户升级 Mastery OS。否则会因为漏算证据而写出错误的投影，再通过 Git 同步到其他设备。
+- （来自 1.6，1.11 处理）Profile 和 Device 的几种文件也要登记进 `packages/schema/src/file-kinds.ts` 和 `versions.ts`。
 - （来自 1.4，7.2 处理）验证证据和干预的关联：优先考虑在 Intervention 里记录验证证据的 id（Intervention 文件本来就可以修改），这样不用改 Evidence 的格式，关联关系也只存一处。
 - （来自 1.4，8.3 决定）引入跨 Workspace 的前置依赖后，Blindspot 的 `prerequisite_id` 可能需要支持 `GlobalConceptRef`。
 - （来自 1.1）`packages/schema/src/testing.ts` 的测试构造函数目前只在 schema 包内部使用。其他包的测试要用时，再决定放在哪里（比如 `testkit` 包），不从 schema 的公共 API 导出。
@@ -624,3 +628,4 @@
 | 2026-11-20 | 1.4 | `task/1.4-schema-blindspot-proposal` | 公共的 `Actor`（`Evaluator` 复用它）；`Blindspot`（`prerequisite_id` 规则）、`Intervention`（`status` 和 `closed_at` 规则）、`Proposal`（8 种变更操作，没有删除；`requires_approval` 只是请求）；`taggedUnion` 支持任意区分字段；共 437 个测试 | 审批规则、并发冲突、merge 语义、验证证据关联等见“待整理” |
 | 2026-11-20 | 1.4（补充） | `task/1.4-schema-blindspot-proposal` | Blindspot 增加状态 `merged` 和字段 `merged_into`（`merged` 时必须有值且不能指向自己，其他状态为 `null`）。错误码改名：`evaluator.invalid_model` → `actor.invalid_model`，`mastery.evidence_ids_not_sorted` → `field.not_sorted`，**修改了 4 处断言**（经人确认，含义不变）：1.3 的 `evidence.test.ts`、`mastery.test.ts` 各 1 处，1.4 的 `actor.test.ts`、`blindspot.test.ts` 各 1 处；`blindspot.test.ts` 里原来用 `merged` 作为非法状态的例子改用 `deleted`。ADR-0013 补充错误码命名规则。共 445 个测试 | 无 |
 | 2026-11-20 | 1.5 | `task/1.5-json-schema-protocol-docs` | `pnpm --filter @mastery/schema gen` 把 11 个文件 schema 导出到 `docs/protocol/schemas/`（输出稳定）；正则和数值范围集中到 `constraints.ts`，`.check()` 和 `.meta()` 共用；协议说明页 11 页加索引，列出 JSON Schema 检查不了的规则；JSON 示例由测试校验；CI 检查生成结果和提交的一致；`.prettierignore` 忽略生成的文件；eslint 对 `.mjs` 脚本关闭类型感知规则；共 473 个测试 | YAML 示例校验、zod 与 JSON Schema 一致性测试等见“待整理” |
+| 2026-11-20 | 1.6 | `task/1.6-schema-migrations` | `createMigrator()` 迁移框架（逐级升级、版本过新 / 无路径 / 步骤失败都有错误码，不修改输入）；`FILE_KINDS` 登记表和 `versions.ts`，文件 schema 和 JSON Schema 生成脚本都从这里读取（生成结果不变）；`migrate()`、`validateFile()`；`docs/adding-a-migration.md`（旧版本样例永久保留）；ROADMAP 1.6 的“v0 → v1”改为测试专用的 v1 → v2 → v3；共 545 个测试 | store、重算对版本过新文件的处理见“待整理” |
