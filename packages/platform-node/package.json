@@ -1,0 +1,27 @@
+{
+  "name": "@mastery/platform-node",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Platform 端口的 Node 实现（CLI、无界面模式和 MCP 使用）：node:fs、原子写、锁文件、系统时钟、ULID。",
+  "type": "module",
+  "exports": {
+    ".": {
+      "@mastery/source": "./src/index.ts",
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsup src/index.ts --format esm --dts --clean",
+    "test": "vitest run --config ../../vitest.config.ts --root .",
+    "typecheck": "tsc -p tsconfig.json"
+  },
+  "dependencies": {
+    "@mastery/platform": "workspace:*",
+    "@mastery/schema": "workspace:*",
+    "ulid": "^3.0.2"
+  }
+}

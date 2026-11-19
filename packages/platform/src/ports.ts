@@ -6,6 +6,11 @@ import type { IsoDateTime, Ulid } from '@mastery/schema';
  * 路径规则见 {@link normalizePath}：用 `/` 分隔，不能是绝对路径，不能有 `..`，
  * 统一做 Unicode NFC 规范化，拒绝 Windows 不允许的名字。根目录写作 `''`。
  *
+ * 符号链接：跟随链接，按目标的类型报告；断开的链接和特殊文件在 `list` 里跳过。
+ * 解析后的真实路径在根目录外面时，拒绝访问，报 `platform.outside_root`，
+ * 这样 Workspace 里指向 `~/.ssh` 之类的链接不能让任何人读到根目录外面的文件。
+ * 放在外部磁盘上的资源通过 device.yaml 的 `storage.resources_dir` 配置，不通过符号链接。
+ *
  * 所有方法出错时抛出 {@link PlatformError}，带稳定的错误码（`platform.*`）。
  */
 export interface FileSystem {
@@ -43,8 +48,12 @@ export interface FileSystem {
     options?: { readonly recursive?: boolean },
   ): Promise<void>;
   /**
-   * 监听目录树里的变化，返回取消监听的函数。事件异步送达；
-   * 只保证“发生变化后最终至少收到一个关于该路径的事件”，不保证次数。
+   * 监听目录树里的变化，返回取消监听的函数。
+   *
+   * **事件只是提示**：异步送达，可能合并、重复或丢失，只保证“发生变化后通常会收到关于该路径的事件”。
+   * 覆盖已存在的文件可能报成 `created`（原子写是“临时文件 + 改名”，操作系统分不清），
+   * 所以使用者要把 `created` 和 `modified` 都当作“文件有了新内容”。
+   * 使用者必须能通过重新扫描来对账（3.3 的索引和启动时的对账就是这样设计的）。
    */
   watch(dir: string, listener: (event: WatchEvent) => void): Unwatch;
   /**

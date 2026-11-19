@@ -31,7 +31,7 @@
 ## 当前状态
 
 - **当前里程碑：** M1
-- **下一个任务：** 1.8
+- **下一个任务：** 1.9
 - **阻塞项：** 无
 
 ---
@@ -123,7 +123,7 @@
 - **验收**：一套通用的“契约测试”，内存实现能通过（后面的 Node 和 Tauri 实现也要跑同一套测试）。
 - **不做**：SQLite 和 Git 端口（在 M3 加）。
 
-### [ ] 1.8 Node 平台实现
+### [x] 1.8 Node 平台实现
 - **包**：`platform-node`
 - **依赖**：1.7
 - **产出**：基于 `node:fs` 的实现，原子写使用“临时文件 + rename”。
@@ -607,6 +607,9 @@
 - （来自 1.6，1.11 处理）Profile 和 Device 的几种文件也要登记进 `packages/schema/src/file-kinds.ts` 和 `versions.ts`。
 - （来自 1.7，1.15 处理）`mastery init` 和 `mastery profile init` 生成的 `.gitignore` 要包含 `.mastery-tmp-*`，防止崩溃留下的临时文件被提交。
 - （来自 1.7，4.1 实现）同一个 Workspace 目录，同一时间只能有一个进程做写操作，用 1.7 的 Lock 端口实现（比如 `.mastery/runtime/write.lock`）。只读的 CLI 命令（validate、status、search）不需要拿锁。
+- （来自 1.8）Linux 上别的工具（比如从 macOS 拷来的压缩包）创建的 NFD 文件名：`list` 会把它报成 NFC，但用 NFC 名字读不到（Linux 不做规范化）。目前不处理；遇到时再考虑在打开文件时按 NFD 名字重试，或者由 `mastery doctor` 提示改名。
+- （来自 1.8）`list` 会跳过不是合法路径段的名字（Windows 保留名、`<>:"|?*`、控制字符、以点或空格结尾等），这些文件对 Mastery 不可见。以后 `mastery doctor` 应该列出它们，提示用户改名，而不是让它们悄悄消失。
+- （来自 1.8，4.1 使用）`NodeLock` 清除过期锁时默认用 `process.emitWarning` 留下记录。4.1 接入 CLI 时，应该把 `onStaleLock` 接到正式的日志或事件上。
 - （来自 1.4，7.2 处理）验证证据和干预的关联：优先考虑在 Intervention 里记录验证证据的 id（Intervention 文件本来就可以修改），这样不用改 Evidence 的格式，关联关系也只存一处。
 - （来自 1.4，8.3 决定）引入跨 Workspace 的前置依赖后，Blindspot 的 `prerequisite_id` 可能需要支持 `GlobalConceptRef`。
 - （来自 1.1）`packages/schema/src/testing.ts` 的测试构造函数目前只在 schema 包内部使用。其他包的测试要用时，再决定放在哪里（比如 `testkit` 包），不从 schema 的公共 API 导出。
@@ -632,3 +635,4 @@
 | 2026-11-20 | 1.5 | `task/1.5-json-schema-protocol-docs` | `pnpm --filter @mastery/schema gen` 把 11 个文件 schema 导出到 `docs/protocol/schemas/`（输出稳定）；正则和数值范围集中到 `constraints.ts`，`.check()` 和 `.meta()` 共用；协议说明页 11 页加索引，列出 JSON Schema 检查不了的规则；JSON 示例由测试校验；CI 检查生成结果和提交的一致；`.prettierignore` 忽略生成的文件；eslint 对 `.mjs` 脚本关闭类型感知规则；共 473 个测试 | YAML 示例校验、zod 与 JSON Schema 一致性测试等见“待整理” |
 | 2026-11-20 | 1.6 | `task/1.6-schema-migrations` | `createMigrator()` 迁移框架（逐级升级、版本过新 / 无路径 / 步骤失败都有错误码，不修改输入）；`FILE_KINDS` 登记表和 `versions.ts`，文件 schema 和 JSON Schema 生成脚本都从这里读取（生成结果不变）；`migrate()`、`validateFile()`；`docs/adding-a-migration.md`（旧版本样例永久保留）；ROADMAP 1.6 的“v0 → v1”改为测试专用的 v1 → v2 → v3；共 545 个测试 | store、重算对版本过新文件的处理见“待整理” |
 | 2026-11-20 | 1.7 | `task/1.7-platform-ports` | 新建 `@mastery/platform`（`FileSystem`、`Clock`、`IdGenerator`、`Lock` 接口；`PlatformError` 和 `platform.*` 错误码；路径规则：`/` 分隔、NFC、Windows 不允许的名字；契约测试从 `/contract` 子路径导出，vitest 是可选的 peerDependency）和 `@mastery/platform-memory`（通过全部契约测试，可以模拟写入中途崩溃）；README 第 5、6 节和 dependency-cruiser 补上两个包的白名单；共 694 个测试 | `.gitignore` 的临时文件、Workspace 写锁见“待整理” |
+| 2026-11-20 | 1.8 | `task/1.8-platform-node` | 新建 `@mastery/platform-node`：`NodeFileSystem`（原子写：临时文件 + fsync + rename + 目录 fsync，Windows 上 rename 短暂占用时重试；跟随符号链接，真实路径在根目录外报 `platform.outside_root`；`list` 跳过断开的链接、特殊文件和不合法的名字，名字转 NFC）、`SystemClock`、`NodeIdGenerator`、`NodeLock`（锁文件带令牌、进程号、主机名，修改时间作心跳；心跳超过 2 分钟或同主机进程已不在视为过期；接管时先 rename 成唯一名字再 `wx` 创建，竞争有测试；清除过期锁通过 `onStaleLock` 留下记录）、`createNodePlatform`。契约新增 `platform.outside_root` 错误码和符号链接测试组（`{ symlinks: true }` 时运行，Tauri 实现也要通过）。**修改了 1.7 契约测试里 1 处断言**（经人确认）：watch 测试改写已有文件后，原来要求事件是 `modified`，现在 `modified` 或 `created` 都算通过。原因：Linux 的 inotify 和 macOS 的 FSEvents 在原子写（临时文件 rename 覆盖目标）时报的是改名，Node 无法区分“覆盖”和“新建”；接口文档同时写明 watch 事件只是提示，可能合并、重复或丢失，使用者必须通过重新扫描对账（3.3 和启动对账就是这样设计的）。README 第 6 节和 dependency-cruiser 补上 platform-node 的白名单；共 776 个测试（5 个按平台或实现跳过） | Linux 的 NFD 文件名、被跳过的不合法名字、过期锁记录接入日志，见“待整理” |
