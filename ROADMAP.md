@@ -576,6 +576,7 @@
 | ADR-0010 | 移动端的最小可用功能 | 在 9.4 之前决定 |
 | [ADR-0011](docs/adr/ADR-0011-tauri-isolation.md) | 只有 `platform-tauri` 和 `apps/desktop` 能调用 Tauri（`@tauri-apps/*`），`ui-*` 不依赖 Tauri，为将来的 Web 版留路 | 已定 |
 | [ADR-0012](docs/adr/ADR-0012-schema-open-to-all-packages.md) | 所有包都可以依赖 `schema`，包括 `ui-*`（编辑器保存前要直接调用 schema 校验）；`ui-*` 的其他限制不变 | 已定 |
+| [ADR-0013](docs/adr/ADR-0013-file-format-conventions.md) | 文件格式约定：同一个值只有一种写法；对象一律严格校验（两个例外）；结构化错误码；`schema` 的运行时代码只能依赖 `zod` | 已定 |
 
 ---
 
@@ -594,7 +595,6 @@
 - （来自 1.2，1.5 处理）列表字段用 `z.unknown().check(…).pipe(z.array(…))` 实现（为了给出“写成列表”的提示和同时报出元素错误与重复项），导出 JSON Schema 时要确认用的是输出端（`io: "output"`），得到的是数组类型。
 - （来自 1.2，4.3 决定）插件名目前按 Slug 规则。第三方插件如果用 npm 的 scope 包名（比如 `@someone/agent-x`），插件名的规则要不要放宽；同一个插件要不要支持多个实例。
 - （来自 1.1）`packages/schema/src/testing.ts` 的测试构造函数目前只在 schema 包内部使用。其他包的测试要用时，再决定放在哪里（比如 `testkit` 包），不从 schema 的公共 API 导出。
-- （来自 1.1）1.1 定下的格式约定（ULID 只认大写、时间只有 UTC 精确到秒一种写法、对象一律严格校验、结构化错误码）都属于难以撤销的决定，建议补一份 ADR。
 
 ---
 
@@ -610,3 +610,4 @@
 | 2026-11-20 | 0.4 | `task/0.4-adr` | `docs/adr/TEMPLATE.md`；ADR-0001 至 0006、0011、0012（理由和否决方案来自建仓库前的设计讨论记录）；决策记录表加上链接和 ADR-0012；README 第 12.6 条补上模板路径 | 无 |
 | 2026-11-20 | 1.1 | `task/1.1-schema-common` | 新建 `@mastery/schema`（依赖 zod 4.6）：`SchemaVersion`、`Slug`、`GlobalConceptRef`、`Ulid`、`IsoDateTime`、`DimensionScores` 等 branded schema；结构化错误码和英文消息表；测试用构造函数；116 个测试 | 1.2 要处理的例外、`IsoDate`、JSON Schema 等见“待整理” |
 | 2026-11-20 | 1.2 | `task/1.2-schema-workspace-concept` | `WorkspaceConfig`、`ProjectConfig`、`ConceptFrontmatter`（未知字段原样保留并给警告）、`parseConceptBody()`（按行解析，识别代码块）；zod 自带错误映射成 `field.*` 错误码，新增 `validate()` 和 `formatSchemaIssue()`。**修改了 1.1 测试里 8 处断言**（经人确认）：`ids.test.ts` 3 处、`dimensions.test.ts` 4 处由 `zod.invalid_type` / `zod.unrecognized_keys` 改为 `field.invalid_type` / `field.unknown`，含义不变；`errors.test.ts` 1 处测试原本验证“zod 错误码加 `zod.` 前缀”，该行为已去掉，改为验证“映射成 `field.*` 错误码”。原因：错误码不再随 zod 版本变化。共 206 个测试 | 跨字段检查只在字段本身无错时运行（已写进包 README）；JSON Schema 和插件名规则见“待整理” |
+| 2026-11-20 | ADR-0013 | `task/1.3-schema-evidence-mastery`（单独提交） | 文件格式约定写成 ADR-0013；dependency-cruiser 新增 `schema-runtime-only-zod`，README 第 6 节加硬性禁止第 6 条；确认 schema 没有依赖 ULID 库 | ADR-0013 理由里有一句整理时补充的内容，标了“待确认” |

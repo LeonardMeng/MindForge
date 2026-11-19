@@ -143,6 +143,18 @@ export default {
       to: { path: thirdParty('@tauri-apps/[^/]+') },
     },
 
+    {
+      name: 'schema-runtime-only-zod',
+      severity: 'error',
+      comment:
+        'README 第 6 节硬性禁止第 6 条（ADR-0013）：schema 的运行时代码只能依赖 zod；新增外部依赖必须先写 ADR。测试文件和测试工具不受限制',
+      from: {
+        path: src('schema'),
+        pathNot: '(\\.test\\.ts|/testing\\.ts|/test-helpers\\.ts)$',
+      },
+      to: { path: '(^|/)node_modules/', pathNot: '(^|/)node_modules/zod/' },
+    },
+
     // ── 规则自身的保险 ────────────────────────────────────────────────────
     {
       name: 'no-unresolvable',
