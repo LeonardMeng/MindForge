@@ -29,3 +29,8 @@ pnpm --filter @mastery/<包> test
 
 先用 plan mode 出方案 → 人确认 → 先写测试 → 实现 → `pnpm check` → 在 ROADMAP 里勾选任务并填写完成记录。
 范围外的发现记到 ROADMAP 的“待整理”一节。
+
+## Git
+
+- 提交由人来做。AI 助手只给出要提交的文件清单和建议的 commit message。
+- commit message 和 PR 描述里**不加任何 AI 署名**：不写 `Co-Authored-By: Claude …`、`Claude-Session: …`、“Generated with Claude Code” 之类的行。提交的作者只能是人。

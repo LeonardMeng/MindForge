@@ -31,7 +31,7 @@
 ## 当前状态
 
 - **当前里程碑：** M0
-- **下一个任务：** 0.3
+- **下一个任务：** 0.4
 - **阻塞项：** 无
 
 ---
@@ -54,7 +54,7 @@
 - **验收**：在 `_template` 里故意 import `node:fs`，`pnpm lint` 报错；删掉后通过。规则配置里每一条都有注释，对应 README 的条目。
 - **不做**：其他 lint 规则。
 
-### [ ] 0.3 CI
+### [x] 0.3 CI
 - **包**：`.github/workflows/`
 - **依赖**：0.2
 - **产出**：在 PR 上运行 `pnpm check`；Linux、macOS、Windows 三个平台的矩阵测试。
@@ -600,3 +600,4 @@
 |---|---|---|---|---|
 | 2026-11-19 | 0.1 | `task/0.1-monorepo-skeleton` | pnpm workspace、TS strict 配置、Vitest 根配置、eslint + prettier、根脚本、`packages/_template` 和 `docs/adding-a-package.md` | 无；版本升级事项见“待整理” |
 | 2026-11-19 | 0.2 | `task/0.2-dependency-boundaries` | dependency-cruiser 覆盖 README 第 6 节全部规则（白名单、只引用类型、硬性禁止 1–5）并接入 `pnpm lint`；README 第 5、6、11、12 节同步更新 | 未列出包的白名单、全局对象检查等，见“待整理” |
+| 2026-11-20 | 0.3 | PR #1（`task/0.3-ci`） | GitHub Actions：push 到任何分支和 PR 时，在 Linux、macOS、Windows 上运行 `pnpm check` 和 `pnpm build`；`.gitattributes` 统一 LF 换行。三个平台 CI 全部通过 | 无 |
