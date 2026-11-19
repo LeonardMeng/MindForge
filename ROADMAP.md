@@ -601,4 +601,4 @@
 | 2026-11-19 | 0.1 | `task/0.1-monorepo-skeleton` | pnpm workspace、TS strict 配置、Vitest 根配置、eslint + prettier、根脚本、`packages/_template` 和 `docs/adding-a-package.md` | 无；版本升级事项见“待整理” |
 | 2026-11-19 | 0.2 | `task/0.2-dependency-boundaries` | dependency-cruiser 覆盖 README 第 6 节全部规则（白名单、只引用类型、硬性禁止 1–5）并接入 `pnpm lint`；README 第 5、6、11、12 节同步更新 | 未列出包的白名单、全局对象检查等，见“待整理” |
 | 2026-11-20 | 0.3 | PR #1（`task/0.3-ci`） | GitHub Actions：push 到任何分支和 PR 时，在 Linux、macOS、Windows 上运行 `pnpm check` 和 `pnpm build`；`.gitattributes` 统一 LF 换行。三个平台 CI 全部通过 | 无 |
-| 2026-11-20 | 0.4 | `task/0.4-adr` | `docs/adr/TEMPLATE.md`；ADR-0001 至 0006、0011、0012（理由和否决方案来自建仓库前的设计讨论记录）；决策记录表加上链接和 ADR-0012；README 第 12.6 条补上模板路径 | ADR-0012“后果”里有一句整理时补充的内容，标了“待确认” |
+| 2026-11-20 | 0.4 | `task/0.4-adr` | `docs/adr/TEMPLATE.md`；ADR-0001 至 0006、0011、0012（理由和否决方案来自建仓库前的设计讨论记录）；决策记录表加上链接和 ADR-0012；README 第 12.6 条补上模板路径 | 无 |

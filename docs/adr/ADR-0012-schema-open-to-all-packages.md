@@ -25,7 +25,7 @@ README 第 6 节的依赖图原先没有给 `ui-*`、`plugin-core`、`agents/*` 
 
 - README 第 6 节补充了“所有包都可以依赖 schema”的说明；`ui-*` 那一行改成 `ui-* ← schema, rpc, ui-kit`。
 - dependency-cruiser 的每个白名单都自动包含 `schema`。
-- `schema` 必须保持纯净：不能 import 其他内部包，不能做 I/O，也不能依赖 Node。依赖规则已经要求 schema 不依赖任何内部包、不能 import `node:*`。（整理时补充，待确认）
+- `schema` 必须保持纯净：不能 import 其他内部包，不能做 I/O，也不能依赖 Node。依赖规则已经要求 schema 不依赖任何内部包、不能 import `node:*`。
 
 ## 相关
 
