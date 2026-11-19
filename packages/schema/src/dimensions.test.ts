@@ -55,7 +55,7 @@ describe('DimensionScore', () => {
     '0.5',
     undefined,
   ])('rejects %s as not a number or null', (value) => {
-    expect(codesOf(DimensionScore, value)).toEqual(['zod.invalid_type']);
+    expect(codesOf(DimensionScore, value)).toEqual(['field.invalid_type']);
   });
 });
 
@@ -85,7 +85,7 @@ describe('DimensionScores', () => {
       expect(result.success).toBe(false);
       if (!result.success) {
         const issues = toSchemaIssues(result.error);
-        expect(issues.map((i) => i.code)).toEqual(['zod.invalid_type']);
+        expect(issues.map((i) => i.code)).toEqual(['field.invalid_type']);
         expect(issues[0]?.path).toEqual([dimension]);
       }
     },
@@ -94,7 +94,7 @@ describe('DimensionScores', () => {
   it('rejects unknown dimensions', () => {
     expect(
       codesOf(DimensionScores, { ...README_EXAMPLE, intuition: 0.5 }),
-    ).toEqual(['zod.unrecognized_keys']);
+    ).toEqual(['field.unknown']);
   });
 
   it('reports the path of an out-of-range score', () => {
@@ -113,6 +113,6 @@ describe('DimensionScores', () => {
   });
 
   it.each([null, [], 'scores'])('rejects %j as not an object', (value) => {
-    expect(codesOf(DimensionScores, value)).toEqual(['zod.invalid_type']);
+    expect(codesOf(DimensionScores, value)).toEqual(['field.invalid_type']);
   });
 });
