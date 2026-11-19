@@ -31,7 +31,7 @@
 ## 当前状态
 
 - **当前里程碑：** M1
-- **下一个任务：** 1.4
+- **下一个任务：** 1.5
 - **阻塞项：** 无
 
 ---
@@ -95,10 +95,10 @@
 - **验收**：每个 schema 都有样例测试；`MasteryState` 是六个状态的枚举。
 - **不做**：计算逻辑。
 
-### [ ] 1.4 Schema：Blindspot、Intervention、Proposal
+### [x] 1.4 Schema：Blindspot、Intervention、Proposal
 - **包**：`schema`
 - **依赖**：1.1
-- **产出**：`Blindspot`（类型：knowledge / reasoning / application / prerequisite / retention；状态：suspected / confirmed / resolved）、`Intervention`、`Proposal`（一组变更操作 + 来源 + 是否需要人工审批）。
+- **产出**：`Blindspot`（类型：knowledge / reasoning / application / prerequisite / retention；状态：suspected / confirmed / resolved / merged）、`Intervention`、`Proposal`（一组变更操作 + 来源 + 是否需要人工审批）。
 - **验收**：样例测试通过。
 - **不做**：审批流程。
 
@@ -596,6 +596,11 @@
 - （来自 1.2，4.3 决定）插件名目前按 Slug 规则。第三方插件如果用 npm 的 scope 包名（比如 `@someone/agent-x`），插件名的规则要不要放宽；同一个插件要不要支持多个实例。
 - （来自 1.3，3.7 处理）两台设备各自往同一个 `mastery/history/<slug>.jsonl` 末尾追加时，Git 文本合并会冲突。方向：让 history 也能逐字节确定，由 merge driver 根据证据重算（和投影一样），而不是做文本合并。`cause: rules`（规则升级）时 `at` 怎么确定，到 3.7 再决定。
 - （来自 1.3）进行中的评测会话以后可以暂存在 `.mastery/runtime/` 里，用于崩溃后恢复，不进入权威数据。
+- （来自 1.4，4.2 实现）Proposal 的 `requires_approval` 只是提交者的请求：Core 按规则判断，只能把 `false` 升级为 `true`，不能反过来。以后可以在 `workspace.yaml` 里让用户配置哪些操作需要审批，但用户配置也只能收紧，不能放宽 Core 的最低要求。
+- （来自 1.4，4.2 处理）并发冲突：提案生成后、批准前文件已被改动时怎么办。可能需要在更新类操作里带上“提案时文件内容的哈希”。Proposal 不是长期保存的数据，到时再加字段代价很小。
+- （来自 1.4）4.2：实现 `blindspot.merge`，检查 `merged_into` 指向的盲区存在，并且不形成链或循环。
+- （来自 1.4，7.2 处理）验证证据和干预的关联：优先考虑在 Intervention 里记录验证证据的 id（Intervention 文件本来就可以修改），这样不用改 Evidence 的格式，关联关系也只存一处。
+- （来自 1.4，8.3 决定）引入跨 Workspace 的前置依赖后，Blindspot 的 `prerequisite_id` 可能需要支持 `GlobalConceptRef`。
 - （来自 1.1）`packages/schema/src/testing.ts` 的测试构造函数目前只在 schema 包内部使用。其他包的测试要用时，再决定放在哪里（比如 `testkit` 包），不从 schema 的公共 API 导出。
 
 ---
@@ -614,3 +619,5 @@
 | 2026-11-20 | 1.2 | `task/1.2-schema-workspace-concept` | `WorkspaceConfig`、`ProjectConfig`、`ConceptFrontmatter`（未知字段原样保留并给警告）、`parseConceptBody()`（按行解析，识别代码块）；zod 自带错误映射成 `field.*` 错误码，新增 `validate()` 和 `formatSchemaIssue()`。**修改了 1.1 测试里 8 处断言**（经人确认）：`ids.test.ts` 3 处、`dimensions.test.ts` 4 处由 `zod.invalid_type` / `zod.unrecognized_keys` 改为 `field.invalid_type` / `field.unknown`，含义不变；`errors.test.ts` 1 处测试原本验证“zod 错误码加 `zod.` 前缀”，该行为已去掉，改为验证“映射成 `field.*` 错误码”。原因：错误码不再随 zod 版本变化。共 206 个测试 | 跨字段检查只在字段本身无错时运行（已写进包 README）；JSON Schema 和插件名规则见“待整理” |
 | 2026-11-20 | ADR-0013 | `task/1.3-schema-evidence-mastery`（单独提交） | 文件格式约定写成 ADR-0013；dependency-cruiser 新增 `schema-runtime-only-zod`，README 第 6 节加硬性禁止第 6 条；确认 schema 没有依赖 ULID 库 | 无 |
 | 2026-11-20 | 1.3 | `task/1.3-schema-evidence-mastery` | `Criteria`、`AssessmentSession`（每道题带原始 `scores`）、`Evidence`（`session_id`、`note` 必须写出，手动录入要写 `note`）、`MasteryProjection`（结构化 `explanation`，`evidence_ids` 升序）、`MasteryHistoryEntry`（`cause` 为 evidence / time / rules）；按 `kind` 区分的对象用自定义分发，保证缺字段报 `field.required`；README 第 7 节 Evidence 示例补上 `"note": null`；共 344 个测试 | history 的合并方式、进行中会话的暂存见“待整理” |
+| 2026-11-20 | 1.4 | `task/1.4-schema-blindspot-proposal` | 公共的 `Actor`（`Evaluator` 复用它）；`Blindspot`（`prerequisite_id` 规则）、`Intervention`（`status` 和 `closed_at` 规则）、`Proposal`（8 种变更操作，没有删除；`requires_approval` 只是请求）；`taggedUnion` 支持任意区分字段；共 437 个测试 | 审批规则、并发冲突、merge 语义、验证证据关联等见“待整理” |
+| 2026-11-20 | 1.4（补充） | `task/1.4-schema-blindspot-proposal` | Blindspot 增加状态 `merged` 和字段 `merged_into`（`merged` 时必须有值且不能指向自己，其他状态为 `null`）。错误码改名：`evaluator.invalid_model` → `actor.invalid_model`，`mastery.evidence_ids_not_sorted` → `field.not_sorted`，**修改了 4 处断言**（经人确认，含义不变）：1.3 的 `evidence.test.ts`、`mastery.test.ts` 各 1 处，1.4 的 `actor.test.ts`、`blindspot.test.ts` 各 1 处；`blindspot.test.ts` 里原来用 `merged` 作为非法状态的例子改用 `deleted`。ADR-0013 补充错误码命名规则。共 445 个测试 | 无 |

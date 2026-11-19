@@ -43,6 +43,18 @@ export { parseConceptBody, type ConceptBody } from './concept-body.js';
 export { Criteria, CriterionDimension } from './criteria.js';
 export { AssessmentItem, AssessmentSession } from './session.js';
 export { AssessmentType, Evaluator, Evidence } from './evidence.js';
+export { Actor, ModelRef } from './actor.js';
+export { Blindspot, BlindspotStatus, BlindspotType } from './blindspot.js';
+export {
+  Intervention,
+  InterventionMethod,
+  InterventionStatus,
+} from './intervention.js';
+export {
+  PROPOSAL_OPERATIONS,
+  Proposal,
+  ProposalOperation,
+} from './proposal.js';
 export {
   ExplanationItem,
   MASTERY_STATES,
