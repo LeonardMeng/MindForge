@@ -436,8 +436,9 @@ models:
 pnpm install
 pnpm build            # 构建所有包
 pnpm test             # 所有测试
-pnpm lint             # eslint + dependency-cruiser + 类型检查
-pnpm check            # = lint + test，每个任务结束前必须通过
+pnpm lint             # eslint + prettier --check（0.2 起加上 dependency-cruiser）
+pnpm typecheck        # 类型检查（tsc）
+pnpm check            # = lint + typecheck + test，每个任务结束前必须通过
 
 pnpm --filter @mastery/core test        # 只测一个包
 pnpm mastery -- validate fixtures/ws-transformers

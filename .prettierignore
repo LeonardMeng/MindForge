@@ -1,0 +1,3 @@
+# Markdown 文档手工排版，不交给 Prettier。
+*.md
+pnpm-lock.yaml

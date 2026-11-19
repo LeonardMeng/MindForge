@@ -31,7 +31,7 @@
 ## 当前状态
 
 - **当前里程碑：** M0
-- **下一个任务：** 0.1
+- **下一个任务：** 0.2
 - **阻塞项：** 无
 
 ---
@@ -40,7 +40,7 @@
 
 > 目标：在写任何业务代码之前，先让规则能被自动检查。
 
-### [ ] 0.1 Monorepo 骨架
+### [x] 0.1 Monorepo 骨架
 - **包**：根目录
 - **依赖**：无
 - **产出**：pnpm workspace、`tsconfig.base.json`（strict、`noUncheckedIndexedAccess`）、Vitest 根配置、eslint + prettier、`pnpm build/test/lint/check` 脚本、一个空的示例包 `packages/_template`（含 `src/index.ts`、`package.json`、`tsconfig.json`、一个测试）。`CLAUDE.md` 指向 README 和 ROADMAP。
@@ -581,7 +581,8 @@
 
 > AI 助手在任务中发现、但不属于当前任务的事项，记在这里，由人决定放进哪个任务。
 
-- （空）
+- （来自 0.1）TypeScript 暂用 5.9。7.x（Go 原生实现）已发布，但 typescript-eslint 8.x 只支持 `<6.1`，tsup 的 `.d.ts` 生成也依赖 TS 的 JS API。等生态支持后再评估升级。
+- （来自 0.1）Vitest 暂用 4.1、tsup 暂用 8.5，它们的新大版本（Vitest 5、tsup 9）都刚发布一个月左右，稳定后再评估。
 
 ---
 
@@ -591,4 +592,4 @@
 
 | 日期 | 任务 | PR | 说明 | 遗留问题 |
 |---|---|---|---|---|
-| | | | | |
+| 2026-11-19 | 0.1 | `task/0.1-monorepo-skeleton` | pnpm workspace、TS strict 配置、Vitest 根配置、eslint + prettier、根脚本、`packages/_template` 和 `docs/adding-a-package.md` | 无；版本升级事项见“待整理” |

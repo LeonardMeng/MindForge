@@ -1,0 +1,22 @@
+{
+  "name": "@mastery/_template",
+  "version": "0.0.0",
+  "private": true,
+  "description": "新包的模板。复制方法见 docs/adding-a-package.md。",
+  "type": "module",
+  "exports": {
+    ".": {
+      "@mastery/source": "./src/index.ts",
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsup src/index.ts --format esm --dts --clean",
+    "test": "vitest run --config ../../vitest.config.ts --root .",
+    "typecheck": "tsc -p tsconfig.json"
+  }
+}
