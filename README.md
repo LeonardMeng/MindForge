@@ -195,6 +195,7 @@ ui-*          ← rpc, ui-kit（永远不 import runtime 或 core）
 2. 除了 `platform-node`、`cli`、`mcp` 以外，所有包**不能 import `node:*`**，也不能用 Node 专有的全局对象。所有 I/O 都通过 Platform 端口。
 3. `agents/*`、`superagent`、`supervisor` **不能 import `store`、`git`、`index`**。数据只能通过 `knowledge` 服务读取，写入只能通过提交 Proposal。
 4. `ui-*` 不能 import `runtime` 或 `core`，只能通过 `rpc` 通信。
+5. **只有 `platform-tauri` 和 `apps/desktop` 能 import `@tauri-apps/*`**。其他包（特别是 `ui-*`）都不能直接调用 Tauri，这样 UI 将来不用改代码就能跑在 Web 版里。
 
 ## 7. 数据协议
 
