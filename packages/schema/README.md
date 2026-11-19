@@ -44,6 +44,9 @@ if (!result.success) {
 | `Evidence` | `evidence/<slug>/<ULID>.json` | 只追加。`session_id` 和 `note` 必须写出来，可以是 `null`；`session_id` 为 `null`（手动录入）时 `note` 必须写明来由；五个维度不能全是 `null`；`evaluator` 是 `{ kind: agent, id, model: "<provider>:<model>" }` 或 `{ kind: human }` |
 | `MasteryProjection` | `mastery/<slug>.yaml` | 派生数据，不带计算时间。`state`（六个状态之一）、`dimensions`、`confidence`、`rules_version`、`evidence_ids`（升序、不重复）、`explanation`（`[{ code, params }]`，code 由规则包定义） |
 | `MasteryHistoryEntry` | `mastery/history/<slug>.jsonl` 的一行 | 每行都带 `schema_version`；`cause` 是 `evidence`（`at` = 证据时间）、`time`（`at` = 算出的到期时刻）或 `rules` |
+| `Blindspot` | `blindspots/<ULID>.yaml` | `type`（knowledge / reasoning / application / prerequisite / retention）、`status`（suspected / confirmed / resolved）、`description`、`prerequisite_id`（必须写出来：`type` 为 prerequisite 时是缺失的前置 Concept，其他类型为 `null`）、`evidence_ids`（升序、不重复，可以是 `[]`）、`source` |
+| `Intervention` | `interventions/<ULID>.yaml` | `blindspot_id`、`method`（explanation / socratic / practice / counterexample）、`content`、`status`（planned / completed / abandoned）、`closed_at`（planned 时为 `null`，否则为结束时间）、`source`；不写 `concept_id` |
+| `Proposal` | 存放位置待定（4.2 / 6.8） | agent 或用户提交的一组变更操作（`PROPOSAL_OPERATIONS`），更新类操作给出完整的新内容；**没有删除操作**，只能通过状态归档；`requires_approval` 只是提交者的请求，Core 只能把它从 `false` 升级为 `true` |
 | `parseConceptBody()` | `concepts/<slug>.md` 的正文 | 解析 `## Description` 和 `## Learning Objectives`（只认这两个英文二级标题）；识别 ``` 和 ~~~ 代码块；缺少或重复的章节给警告 |
 
 ### 约定
@@ -53,7 +56,8 @@ if (!result.success) {
   - `ConceptFrontmatter` 为了兼容 Obsidian，未知字段原样保留，`conceptFrontmatterWarnings()` 给出 `concept.unknown_field` 警告；
   - `WorkspaceConfig.plugins` 里每个插件的配置对象原样保留，不校验内容。
 - **列表只有一种写法**：写成单个字符串（比如 `tags: ml`）会报 `field.expected_list`，提示改成 `tags: [ml]`。
-- **按 `kind` 区分的对象**（`evaluator`、`cause`）：`kind` 缺失报 `field.required`，取值不对报 `field.invalid_option`，分支里的错误照常报。
+- **来源 `Actor`**：`{ kind: agent, id, model: "<provider>:<model>" }` 或 `{ kind: human }`，用于 Evidence 的 `evaluator` 和其他实体的 `source`。
+- **按某个字段区分的对象**（`Actor` 的 `kind`、历史的 `cause`、Proposal 操作的 `op`）：区分字段缺失报 `field.required`，取值不对报 `field.invalid_option`，分支里的错误照常报。
 - **跨字段检查在字段本身没有错误时才运行**：比如“`prerequisites` 不能包含自己”，要等列表里没有格式错误和重复项以后才会检查。
 
 ## 结构化错误

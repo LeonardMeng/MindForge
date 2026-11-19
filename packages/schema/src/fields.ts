@@ -2,6 +2,7 @@
 import { z } from 'zod';
 
 import { pushIssue } from './errors.js';
+import { Ulid } from './ids.js';
 
 /** 不能为空（也不能只有空白）的字符串。 */
 export const NonEmptyString = z.string().check((ctx) => {
@@ -129,16 +130,18 @@ export function listOf<T extends z.ZodType>(
 }
 
 /**
- * 按 `kind` 字段区分的对象，例如 `evaluator: { kind: agent, … } | { kind: human }`。
+ * 按某个字段（比如 `kind`、`op`）区分的对象，例如 `{ kind: agent, … } | { kind: human }`。
  *
  * 不直接用 `z.discriminatedUnion`：它在分支内部不报告输入值，缺少字段时只能报成
- * `field.invalid_type`。这里自己按 `kind` 分发，`kind` 缺失报 `field.required`，
+ * `field.invalid_type`。这里自己按区分字段分发，区分字段缺失报 `field.required`，
  * 取值不对报 `field.invalid_option`，分支内的错误原样转交。
  *
- * @param variants - `kind` 的每个取值对应的 schema
+ * @param discriminator - 区分字段的名字
+ * @param variants - 区分字段的每个取值对应的 schema
  * @param union - 同样这些分支组成的 `z.discriminatedUnion`，用于推导类型
  */
 export function taggedUnion<U extends z.ZodType>(
+  discriminator: string,
   variants: Readonly<Record<string, z.ZodType>>,
   union: U,
 ) {
@@ -158,14 +161,16 @@ export function taggedUnion<U extends z.ZodType>(
         });
         return;
       }
-      if (value.kind === undefined) {
-        pushIssue(ctx, 'field.required', {}, ['kind']);
+      const tag = value[discriminator];
+      if (tag === undefined) {
+        pushIssue(ctx, 'field.required', {}, [discriminator]);
         return;
       }
-      const variant =
-        typeof value.kind === 'string' ? variants[value.kind] : undefined;
+      const variant = typeof tag === 'string' ? variants[tag] : undefined;
       if (variant === undefined) {
-        pushIssue(ctx, 'field.invalid_option', { options: kinds }, ['kind']);
+        pushIssue(ctx, 'field.invalid_option', { options: kinds }, [
+          discriminator,
+        ]);
         return;
       }
       const result = variant.safeParse(value, { reportInput: true });
@@ -173,3 +178,20 @@ export function taggedUnion<U extends z.ZodType>(
     })
     .pipe(union);
 }
+
+/**
+ * 证据 id 列表：不能重复，必须按升序排列（ULID 的字符串顺序就是时间顺序）。
+ * 同一组证据只有一种写法（ADR-0013）。
+ */
+export const EvidenceIds = listOf('evidence_ids', Ulid).check((ctx) => {
+  for (let index = 1; index < ctx.value.length; index++) {
+    const previous = ctx.value[index - 1];
+    const value = ctx.value[index];
+    if (previous !== undefined && value !== undefined && value < previous) {
+      pushIssue(ctx, 'mastery.evidence_ids_not_sorted', { value, previous }, [
+        index,
+      ]);
+      return;
+    }
+  }
+});

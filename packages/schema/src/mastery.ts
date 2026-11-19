@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { DimensionScores } from './dimensions.js';
 import { pushIssue } from './errors.js';
 import {
+  EvidenceIds,
   listOf,
   PositiveInteger,
   SchemaVersionV1,
@@ -44,20 +45,6 @@ export const ExplanationItem = z.strictObject({
 /** explanation 的一项。 */
 export type ExplanationItem = z.infer<typeof ExplanationItem>;
 
-/** 证据 id 列表：不能重复，必须按升序排列（ULID 的字符串顺序就是时间顺序）。 */
-const EvidenceIds = listOf('evidence_ids', Ulid).check((ctx) => {
-  for (let index = 1; index < ctx.value.length; index++) {
-    const previous = ctx.value[index - 1];
-    const value = ctx.value[index];
-    if (previous !== undefined && value !== undefined && value < previous) {
-      pushIssue(ctx, 'mastery.evidence_ids_not_sorted', { value, previous }, [
-        index,
-      ]);
-      return;
-    }
-  }
-});
-
 /**
  * `mastery/<concept-slug>.yaml`：由 Mastery Core 根据证据和规则算出的掌握度投影。
  *
@@ -92,6 +79,7 @@ const RulesCause = z.strictObject({ kind: z.literal('rules') });
  * - `rules`：规则升级后重算，`at` 怎么确定到 3.7 再决定。
  */
 export const MasteryChangeCause = taggedUnion(
+  'kind',
   { evidence: EvidenceCause, time: TimeCause, rules: RulesCause },
   z.discriminatedUnion('kind', [EvidenceCause, TimeCause, RulesCause]),
 );
