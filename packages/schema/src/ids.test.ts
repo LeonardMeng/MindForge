@@ -25,7 +25,7 @@ describe('SchemaVersion', () => {
   it.each(['1', null, undefined, Number.NaN])(
     'rejects non-number %s',
     (value) => {
-      expect(codesOf(SchemaVersion, value)).toEqual(['zod.invalid_type']);
+      expect(codesOf(SchemaVersion, value)).toEqual(['field.invalid_type']);
     },
   );
 });
@@ -68,7 +68,7 @@ describe('Slug', () => {
   });
 
   it('rejects non-strings', () => {
-    expect(codesOf(Slug, 42)).toEqual(['zod.invalid_type']);
+    expect(codesOf(Slug, 42)).toEqual(['field.invalid_type']);
   });
 
   it('carries the offending value in the error params', () => {
@@ -172,7 +172,7 @@ describe('Ulid', () => {
   });
 
   it('rejects non-strings', () => {
-    expect(codesOf(Ulid, 123)).toEqual(['zod.invalid_type']);
+    expect(codesOf(Ulid, 123)).toEqual(['field.invalid_type']);
   });
 });
 

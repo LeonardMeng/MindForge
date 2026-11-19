@@ -31,7 +31,7 @@
 ## 当前状态
 
 - **当前里程碑：** M1
-- **下一个任务：** 1.2
+- **下一个任务：** 1.3
 - **阻塞项：** 无
 
 ---
@@ -81,7 +81,7 @@
 - **验收**：每个类型都有合法和非法样例的测试；`null` 和 `0` 在 `DimensionScores` 里被区分。
 - **不做**：具体的实体 schema。
 
-### [ ] 1.2 🔍 Schema：Workspace、Project、Concept
+### [x] 1.2 🔍 Schema：Workspace、Project、Concept
 - **包**：`schema`
 - **依赖**：1.1
 - **产出**：`WorkspaceConfig`（含 `plugins` 字段，支持 `~` 前缀禁用）、`ProjectConfig`、`ConceptFrontmatter`；Concept 正文约定的章节（Description、Learning Objectives）解析规则。
@@ -589,10 +589,10 @@
 - （来自 0.2）测试同样不能用 `node:*`。将来测试要读 `fixtures/` 时，新建一个 `testkit` 包，作为唯一允许在测试里用 `node:*` 的例外，负责把 fixture 加载进 `platform-memory`。
 - （来自 0.2）dependency-cruiser 只看 import，看不到全局对象：Tauri 的 `window.__TAURI__`（以及 Node 的 `process`、`Buffer`，目前只靠 `types: []` 在类型层面挡住）需要另外的检查，比如 eslint 的 `no-restricted-globals`。
 - （来自 0.2）行内写法 `import { type X } from '…'` 会被 dependency-cruiser 当成“只引用类型”，但在 `verbatimModuleSyntax` 下运行时会留下一个空的副作用 import。可以考虑开启 eslint 的 `@typescript-eslint/no-import-type-side-effects`，统一写成 `import type`。
-- （来自 1.1，1.2 处理）对象一律严格校验的两个例外：① Concept 的 frontmatter 要兼容 Obsidian，明确支持 `tags` 和 `aliases`；其他未知字段允许存在并原样保留（读后再写不能丢），`mastery validate` 时给出警告但不报错。② `workspace.yaml` 里每个插件的配置对象：schema 只校验 `plugins` 这一层的结构（插件名 → 对象，支持 `~` 前缀），配置对象的内容由插件自己的 schema 校验（4.3）。
-- （来自 1.1，1.2 处理）zod 自带的报错信息还没有统一处理（比如统一成结构化的错误码和消息表）。
 - （来自 1.1，2.7 处理）复习日期可能需要只有日期的类型 `IsoDate`（`YYYY-MM-DD`），到时再加。
 - （来自 1.1，1.5 处理）自定义检查（`.check()`）不会出现在导出的 JSON Schema 里。已验证可以用 `.meta({ pattern, maxLength })` 补上，1.5 导出时处理。
+- （来自 1.2，1.5 处理）列表字段用 `z.unknown().check(…).pipe(z.array(…))` 实现（为了给出“写成列表”的提示和同时报出元素错误与重复项），导出 JSON Schema 时要确认用的是输出端（`io: "output"`），得到的是数组类型。
+- （来自 1.2，4.3 决定）插件名目前按 Slug 规则。第三方插件如果用 npm 的 scope 包名（比如 `@someone/agent-x`），插件名的规则要不要放宽；同一个插件要不要支持多个实例。
 - （来自 1.1）`packages/schema/src/testing.ts` 的测试构造函数目前只在 schema 包内部使用。其他包的测试要用时，再决定放在哪里（比如 `testkit` 包），不从 schema 的公共 API 导出。
 - （来自 1.1）1.1 定下的格式约定（ULID 只认大写、时间只有 UTC 精确到秒一种写法、对象一律严格校验、结构化错误码）都属于难以撤销的决定，建议补一份 ADR。
 
@@ -609,3 +609,4 @@
 | 2026-11-20 | 0.3 | PR #1（`task/0.3-ci`） | GitHub Actions：push 到任何分支和 PR 时，在 Linux、macOS、Windows 上运行 `pnpm check` 和 `pnpm build`；`.gitattributes` 统一 LF 换行。三个平台 CI 全部通过 | 无 |
 | 2026-11-20 | 0.4 | `task/0.4-adr` | `docs/adr/TEMPLATE.md`；ADR-0001 至 0006、0011、0012（理由和否决方案来自建仓库前的设计讨论记录）；决策记录表加上链接和 ADR-0012；README 第 12.6 条补上模板路径 | 无 |
 | 2026-11-20 | 1.1 | `task/1.1-schema-common` | 新建 `@mastery/schema`（依赖 zod 4.6）：`SchemaVersion`、`Slug`、`GlobalConceptRef`、`Ulid`、`IsoDateTime`、`DimensionScores` 等 branded schema；结构化错误码和英文消息表；测试用构造函数；116 个测试 | 1.2 要处理的例外、`IsoDate`、JSON Schema 等见“待整理” |
+| 2026-11-20 | 1.2 | `task/1.2-schema-workspace-concept` | `WorkspaceConfig`、`ProjectConfig`、`ConceptFrontmatter`（未知字段原样保留并给警告）、`parseConceptBody()`（按行解析，识别代码块）；zod 自带错误映射成 `field.*` 错误码，新增 `validate()` 和 `formatSchemaIssue()`。**修改了 1.1 测试里 8 处断言**（经人确认）：`ids.test.ts` 3 处、`dimensions.test.ts` 4 处由 `zod.invalid_type` / `zod.unrecognized_keys` 改为 `field.invalid_type` / `field.unknown`，含义不变；`errors.test.ts` 1 处测试原本验证“zod 错误码加 `zod.` 前缀”，该行为已去掉，改为验证“映射成 `field.*` 错误码”。原因：错误码不再随 zod 版本变化。共 206 个测试 | 跨字段检查只在字段本身无错时运行（已写进包 README）；JSON Schema 和插件名规则见“待整理” |
