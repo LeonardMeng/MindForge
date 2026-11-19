@@ -1,0 +1,2 @@
+# 所有平台签出时都用 LF，避免 Windows 上 Prettier 因 CRLF 报错。
+* text=auto eol=lf
