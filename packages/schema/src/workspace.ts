@@ -1,13 +1,13 @@
 import { z } from 'zod';
 
+import {
+  patternMeta,
+  PLUGIN_NAME_PATTERN,
+  SLUG_MAX_LENGTH,
+} from './constraints.js';
 import { pushIssue } from './errors.js';
 import { isPlainObject, NonEmptyString, SchemaVersionV1 } from './fields.js';
 import { Slug } from './ids.js';
-
-/** 插件名：Slug 规则，前面可以加 `~` 表示禁用。 */
-const PLUGIN_NAME_PATTERN = /^~?[a-z0-9]+(-[a-z0-9]+)*$/;
-/** 插件名（不含 `~`）的最大长度，和 Slug 一致。 */
-const PLUGIN_NAME_MAX_LENGTH = 64;
 
 /**
  * `plugins`：插件名 → 插件配置对象。
@@ -24,7 +24,7 @@ const Plugins = z
       const bareName = name.startsWith('~') ? name.slice(1) : name;
       if (
         !PLUGIN_NAME_PATTERN.test(name) ||
-        bareName.length > PLUGIN_NAME_MAX_LENGTH
+        bareName.length > SLUG_MAX_LENGTH
       ) {
         pushIssue(ctx, 'workspace.invalid_plugin_name', { name }, [name]);
       } else if (value === null) {
@@ -45,7 +45,13 @@ const Plugins = z
       }
     }
   })
-  .pipe(z.record(z.string(), z.looseObject({})));
+  .pipe(
+    z.record(
+      // 插件名的长度上限（不含 `~`）JSON Schema 表达不了，写在说明页里。
+      z.string().meta(patternMeta(PLUGIN_NAME_PATTERN)),
+      z.looseObject({}),
+    ),
+  );
 
 /**
  * `workspace.yaml`：一个 Workspace 的配置。

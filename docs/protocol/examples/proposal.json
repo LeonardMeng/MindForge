@@ -1,0 +1,26 @@
+{
+  "schema_version": 1,
+  "id": "01JD6D0A0A0A0A0A0A0A0A0A0A",
+  "created_at": "2026-11-20T08:20:00Z",
+  "source": {
+    "kind": "agent",
+    "id": "agent-discovery",
+    "model": "ollama:qwen3-14b"
+  },
+  "run_id": "01JD6D0000000000000000000A",
+  "summary": "论文里用到了 softmax，但 Workspace 里还没有这个 Concept。",
+  "requires_approval": true,
+  "operations": [
+    {
+      "op": "concept.create",
+      "frontmatter": {
+        "schema_version": 1,
+        "id": "softmax",
+        "name": "Softmax",
+        "prerequisites": ["probability"],
+        "status": "draft"
+      },
+      "body": "# Softmax\n\n## Description\n把一组实数变成概率分布。\n\n## Learning Objectives\n- 写出 softmax 的公式。\n- 解释为什么输出之和为 1。\n"
+    }
+  ]
+}

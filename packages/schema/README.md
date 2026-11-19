@@ -74,6 +74,13 @@ if (!result.success) {
 - 测试只断言错误码，不断言提示文字。
 - 错误码按它描述的概念命名（如 `actor.invalid_model`、`field.not_sorted`），不按第一个用到它的实体命名（ADR-0013）。
 
+## JSON Schema 和协议文档
+
+`pnpm --filter @mastery/schema gen` 先构建，再运行 `scripts/gen-json-schema.mjs`，把所有文件 schema 导出为 JSON Schema（draft 2020-12，按输出端导出），写到 `docs/protocol/schemas/`。CI 会重新生成并检查和提交的文件是否一致，所以修改 schema 后要重新运行 `gen` 并提交结果。协议说明页在 `docs/protocol/`。
+
+- `src/constraints.ts` 集中定义所有正则和数值范围。`.check()` 用它们校验，`.meta()` 用它们写进 JSON Schema，两边不能各写各的。
+- JSON Schema 只能检查单个字段的格式；跨字段规则写在各说明页的“JSON Schema 检查不了的规则”一节里。
+
 ## 测试工具
 
 `src/testing.ts` 提供 `slug()`、`ulid()`、`globalConceptRef()`、`isoDateTime()` 等简短的构造函数，内部仍然经过 `parse`，不合法时抛错。只给测试和 fixture 用，不从 `src/index.ts` 导出。

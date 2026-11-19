@@ -1,0 +1,49 @@
+{
+  "schema_version": 1,
+  "id": "01JD3K7A2B3C4D5E6F7G8H9J0K",
+  "concept_id": "self-attention",
+  "criteria_version": 1,
+  "started_at": "2026-11-19T09:40:00Z",
+  "completed_at": "2026-11-19T10:00:00Z",
+  "items": [
+    {
+      "dimensions": ["recall"],
+      "question": "写出缩放点积注意力的公式。",
+      "answer": "softmax(QK^T / √d) V",
+      "rationale": "公式完整正确。",
+      "scores": {
+        "recall": 0.9,
+        "understanding": null,
+        "reasoning": null,
+        "application": null,
+        "transfer": null
+      }
+    },
+    {
+      "dimensions": ["understanding", "reasoning"],
+      "question": "为什么注意力分数要除以 √d？",
+      "answer": "防止点积太大，softmax 进入饱和区。",
+      "rationale": "说出了原因，但没有解释方差为什么随 d 增长。",
+      "scores": {
+        "recall": null,
+        "understanding": 0.85,
+        "reasoning": 0.8,
+        "application": null,
+        "transfer": null
+      }
+    },
+    {
+      "dimensions": ["application", "transfer"],
+      "question": "用一个 2 个 token 的例子手算注意力权重；如果把它用在图像块上，需要改什么？",
+      "answer": "手算正确；图像块需要先展平并加位置编码。",
+      "rationale": "计算正确；迁移部分只说出了一半。",
+      "scores": {
+        "recall": null,
+        "understanding": null,
+        "reasoning": null,
+        "application": 0.7,
+        "transfer": null
+      }
+    }
+  ]
+}

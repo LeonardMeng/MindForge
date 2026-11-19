@@ -15,8 +15,11 @@ export default defineConfig(
       },
     },
   },
-  // JS 文件（目前只有本配置文件）不在任何 tsconfig 里，关闭类型感知规则。
-  { files: ['**/*.js'], extends: [tseslint.configs.disableTypeChecked] },
+  // JS 文件（本配置文件和 packages/*/scripts/ 下的脚本）不在任何 tsconfig 里，关闭类型感知规则。
+  {
+    files: ['**/*.js', '**/*.mjs'],
+    extends: [tseslint.configs.disableTypeChecked],
+  },
   // 放在最后：关掉和 Prettier 冲突的格式类规则。
   prettier,
 );

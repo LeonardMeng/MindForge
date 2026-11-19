@@ -1,17 +1,19 @@
 import { z } from 'zod';
 
+import {
+  GLOBAL_CONCEPT_REF_PATTERN,
+  ISO_DATETIME_PATTERN,
+  LOWERCASE_PATTERN,
+  patternMeta,
+  POSITIVE_INTEGER_META,
+  POSITIVE_INTEGER_MIN,
+  SLUG_MAX_LENGTH,
+  SLUG_PATTERN,
+  ULID_CHARACTERS_PATTERN,
+  ULID_LENGTH,
+  ULID_PATTERN,
+} from './constraints.js';
 import { pushIssue } from './errors.js';
-
-/** slug 的格式：小写字母和数字，用单个连字符分隔，不能以连字符开头或结尾。 */
-const SLUG_PATTERN = /^[a-z0-9]+(-[a-z0-9]+)*$/;
-/** slug 的最大长度。 */
-const SLUG_MAX_LENGTH = 64;
-/** ULID 的长度。 */
-const ULID_LENGTH = 26;
-/** Crockford Base32（大写），不含 I、L、O、U。 */
-const ULID_PATTERN = /^[0-9A-HJKMNP-TV-Z]{26}$/;
-/** 唯一允许的时间写法：UTC，精确到秒，没有毫秒和时区偏移。 */
-const ISO_DATETIME_PATTERN = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$/;
 
 function isValidSlug(value: string): boolean {
   return value.length <= SLUG_MAX_LENGTH && SLUG_PATTERN.test(value);
@@ -22,11 +24,14 @@ function isValidSlug(value: string): boolean {
  *
  * 每个结构化文件都带 `schema_version`（ADR-0005）。
  */
-export const SchemaVersion = z.number().check((ctx) => {
-  if (!Number.isInteger(ctx.value) || ctx.value < 1) {
-    pushIssue(ctx, 'schema_version.invalid', { value: ctx.value });
-  }
-});
+export const SchemaVersion = z
+  .number()
+  .check((ctx) => {
+    if (!Number.isInteger(ctx.value) || ctx.value < POSITIVE_INTEGER_MIN) {
+      pushIssue(ctx, 'schema_version.invalid', { value: ctx.value });
+    }
+  })
+  .meta(POSITIVE_INTEGER_META);
 /** 结构化文件的格式版本。 */
 export type SchemaVersion = z.infer<typeof SchemaVersion>;
 
@@ -47,6 +52,7 @@ export const Slug = z
       });
     }
   })
+  .meta({ ...patternMeta(SLUG_PATTERN), maxLength: SLUG_MAX_LENGTH })
   .brand<'Slug'>();
 /** Concept 和 Workspace 的标识。 */
 export type Slug = z.infer<typeof Slug>;
@@ -73,6 +79,7 @@ export const GlobalConceptRef = z
       pushIssue(ctx, 'global_concept_ref.invalid_slug', { value: ctx.value });
     }
   })
+  .meta(patternMeta(GLOBAL_CONCEPT_REF_PATTERN))
   .brand<'GlobalConceptRef'>();
 /** 跨 Workspace 的 Concept 引用。 */
 export type GlobalConceptRef = z.infer<typeof GlobalConceptRef>;
@@ -120,19 +127,20 @@ export const Ulid = z
       pushIssue(ctx, 'ulid.invalid_length', { length: value.length });
       return;
     }
-    if (/[a-z]/.test(value)) {
+    if (LOWERCASE_PATTERN.test(value)) {
       pushIssue(ctx, 'ulid.not_uppercase', { value });
       return;
     }
-    if (!ULID_PATTERN.test(value)) {
+    if (!ULID_CHARACTERS_PATTERN.test(value)) {
       pushIssue(ctx, 'ulid.invalid_character', { value });
       return;
     }
     // 第一个字符超过 7 时，48 位时间戳会溢出。
-    if (value[0] !== undefined && value[0] > '7') {
+    if (!ULID_PATTERN.test(value)) {
       pushIssue(ctx, 'ulid.timestamp_overflow', { value });
     }
   })
+  .meta(patternMeta(ULID_PATTERN))
   .brand<'Ulid'>();
 /** 实体 ID（ULID）。 */
 export type Ulid = z.infer<typeof Ulid>;
@@ -160,6 +168,7 @@ export const IsoDateTime = z
       pushIssue(ctx, 'iso_datetime.invalid_date', { value });
     }
   })
+  .meta(patternMeta(ISO_DATETIME_PATTERN))
   .brand<'IsoDateTime'>();
 /** 时间戳（UTC，精确到秒）。 */
 export type IsoDateTime = z.infer<typeof IsoDateTime>;

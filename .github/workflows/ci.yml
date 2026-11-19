@@ -42,3 +42,16 @@ jobs:
 
       # pnpm check 不包含 build；单独构建一次，确保 tsup（含 .d.ts）在三个平台上都能通过。
       - run: pnpm build
+
+      # ROADMAP 1.5：docs/protocol/schemas/ 由 schema 生成，提交的文件必须和生成结果一致。
+      - run: pnpm --filter @mastery/schema gen
+
+      - name: Check that generated protocol files are up to date
+        shell: bash
+        run: |
+          if [ -n "$(git status --porcelain -- docs/protocol)" ]; then
+            git status --porcelain -- docs/protocol
+            git --no-pager diff -- docs/protocol
+            echo "docs/protocol is out of date: run 'pnpm --filter @mastery/schema gen' and commit the result." >&2
+            exit 1
+          fi

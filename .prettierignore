@@ -1,3 +1,5 @@
 # Markdown 文档手工排版，不交给 Prettier。
 *.md
 pnpm-lock.yaml
+# 生成的 JSON Schema，由 pnpm --filter @mastery/schema gen 写出，不手工排版。
+docs/protocol/schemas/

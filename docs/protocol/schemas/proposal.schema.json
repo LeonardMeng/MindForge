@@ -1,0 +1,1024 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Mastery OS: Proposal (storage to be decided in 4.2 / 6.8)",
+  "description": "A set of changes submitted by an agent or the user to the knowledge service.",
+  "type": "object",
+  "properties": {
+    "schema_version": {
+      "type": "number",
+      "const": 1
+    },
+    "id": {
+      "type": "string",
+      "pattern": "^[0-7][0-9A-HJKMNP-TV-Z]{25}$"
+    },
+    "created_at": {
+      "type": "string",
+      "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}Z$"
+    },
+    "source": {
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "type": "string",
+              "const": "agent"
+            },
+            "id": {
+              "type": "string",
+              "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+              "maxLength": 64
+            },
+            "model": {
+              "type": "string",
+              "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*:\\S+$"
+            }
+          },
+          "required": [
+            "kind",
+            "id",
+            "model"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "type": "string",
+              "const": "human"
+            }
+          },
+          "required": [
+            "kind"
+          ],
+          "additionalProperties": false
+        }
+      ]
+    },
+    "run_id": {
+      "anyOf": [
+        {
+          "type": "string",
+          "pattern": "^[0-7][0-9A-HJKMNP-TV-Z]{25}$"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "summary": {
+      "type": "string",
+      "pattern": "\\S"
+    },
+    "requires_approval": {
+      "type": "boolean"
+    },
+    "operations": {
+      "type": "array",
+      "items": {
+        "oneOf": [
+          {
+            "type": "object",
+            "properties": {
+              "op": {
+                "type": "string",
+                "const": "concept.create"
+              },
+              "frontmatter": {
+                "type": "object",
+                "properties": {
+                  "schema_version": {
+                    "type": "number",
+                    "const": 1
+                  },
+                  "id": {
+                    "type": "string",
+                    "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+                    "maxLength": 64
+                  },
+                  "name": {
+                    "type": "string",
+                    "pattern": "\\S"
+                  },
+                  "prerequisites": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+                      "maxLength": 64
+                    },
+                    "uniqueItems": true
+                  },
+                  "status": {
+                    "type": "string",
+                    "enum": [
+                      "draft",
+                      "active",
+                      "archived"
+                    ]
+                  },
+                  "tags": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "pattern": "\\S"
+                    },
+                    "uniqueItems": true
+                  },
+                  "aliases": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "pattern": "\\S"
+                    },
+                    "uniqueItems": true
+                  }
+                },
+                "required": [
+                  "schema_version",
+                  "id",
+                  "name",
+                  "prerequisites",
+                  "status"
+                ],
+                "additionalProperties": {}
+              },
+              "body": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "op",
+              "frontmatter",
+              "body"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "op": {
+                "type": "string",
+                "const": "concept.update"
+              },
+              "concept_id": {
+                "type": "string",
+                "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+                "maxLength": 64
+              },
+              "frontmatter": {
+                "type": "object",
+                "properties": {
+                  "schema_version": {
+                    "type": "number",
+                    "const": 1
+                  },
+                  "id": {
+                    "type": "string",
+                    "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+                    "maxLength": 64
+                  },
+                  "name": {
+                    "type": "string",
+                    "pattern": "\\S"
+                  },
+                  "prerequisites": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+                      "maxLength": 64
+                    },
+                    "uniqueItems": true
+                  },
+                  "status": {
+                    "type": "string",
+                    "enum": [
+                      "draft",
+                      "active",
+                      "archived"
+                    ]
+                  },
+                  "tags": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "pattern": "\\S"
+                    },
+                    "uniqueItems": true
+                  },
+                  "aliases": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "pattern": "\\S"
+                    },
+                    "uniqueItems": true
+                  }
+                },
+                "required": [
+                  "schema_version",
+                  "id",
+                  "name",
+                  "prerequisites",
+                  "status"
+                ],
+                "additionalProperties": {}
+              },
+              "body": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "op",
+              "concept_id",
+              "frontmatter",
+              "body"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "op": {
+                "type": "string",
+                "const": "criteria.set"
+              },
+              "criteria": {
+                "type": "object",
+                "properties": {
+                  "schema_version": {
+                    "type": "number",
+                    "const": 1
+                  },
+                  "concept_id": {
+                    "type": "string",
+                    "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+                    "maxLength": 64
+                  },
+                  "version": {
+                    "type": "integer",
+                    "minimum": 1
+                  },
+                  "dimensions": {
+                    "type": "object",
+                    "properties": {
+                      "recall": {
+                        "anyOf": [
+                          {
+                            "type": "object",
+                            "properties": {
+                              "focus": {
+                                "type": "array",
+                                "items": {
+                                  "type": "string",
+                                  "pattern": "\\S"
+                                },
+                                "minItems": 1,
+                                "uniqueItems": true
+                              },
+                              "threshold": {
+                                "type": "number",
+                                "minimum": 0,
+                                "maximum": 1
+                              }
+                            },
+                            "required": [
+                              "focus",
+                              "threshold"
+                            ],
+                            "additionalProperties": false
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      },
+                      "understanding": {
+                        "anyOf": [
+                          {
+                            "type": "object",
+                            "properties": {
+                              "focus": {
+                                "type": "array",
+                                "items": {
+                                  "type": "string",
+                                  "pattern": "\\S"
+                                },
+                                "minItems": 1,
+                                "uniqueItems": true
+                              },
+                              "threshold": {
+                                "type": "number",
+                                "minimum": 0,
+                                "maximum": 1
+                              }
+                            },
+                            "required": [
+                              "focus",
+                              "threshold"
+                            ],
+                            "additionalProperties": false
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      },
+                      "reasoning": {
+                        "anyOf": [
+                          {
+                            "type": "object",
+                            "properties": {
+                              "focus": {
+                                "type": "array",
+                                "items": {
+                                  "type": "string",
+                                  "pattern": "\\S"
+                                },
+                                "minItems": 1,
+                                "uniqueItems": true
+                              },
+                              "threshold": {
+                                "type": "number",
+                                "minimum": 0,
+                                "maximum": 1
+                              }
+                            },
+                            "required": [
+                              "focus",
+                              "threshold"
+                            ],
+                            "additionalProperties": false
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      },
+                      "application": {
+                        "anyOf": [
+                          {
+                            "type": "object",
+                            "properties": {
+                              "focus": {
+                                "type": "array",
+                                "items": {
+                                  "type": "string",
+                                  "pattern": "\\S"
+                                },
+                                "minItems": 1,
+                                "uniqueItems": true
+                              },
+                              "threshold": {
+                                "type": "number",
+                                "minimum": 0,
+                                "maximum": 1
+                              }
+                            },
+                            "required": [
+                              "focus",
+                              "threshold"
+                            ],
+                            "additionalProperties": false
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      },
+                      "transfer": {
+                        "anyOf": [
+                          {
+                            "type": "object",
+                            "properties": {
+                              "focus": {
+                                "type": "array",
+                                "items": {
+                                  "type": "string",
+                                  "pattern": "\\S"
+                                },
+                                "minItems": 1,
+                                "uniqueItems": true
+                              },
+                              "threshold": {
+                                "type": "number",
+                                "minimum": 0,
+                                "maximum": 1
+                              }
+                            },
+                            "required": [
+                              "focus",
+                              "threshold"
+                            ],
+                            "additionalProperties": false
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      }
+                    },
+                    "required": [
+                      "recall",
+                      "understanding",
+                      "reasoning",
+                      "application",
+                      "transfer"
+                    ],
+                    "additionalProperties": false
+                  }
+                },
+                "required": [
+                  "schema_version",
+                  "concept_id",
+                  "version",
+                  "dimensions"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "required": [
+              "op",
+              "criteria"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "op": {
+                "type": "string",
+                "const": "blindspot.create"
+              },
+              "blindspot": {
+                "type": "object",
+                "properties": {
+                  "schema_version": {
+                    "type": "number",
+                    "const": 1
+                  },
+                  "id": {
+                    "type": "string",
+                    "pattern": "^[0-7][0-9A-HJKMNP-TV-Z]{25}$"
+                  },
+                  "concept_id": {
+                    "type": "string",
+                    "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+                    "maxLength": 64
+                  },
+                  "type": {
+                    "type": "string",
+                    "enum": [
+                      "knowledge",
+                      "reasoning",
+                      "application",
+                      "prerequisite",
+                      "retention"
+                    ]
+                  },
+                  "status": {
+                    "type": "string",
+                    "enum": [
+                      "suspected",
+                      "confirmed",
+                      "resolved",
+                      "merged"
+                    ]
+                  },
+                  "description": {
+                    "type": "string",
+                    "pattern": "\\S"
+                  },
+                  "prerequisite_id": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+                        "maxLength": 64
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "merged_into": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "pattern": "^[0-7][0-9A-HJKMNP-TV-Z]{25}$"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "evidence_ids": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "pattern": "^[0-7][0-9A-HJKMNP-TV-Z]{25}$"
+                    },
+                    "uniqueItems": true
+                  },
+                  "source": {
+                    "oneOf": [
+                      {
+                        "type": "object",
+                        "properties": {
+                          "kind": {
+                            "type": "string",
+                            "const": "agent"
+                          },
+                          "id": {
+                            "type": "string",
+                            "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+                            "maxLength": 64
+                          },
+                          "model": {
+                            "type": "string",
+                            "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*:\\S+$"
+                          }
+                        },
+                        "required": [
+                          "kind",
+                          "id",
+                          "model"
+                        ],
+                        "additionalProperties": false
+                      },
+                      {
+                        "type": "object",
+                        "properties": {
+                          "kind": {
+                            "type": "string",
+                            "const": "human"
+                          }
+                        },
+                        "required": [
+                          "kind"
+                        ],
+                        "additionalProperties": false
+                      }
+                    ]
+                  },
+                  "created_at": {
+                    "type": "string",
+                    "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}Z$"
+                  }
+                },
+                "required": [
+                  "schema_version",
+                  "id",
+                  "concept_id",
+                  "type",
+                  "status",
+                  "description",
+                  "prerequisite_id",
+                  "merged_into",
+                  "evidence_ids",
+                  "source",
+                  "created_at"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "required": [
+              "op",
+              "blindspot"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "op": {
+                "type": "string",
+                "const": "blindspot.update"
+              },
+              "blindspot": {
+                "type": "object",
+                "properties": {
+                  "schema_version": {
+                    "type": "number",
+                    "const": 1
+                  },
+                  "id": {
+                    "type": "string",
+                    "pattern": "^[0-7][0-9A-HJKMNP-TV-Z]{25}$"
+                  },
+                  "concept_id": {
+                    "type": "string",
+                    "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+                    "maxLength": 64
+                  },
+                  "type": {
+                    "type": "string",
+                    "enum": [
+                      "knowledge",
+                      "reasoning",
+                      "application",
+                      "prerequisite",
+                      "retention"
+                    ]
+                  },
+                  "status": {
+                    "type": "string",
+                    "enum": [
+                      "suspected",
+                      "confirmed",
+                      "resolved",
+                      "merged"
+                    ]
+                  },
+                  "description": {
+                    "type": "string",
+                    "pattern": "\\S"
+                  },
+                  "prerequisite_id": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+                        "maxLength": 64
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "merged_into": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "pattern": "^[0-7][0-9A-HJKMNP-TV-Z]{25}$"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "evidence_ids": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "pattern": "^[0-7][0-9A-HJKMNP-TV-Z]{25}$"
+                    },
+                    "uniqueItems": true
+                  },
+                  "source": {
+                    "oneOf": [
+                      {
+                        "type": "object",
+                        "properties": {
+                          "kind": {
+                            "type": "string",
+                            "const": "agent"
+                          },
+                          "id": {
+                            "type": "string",
+                            "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+                            "maxLength": 64
+                          },
+                          "model": {
+                            "type": "string",
+                            "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*:\\S+$"
+                          }
+                        },
+                        "required": [
+                          "kind",
+                          "id",
+                          "model"
+                        ],
+                        "additionalProperties": false
+                      },
+                      {
+                        "type": "object",
+                        "properties": {
+                          "kind": {
+                            "type": "string",
+                            "const": "human"
+                          }
+                        },
+                        "required": [
+                          "kind"
+                        ],
+                        "additionalProperties": false
+                      }
+                    ]
+                  },
+                  "created_at": {
+                    "type": "string",
+                    "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}Z$"
+                  }
+                },
+                "required": [
+                  "schema_version",
+                  "id",
+                  "concept_id",
+                  "type",
+                  "status",
+                  "description",
+                  "prerequisite_id",
+                  "merged_into",
+                  "evidence_ids",
+                  "source",
+                  "created_at"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "required": [
+              "op",
+              "blindspot"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "op": {
+                "type": "string",
+                "const": "blindspot.merge"
+              },
+              "target_id": {
+                "type": "string",
+                "pattern": "^[0-7][0-9A-HJKMNP-TV-Z]{25}$"
+              },
+              "source_ids": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "pattern": "^[0-7][0-9A-HJKMNP-TV-Z]{25}$"
+                },
+                "minItems": 1,
+                "uniqueItems": true
+              }
+            },
+            "required": [
+              "op",
+              "target_id",
+              "source_ids"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "op": {
+                "type": "string",
+                "const": "intervention.create"
+              },
+              "intervention": {
+                "type": "object",
+                "properties": {
+                  "schema_version": {
+                    "type": "number",
+                    "const": 1
+                  },
+                  "id": {
+                    "type": "string",
+                    "pattern": "^[0-7][0-9A-HJKMNP-TV-Z]{25}$"
+                  },
+                  "blindspot_id": {
+                    "type": "string",
+                    "pattern": "^[0-7][0-9A-HJKMNP-TV-Z]{25}$"
+                  },
+                  "method": {
+                    "type": "string",
+                    "enum": [
+                      "explanation",
+                      "socratic",
+                      "practice",
+                      "counterexample"
+                    ]
+                  },
+                  "content": {
+                    "type": "string",
+                    "pattern": "\\S"
+                  },
+                  "status": {
+                    "type": "string",
+                    "enum": [
+                      "planned",
+                      "completed",
+                      "abandoned"
+                    ]
+                  },
+                  "closed_at": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}Z$"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "source": {
+                    "oneOf": [
+                      {
+                        "type": "object",
+                        "properties": {
+                          "kind": {
+                            "type": "string",
+                            "const": "agent"
+                          },
+                          "id": {
+                            "type": "string",
+                            "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+                            "maxLength": 64
+                          },
+                          "model": {
+                            "type": "string",
+                            "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*:\\S+$"
+                          }
+                        },
+                        "required": [
+                          "kind",
+                          "id",
+                          "model"
+                        ],
+                        "additionalProperties": false
+                      },
+                      {
+                        "type": "object",
+                        "properties": {
+                          "kind": {
+                            "type": "string",
+                            "const": "human"
+                          }
+                        },
+                        "required": [
+                          "kind"
+                        ],
+                        "additionalProperties": false
+                      }
+                    ]
+                  },
+                  "created_at": {
+                    "type": "string",
+                    "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}Z$"
+                  }
+                },
+                "required": [
+                  "schema_version",
+                  "id",
+                  "blindspot_id",
+                  "method",
+                  "content",
+                  "status",
+                  "closed_at",
+                  "source",
+                  "created_at"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "required": [
+              "op",
+              "intervention"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "op": {
+                "type": "string",
+                "const": "intervention.update"
+              },
+              "intervention": {
+                "type": "object",
+                "properties": {
+                  "schema_version": {
+                    "type": "number",
+                    "const": 1
+                  },
+                  "id": {
+                    "type": "string",
+                    "pattern": "^[0-7][0-9A-HJKMNP-TV-Z]{25}$"
+                  },
+                  "blindspot_id": {
+                    "type": "string",
+                    "pattern": "^[0-7][0-9A-HJKMNP-TV-Z]{25}$"
+                  },
+                  "method": {
+                    "type": "string",
+                    "enum": [
+                      "explanation",
+                      "socratic",
+                      "practice",
+                      "counterexample"
+                    ]
+                  },
+                  "content": {
+                    "type": "string",
+                    "pattern": "\\S"
+                  },
+                  "status": {
+                    "type": "string",
+                    "enum": [
+                      "planned",
+                      "completed",
+                      "abandoned"
+                    ]
+                  },
+                  "closed_at": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}Z$"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "source": {
+                    "oneOf": [
+                      {
+                        "type": "object",
+                        "properties": {
+                          "kind": {
+                            "type": "string",
+                            "const": "agent"
+                          },
+                          "id": {
+                            "type": "string",
+                            "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+                            "maxLength": 64
+                          },
+                          "model": {
+                            "type": "string",
+                            "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*:\\S+$"
+                          }
+                        },
+                        "required": [
+                          "kind",
+                          "id",
+                          "model"
+                        ],
+                        "additionalProperties": false
+                      },
+                      {
+                        "type": "object",
+                        "properties": {
+                          "kind": {
+                            "type": "string",
+                            "const": "human"
+                          }
+                        },
+                        "required": [
+                          "kind"
+                        ],
+                        "additionalProperties": false
+                      }
+                    ]
+                  },
+                  "created_at": {
+                    "type": "string",
+                    "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}Z$"
+                  }
+                },
+                "required": [
+                  "schema_version",
+                  "id",
+                  "blindspot_id",
+                  "method",
+                  "content",
+                  "status",
+                  "closed_at",
+                  "source",
+                  "created_at"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "required": [
+              "op",
+              "intervention"
+            ],
+            "additionalProperties": false
+          }
+        ]
+      },
+      "minItems": 1,
+      "uniqueItems": true
+    }
+  },
+  "required": [
+    "schema_version",
+    "id",
+    "created_at",
+    "source",
+    "run_id",
+    "summary",
+    "requires_approval",
+    "operations"
+  ],
+  "additionalProperties": false
+}

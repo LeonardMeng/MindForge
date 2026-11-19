@@ -1,5 +1,6 @@
 import { z } from 'zod';
 
+import { UNIT_INTERVAL, UNIT_INTERVAL_META } from './constraints.js';
 import { pushIssue } from './errors.js';
 
 /** 掌握度的五个评估维度，按 README 的顺序。 */
@@ -22,10 +23,11 @@ export type Dimension = (typeof DIMENSIONS)[number];
 export const DimensionScore = z
   .number()
   .check((ctx) => {
-    if (ctx.value < 0 || ctx.value > 1) {
+    if (ctx.value < UNIT_INTERVAL.min || ctx.value > UNIT_INTERVAL.max) {
       pushIssue(ctx, 'dimension_score.out_of_range', { value: ctx.value });
     }
   })
+  .meta(UNIT_INTERVAL_META)
   .nullable();
 /** 单个维度的得分。 */
 export type DimensionScore = z.infer<typeof DimensionScore>;
