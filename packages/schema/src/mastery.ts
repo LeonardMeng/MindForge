@@ -1,5 +1,6 @@
 import { z } from 'zod';
 
+import { EXPLANATION_CODE_PATTERN, patternMeta } from './constraints.js';
 import { DimensionScores } from './dimensions.js';
 import { pushIssue } from './errors.js';
 import {
@@ -27,19 +28,19 @@ export const MasteryState = z.enum(MASTERY_STATES);
 /** 掌握状态。 */
 export type MasteryState = z.infer<typeof MasteryState>;
 
-/** explanation 的 code：小写字母、数字、下划线，用点分段。 */
-const EXPLANATION_CODE_PATTERN = /^[a-z0-9_]+(\.[a-z0-9_]+)*$/;
-
 /**
  * explanation 的一项：和结构化错误一样，是 `code` + `params`（ADR-0013）。
  * 具体有哪些 code、对应什么文字，由规则包（rules-v1，2.4）定义；schema 只校验结构。
  */
 export const ExplanationItem = z.strictObject({
-  code: z.string().check((ctx) => {
-    if (!EXPLANATION_CODE_PATTERN.test(ctx.value)) {
-      pushIssue(ctx, 'explanation.invalid_code', { value: ctx.value });
-    }
-  }),
+  code: z
+    .string()
+    .check((ctx) => {
+      if (!EXPLANATION_CODE_PATTERN.test(ctx.value)) {
+        pushIssue(ctx, 'explanation.invalid_code', { value: ctx.value });
+      }
+    })
+    .meta(patternMeta(EXPLANATION_CODE_PATTERN)),
   params: z.record(z.string(), z.unknown()),
 });
 /** explanation 的一项。 */

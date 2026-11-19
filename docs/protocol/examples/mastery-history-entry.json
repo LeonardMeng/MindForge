@@ -1,0 +1,15 @@
+{
+  "schema_version": 1,
+  "at": "2026-11-19T10:00:00Z",
+  "state": "provisional_mastery",
+  "dimensions": {
+    "recall": 0.9,
+    "understanding": 0.85,
+    "reasoning": 0.8,
+    "application": 0.7,
+    "transfer": null
+  },
+  "confidence": 0.82,
+  "rules_version": 1,
+  "cause": { "kind": "evidence", "evidence_id": "01JD3K8Q8Z6V7X2N4M5P9R0T1W" }
+}

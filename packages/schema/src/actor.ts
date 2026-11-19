@@ -1,18 +1,19 @@
 import { z } from 'zod';
 
+import { MODEL_REF_PATTERN, patternMeta } from './constraints.js';
 import { pushIssue } from './errors.js';
 import { taggedUnion } from './fields.js';
 import { Slug } from './ids.js';
 
-/** 模型引用：`<provider>:<model>`，provider 遵守 Slug 规则，model 不能有空白。 */
-const MODEL_PATTERN = /^[a-z0-9]+(-[a-z0-9]+)*:\S+$/;
-
-/** 模型引用，例如 `ollama:qwen3-14b`。 */
-export const ModelRef = z.string().check((ctx) => {
-  if (!MODEL_PATTERN.test(ctx.value)) {
-    pushIssue(ctx, 'actor.invalid_model', { value: ctx.value });
-  }
-});
+/** 模型引用：`<provider>:<model>`，例如 `ollama:qwen3-14b`。provider 是 slug，model 不能有空白。 */
+export const ModelRef = z
+  .string()
+  .check((ctx) => {
+    if (!MODEL_REF_PATTERN.test(ctx.value)) {
+      pushIssue(ctx, 'actor.invalid_model', { value: ctx.value });
+    }
+  })
+  .meta(patternMeta(MODEL_REF_PATTERN));
 
 const AgentActor = z.strictObject({
   kind: z.literal('agent'),

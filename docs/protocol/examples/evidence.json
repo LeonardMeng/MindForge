@@ -1,0 +1,23 @@
+{
+  "schema_version": 1,
+  "id": "01JD3K8Q8Z6V7X2N4M5P9R0T1W",
+  "concept_id": "self-attention",
+  "session_id": "01JD3K7A2B3C4D5E6F7G8H9J0K",
+  "assessment_type": "independent_verification",
+  "criteria_version": 1,
+  "dimensions": {
+    "recall": 0.9,
+    "understanding": 0.85,
+    "reasoning": 0.8,
+    "application": 0.7,
+    "transfer": null
+  },
+  "confidence": 0.88,
+  "evaluator": {
+    "kind": "agent",
+    "id": "agent-evaluator",
+    "model": "ollama:qwen3-14b"
+  },
+  "note": null,
+  "created_at": "2026-11-19T10:00:00Z"
+}

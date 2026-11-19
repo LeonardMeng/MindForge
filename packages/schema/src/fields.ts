@@ -1,32 +1,52 @@
 // 本包内部共用的字段辅助函数，不从 index.ts 导出。
 import { z } from 'zod';
 
+import {
+  NON_BLANK_PATTERN,
+  patternMeta,
+  POSITIVE_INTEGER_META,
+  POSITIVE_INTEGER_MIN,
+  UNIT_INTERVAL,
+  UNIT_INTERVAL_META,
+} from './constraints.js';
 import { pushIssue } from './errors.js';
 import { Ulid } from './ids.js';
 
 /** 不能为空（也不能只有空白）的字符串。 */
-export const NonEmptyString = z.string().check((ctx) => {
-  if (ctx.value.trim() === '') {
-    pushIssue(ctx, 'field.empty', {});
-  }
-});
+export const NonEmptyString = z
+  .string()
+  .check((ctx) => {
+    if (!NON_BLANK_PATTERN.test(ctx.value)) {
+      pushIssue(ctx, 'field.empty', {});
+    }
+  })
+  .meta(patternMeta(NON_BLANK_PATTERN));
 
 /** 当前（也是唯一）支持的文件格式版本。读取旧版本文件要先经过迁移（1.6）。 */
 export const SchemaVersionV1 = z.literal(1);
 
 /** 大于等于 1 的整数，用于 criteria 版本、规则版本等。 */
-export const PositiveInteger = z.number().check((ctx) => {
-  if (!Number.isInteger(ctx.value) || ctx.value < 1) {
-    pushIssue(ctx, 'field.not_positive_integer', { value: ctx.value });
-  }
-});
+export const PositiveInteger = z
+  .number()
+  .check((ctx) => {
+    if (!Number.isInteger(ctx.value) || ctx.value < POSITIVE_INTEGER_MIN) {
+      pushIssue(ctx, 'field.not_positive_integer', { value: ctx.value });
+    }
+  })
+  .meta(POSITIVE_INTEGER_META);
 
 /** `0..1` 的有限数，用于置信度、阈值等。 */
-export const UnitInterval = z.number().check((ctx) => {
-  if (ctx.value < 0 || ctx.value > 1) {
-    pushIssue(ctx, 'field.out_of_range', { value: ctx.value, min: 0, max: 1 });
-  }
-});
+export const UnitInterval = z
+  .number()
+  .check((ctx) => {
+    if (ctx.value < UNIT_INTERVAL.min || ctx.value > UNIT_INTERVAL.max) {
+      pushIssue(ctx, 'field.out_of_range', {
+        value: ctx.value,
+        ...UNIT_INTERVAL,
+      });
+    }
+  })
+  .meta(UNIT_INTERVAL_META);
 
 /** 是不是普通对象（不是 null，也不是数组）。 */
 export function isPlainObject(
@@ -126,7 +146,13 @@ export function listOf<T extends z.ZodType>(
         }
       });
     })
-    .pipe(z.array(item));
+    .pipe(
+      // 写进 JSON Schema 的列表约束，和上面的检查对应。
+      z.array(item).meta({
+        ...(nonEmpty ? { minItems: 1 } : {}),
+        ...(unique ? { uniqueItems: true } : {}),
+      }),
+    );
 }
 
 /**

@@ -31,7 +31,7 @@
 ## 当前状态
 
 - **当前里程碑：** M1
-- **下一个任务：** 1.5
+- **下一个任务：** 1.6
 - **阻塞项：** 无
 
 ---
@@ -102,7 +102,7 @@
 - **验收**：样例测试通过。
 - **不做**：审批流程。
 
-### [ ] 1.5 JSON Schema 导出和协议文档
+### [x] 1.5 JSON Schema 导出和协议文档
 - **包**：`schema`、`docs/protocol/`
 - **依赖**：1.2、1.3、1.4
 - **产出**：`pnpm --filter @mastery/schema gen` 把所有 zod schema 导出为 JSON Schema，写到 `docs/protocol/`；为每种文件写一页简短说明。
@@ -591,14 +591,16 @@
 - （来自 0.2）dependency-cruiser 只看 import，看不到全局对象：Tauri 的 `window.__TAURI__`（以及 Node 的 `process`、`Buffer`，目前只靠 `types: []` 在类型层面挡住）需要另外的检查，比如 eslint 的 `no-restricted-globals`。
 - （来自 0.2）行内写法 `import { type X } from '…'` 会被 dependency-cruiser 当成“只引用类型”，但在 `verbatimModuleSyntax` 下运行时会留下一个空的副作用 import。可以考虑开启 eslint 的 `@typescript-eslint/no-import-type-side-effects`，统一写成 `import type`。
 - （来自 1.1，2.7 处理）复习日期可能需要只有日期的类型 `IsoDate`（`YYYY-MM-DD`），到时再加。
-- （来自 1.1，1.5 处理）自定义检查（`.check()`）不会出现在导出的 JSON Schema 里。已验证可以用 `.meta({ pattern, maxLength })` 补上，1.5 导出时处理。
-- （来自 1.2，1.5 处理）列表字段用 `z.unknown().check(…).pipe(z.array(…))` 实现（为了给出“写成列表”的提示和同时报出元素错误与重复项），导出 JSON Schema 时要确认用的是输出端（`io: "output"`），得到的是数组类型。
 - （来自 1.2，4.3 决定）插件名目前按 Slug 规则。第三方插件如果用 npm 的 scope 包名（比如 `@someone/agent-x`），插件名的规则要不要放宽；同一个插件要不要支持多个实例。
 - （来自 1.3，3.7 处理）两台设备各自往同一个 `mastery/history/<slug>.jsonl` 末尾追加时，Git 文本合并会冲突。方向：让 history 也能逐字节确定，由 merge driver 根据证据重算（和投影一样），而不是做文本合并。`cause: rules`（规则升级）时 `at` 怎么确定，到 3.7 再决定。
 - （来自 1.3）进行中的评测会话以后可以暂存在 `.mastery/runtime/` 里，用于崩溃后恢复，不进入权威数据。
 - （来自 1.4，4.2 实现）Proposal 的 `requires_approval` 只是提交者的请求：Core 按规则判断，只能把 `false` 升级为 `true`，不能反过来。以后可以在 `workspace.yaml` 里让用户配置哪些操作需要审批，但用户配置也只能收紧，不能放宽 Core 的最低要求。
 - （来自 1.4，4.2 处理）并发冲突：提案生成后、批准前文件已被改动时怎么办。可能需要在更新类操作里带上“提案时文件内容的哈希”。Proposal 不是长期保存的数据，到时再加字段代价很小。
 - （来自 1.4）4.2：实现 `blindspot.merge`，检查 `merged_into` 指向的盲区存在，并且不形成链或循环。
+- （来自 1.5）一致性测试：把 schema 现有的合法和非法样例，同时用 zod 和一个 JSON Schema 校验器（比如 ajv，只作为 devDependency，不违反 ADR-0013）各跑一遍，结果应该一致；因为跨字段规则而只被 zod 拒绝的样例，单独列出来并注明原因。
+- （来自 1.5，1.9 之后）协议文档里的 YAML 示例还没有自动校验。1.9 选定 YAML 库以后，加一个测试校验 `docs/protocol/*.md` 里的 YAML 示例。
+- （来自 1.5，1.9 选 YAML 库时注意）很多 YAML 库（比如 js-yaml 的默认模式）会把不加引号的 `2026-11-20T08:00:00Z` 转成 Date 对象。store 读写 YAML 时必须把时间保留为字符串，否则 `IsoDateTime` 校验不过，读后再写也无法逐字节不变。
+- （来自 1.5，M6 之前不做）让 VS Code 这类编辑器在用户编辑 `workspace.yaml`、Concept 的 frontmatter 时，直接用 `docs/protocol/schemas/` 里的 JSON Schema 做自动补全和实时校验。
 - （来自 1.4，7.2 处理）验证证据和干预的关联：优先考虑在 Intervention 里记录验证证据的 id（Intervention 文件本来就可以修改），这样不用改 Evidence 的格式，关联关系也只存一处。
 - （来自 1.4，8.3 决定）引入跨 Workspace 的前置依赖后，Blindspot 的 `prerequisite_id` 可能需要支持 `GlobalConceptRef`。
 - （来自 1.1）`packages/schema/src/testing.ts` 的测试构造函数目前只在 schema 包内部使用。其他包的测试要用时，再决定放在哪里（比如 `testkit` 包），不从 schema 的公共 API 导出。
@@ -621,3 +623,4 @@
 | 2026-11-20 | 1.3 | `task/1.3-schema-evidence-mastery` | `Criteria`、`AssessmentSession`（每道题带原始 `scores`）、`Evidence`（`session_id`、`note` 必须写出，手动录入要写 `note`）、`MasteryProjection`（结构化 `explanation`，`evidence_ids` 升序）、`MasteryHistoryEntry`（`cause` 为 evidence / time / rules）；按 `kind` 区分的对象用自定义分发，保证缺字段报 `field.required`；README 第 7 节 Evidence 示例补上 `"note": null`；共 344 个测试 | history 的合并方式、进行中会话的暂存见“待整理” |
 | 2026-11-20 | 1.4 | `task/1.4-schema-blindspot-proposal` | 公共的 `Actor`（`Evaluator` 复用它）；`Blindspot`（`prerequisite_id` 规则）、`Intervention`（`status` 和 `closed_at` 规则）、`Proposal`（8 种变更操作，没有删除；`requires_approval` 只是请求）；`taggedUnion` 支持任意区分字段；共 437 个测试 | 审批规则、并发冲突、merge 语义、验证证据关联等见“待整理” |
 | 2026-11-20 | 1.4（补充） | `task/1.4-schema-blindspot-proposal` | Blindspot 增加状态 `merged` 和字段 `merged_into`（`merged` 时必须有值且不能指向自己，其他状态为 `null`）。错误码改名：`evaluator.invalid_model` → `actor.invalid_model`，`mastery.evidence_ids_not_sorted` → `field.not_sorted`，**修改了 4 处断言**（经人确认，含义不变）：1.3 的 `evidence.test.ts`、`mastery.test.ts` 各 1 处，1.4 的 `actor.test.ts`、`blindspot.test.ts` 各 1 处；`blindspot.test.ts` 里原来用 `merged` 作为非法状态的例子改用 `deleted`。ADR-0013 补充错误码命名规则。共 445 个测试 | 无 |
+| 2026-11-20 | 1.5 | `task/1.5-json-schema-protocol-docs` | `pnpm --filter @mastery/schema gen` 把 11 个文件 schema 导出到 `docs/protocol/schemas/`（输出稳定）；正则和数值范围集中到 `constraints.ts`，`.check()` 和 `.meta()` 共用；协议说明页 11 页加索引，列出 JSON Schema 检查不了的规则；JSON 示例由测试校验；CI 检查生成结果和提交的一致；`.prettierignore` 忽略生成的文件；eslint 对 `.mjs` 脚本关闭类型感知规则；共 473 个测试 | YAML 示例校验、zod 与 JSON Schema 一致性测试等见“待整理” |
