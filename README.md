@@ -142,7 +142,7 @@ mastery-os/
 │   └── ws-transformers/      示例 Workspace，所有测试共用
 ├── packages/
 │   ├── schema/               zod schema、JSON Schema 导出、schema_version、迁移
-│   ├── platform/             Platform 端口接口（只有类型）
+│   ├── platform/             Platform 端口接口、所有实现共用的少量代码；契约测试（/contract）
 │   ├── platform-memory/      内存实现，测试用
 │   ├── platform-node/        Node 实现，CLI 用
 │   ├── platform-tauri/       Tauri 实现的 TS 侧封装（Rust 部分在 apps/desktop/src-tauri）
@@ -176,7 +176,8 @@ mastery-os/
 
 ```text
 schema        ← 不依赖任何内部包
-platform      ← 只依赖 schema（只有类型）
+platform      ← 只依赖 schema（接口 + 所有实现共用的少量代码，同样不用 node:*、不做 I/O）
+platform-memory ← schema, platform（测试用的内存实现）
 store         ← schema, platform
 core          ← schema, platform（只用端口类型）
 rules-v1      ← schema, core（只用规则接口）

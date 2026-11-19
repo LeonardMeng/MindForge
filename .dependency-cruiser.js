@@ -44,7 +44,16 @@ export default {
   forbidden: [
     // ── 白名单：README 第 6 节依赖图，一个包一条 ──────────────────────────
     allowlist('schema', [], 'schema ← 不依赖任何内部包'),
-    allowlist('platform', [], 'platform ← 只依赖 schema'),
+    allowlist(
+      'platform',
+      [],
+      'platform ← 只依赖 schema（接口 + 所有实现共用的少量代码）',
+    ),
+    allowlist(
+      'platform-memory',
+      ['platform'],
+      'platform-memory ← schema, platform（测试用的内存实现）',
+    ),
     allowlist('store', ['platform'], 'store ← schema, platform'),
     allowlist('core', ['platform'], 'core ← schema, platform'),
     allowlist('rules-v1', ['core'], 'rules-v1 ← schema, core'),

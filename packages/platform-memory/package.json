@@ -1,0 +1,26 @@
+{
+  "name": "@mastery/platform-memory",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Platform 端口的内存实现，测试用；可以模拟写入中途崩溃。",
+  "type": "module",
+  "exports": {
+    ".": {
+      "@mastery/source": "./src/index.ts",
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsup src/index.ts --format esm --dts --clean",
+    "test": "vitest run --config ../../vitest.config.ts --root .",
+    "typecheck": "tsc -p tsconfig.json"
+  },
+  "dependencies": {
+    "@mastery/platform": "workspace:*",
+    "@mastery/schema": "workspace:*"
+  }
+}

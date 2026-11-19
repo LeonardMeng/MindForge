@@ -1,0 +1,38 @@
+{
+  "name": "@mastery/platform",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Platform 端口：FileSystem、Clock、IdGenerator、Lock 的接口、所有实现共用的少量代码，以及契约测试。",
+  "type": "module",
+  "exports": {
+    ".": {
+      "@mastery/source": "./src/index.ts",
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./contract": {
+      "@mastery/source": "./src/contract/index.ts",
+      "types": "./dist/contract.d.ts",
+      "default": "./dist/contract.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsup --entry.index src/index.ts --entry.contract src/contract/index.ts --format esm --dts --clean",
+    "test": "vitest run --config ../../vitest.config.ts --root .",
+    "typecheck": "tsc -p tsconfig.json"
+  },
+  "dependencies": {
+    "@mastery/schema": "workspace:*"
+  },
+  "peerDependencies": {
+    "vitest": "^4.1.12"
+  },
+  "peerDependenciesMeta": {
+    "vitest": {
+      "optional": true
+    }
+  }
+}

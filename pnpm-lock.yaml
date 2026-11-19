@@ -211,6 +211,24 @@ importers:
 
   packages/_template: {}
 
+  packages/platform:
+    dependencies:
+      '@mastery/schema':
+        specifier: workspace:*
+        version: link:../schema
+      vitest:
+        specifier: ^4.1.12
+        version: 4.1.12(@types/node@26.6.6)(vite@8.3.8(@types/node@26.6.6)(esbuild@0.27.7))
+
+  packages/platform-memory:
+    dependencies:
+      '@mastery/platform':
+        specifier: workspace:*
+        version: link:../platform
+      '@mastery/schema':
+        specifier: workspace:*
+        version: link:../schema
+
   packages/schema:
     dependencies:
       zod:
