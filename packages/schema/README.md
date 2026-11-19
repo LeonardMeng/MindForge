@@ -39,6 +39,11 @@ if (!result.success) {
 | `WorkspaceConfig` | `workspace.yaml` | `schema_version`、`id`、`name`、`plugins` 必填，`description` 可选。插件名是 Slug，前面可加 `~` 表示禁用；配置必须是对象（没有配置写 `{}`），内容由插件自己校验；同一插件不能同时以 `x` 和 `~x` 出现。SuperAgent 也是普通插件，没有单独的字段 |
 | `ProjectConfig` | `projects/<slug>/project.yaml` | `schema_version`、`id`、`name`、`status`（`active` / `paused` / `completed` / `archived`）、`concepts`（可以是 `[]`，不能重复）必填，`description` 可选 |
 | `ConceptFrontmatter` | `concepts/<slug>.md` 的 frontmatter | `schema_version`、`id`、`name`、`prerequisites`（只能是本 Workspace 的 slug，可以是 `[]`，不能重复，不能包含自己）、`status`（`draft` / `active` / `archived`）必填；`tags`、`aliases` 可选，只接受列表 |
+| `Criteria` | `assessments/<slug>/criteria.yaml` | `schema_version`、`concept_id`、`version`（≥1）、`dimensions` 必填；五个维度写全，每个维度是 `{ focus: [考察要点], threshold: 0..1 }` 或 `null`（不考察）；`focus` 不能为空列表；至少考察一个维度 |
+| `AssessmentSession` | `assessments/<slug>/sessions/<ULID>.json` | 完成时一次写入，只追加。`started_at` ≤ `completed_at`；`items` 不能为空，每道题有 `dimensions`、`question`、`answer`（可以是空字符串）、`rationale`、`scores`（五个维度写全，有分数的维度必须在这道题的 `dimensions` 里）。会话里不记录 Evidence 的 id |
+| `Evidence` | `evidence/<slug>/<ULID>.json` | 只追加。`session_id` 和 `note` 必须写出来，可以是 `null`；`session_id` 为 `null`（手动录入）时 `note` 必须写明来由；五个维度不能全是 `null`；`evaluator` 是 `{ kind: agent, id, model: "<provider>:<model>" }` 或 `{ kind: human }` |
+| `MasteryProjection` | `mastery/<slug>.yaml` | 派生数据，不带计算时间。`state`（六个状态之一）、`dimensions`、`confidence`、`rules_version`、`evidence_ids`（升序、不重复）、`explanation`（`[{ code, params }]`，code 由规则包定义） |
+| `MasteryHistoryEntry` | `mastery/history/<slug>.jsonl` 的一行 | 每行都带 `schema_version`；`cause` 是 `evidence`（`at` = 证据时间）、`time`（`at` = 算出的到期时刻）或 `rules` |
 | `parseConceptBody()` | `concepts/<slug>.md` 的正文 | 解析 `## Description` 和 `## Learning Objectives`（只认这两个英文二级标题）；识别 ``` 和 ~~~ 代码块；缺少或重复的章节给警告 |
 
 ### 约定
@@ -48,6 +53,7 @@ if (!result.success) {
   - `ConceptFrontmatter` 为了兼容 Obsidian，未知字段原样保留，`conceptFrontmatterWarnings()` 给出 `concept.unknown_field` 警告；
   - `WorkspaceConfig.plugins` 里每个插件的配置对象原样保留，不校验内容。
 - **列表只有一种写法**：写成单个字符串（比如 `tags: ml`）会报 `field.expected_list`，提示改成 `tags: [ml]`。
+- **按 `kind` 区分的对象**（`evaluator`、`cause`）：`kind` 缺失报 `field.required`，取值不对报 `field.invalid_option`，分支里的错误照常报。
 - **跨字段检查在字段本身没有错误时才运行**：比如“`prerequisites` 不能包含自己”，要等列表里没有格式错误和重复项以后才会检查。
 
 ## 结构化错误

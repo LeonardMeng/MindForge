@@ -12,6 +12,7 @@
 - `schema`、`core`、`rules-v1`、`store`、`index`、`git` 不能 import `cordis`。
 - 除 `platform-node`、`cli`、`mcp` 外，不能 import `node:*`。所有 I/O 通过 Platform 端口。
 - `ui-*` 不能 import `@tauri-apps/*`。所有和 Tauri 相关的调用只能放在 `platform-tauri` 和 `apps/desktop` 里（将来要有 Web 版）。
+- `schema` 的运行时代码只能依赖 `zod`；新增外部依赖必须先写 ADR（ADR-0013）。文件格式遵守“同一个值只有一种写法”。
 - Agent 不能直接写文件；只能通过 `knowledge` 服务提交 Proposal 或 Evidence。
 - Evidence 只追加。掌握度只由 Mastery Core 计算。没测过的维度是 `null`，不是 0。
 - Profile 是必需的，只能通过 `ProfileStore` 端口访问，不能直接读写 Profile 的文件。

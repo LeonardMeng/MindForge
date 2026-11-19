@@ -201,6 +201,7 @@ ui-*          ← schema, rpc, ui-kit（永远不 import runtime、core、platfo
 3. `agents/*`、`superagent`、`supervisor` **不能 import `store`、`git`、`index`**。数据只能通过 `knowledge` 服务读取，写入只能通过提交 Proposal。
 4. `ui-*` 不能 import `runtime` 或 `core`，只能通过 `rpc` 通信。
 5. **只有 `platform-tauri` 和 `apps/desktop` 能 import `@tauri-apps/*`**。其他包（特别是 `ui-*`）都不能直接调用 Tauri，这样 UI 将来不用改代码就能跑在 Web 版里。
+6. **`schema` 的运行时代码只能依赖 `zod`**（ADR-0013）。新增任何外部依赖都必须先写 ADR；测试文件不受这条限制。
 
 ## 7. 数据协议
 
@@ -283,6 +284,7 @@ status: active
   },
   "confidence": 0.88,
   "evaluator": { "kind": "agent", "id": "agent-evaluator", "model": "ollama:qwen3-14b" },
+  "note": null,
   "created_at": "2026-11-19T10:00:00Z"
 }
 ```
