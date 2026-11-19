@@ -1,482 +1,475 @@
 # Mastery OS
 
-> A local-first, file-based, Git-native personal knowledge mastery
-> system.
+> 一个本地优先、基于文件、原生支持 Git 的个人知识掌握系统。
+> **知识不等于掌握。** 读过、记过、学完一门课，都不能证明你理解了一个概念，或者会用它。
 
-## 1. Product Vision
+Mastery OS 帮你弄清楚自己真正掌握了什么、发现知识盲区、有针对性地学习，并长期验证掌握程度。所有学习数据都是普通文件（Markdown / YAML / JSON），用 Git 管理历史和同步，不需要账号，也不需要联网。
 
-Mastery OS helps people understand what they truly know, discover
-knowledge gaps, learn efficiently, and verify long-term mastery.
+> **给 AI 编码助手（Claude Code 等）：** 开始任何工作前，先读完本文件和 [`ROADMAP.md`](./ROADMAP.md)。
+> 一次会话只做 ROADMAP 里的**一个任务编号**。第 9 节的“不变量”和第 6 节的“依赖规则”不可违反；如果任务和它们冲突，停下来问人。
 
-Its central principle is:
+---
 
-**Knowledge is not the same as mastery.** Reading, taking notes, or
-completing a course does not prove that someone understands or can apply
-a concept.
+## 1. 产品原则
 
-Mastery OS is not intended to replace existing note-taking tools. It
-should work with ordinary files and external knowledge sources while
-keeping the user's learning state portable and under their control.
+| 原则 | 含义 | 在代码里怎么体现 |
+|---|---|---|
+| 本地优先 | 核心功能离线可用 | 核心包不依赖网络；云服务都是可选的适配器 |
+| 基于文件 | 用户数据是可读、可迁移的文件 | 文件系统是唯一的权威数据源；SQLite 只是可重建的索引 |
+| 原生 Git | 历史、分支、diff、同步都用 Git | 按领域事务提交；掌握度投影有专用 merge driver |
+| 用户拥有数据 | 不打开应用也能读懂自己的数据 | 格式都有 JSON Schema 和文档；兼容 Obsidian 的 wikilink |
+| 以证据定掌握 | 掌握度必须由评测证据推导 | Agent 不能直接写掌握度；只有 Mastery Core 能算 |
+| 一切皆插件 | Agent、工具、模型、规则都能插拔 | 基于 Cordis 的插件系统；Core 是“纯内核 + 插件外壳” |
 
-### Product principles
+## 2. 核心概念
 
--   **Local-first:** Core features work without an internet connection.
--   **File-based:** User data is stored in readable, portable files.
--   **Git-native:** History, branching, diffing, backup, and optional
-    synchronization use Git.
--   **User-owned data:** The application is not the only way to access
-    or understand the data.
--   **Evidence-based mastery:** Mastery decisions must be supported by
-    assessment evidence.
--   **Modular intelligence:** Agents and plugins provide capabilities
-    without owning core learning data.
+| 概念 | 说明 |
+|---|---|
+| **Workspace** | 一个长期的知识领域，比如 AI、数学、物理。一个 Workspace 对应一个 Git 仓库 |
+| **Project** | Workspace 里的一个具体学习或研究目标 |
+| **Concept** | 知识的基本单位。它不只是一篇笔记，而是带学习目标、前置依赖和评测标准的结构化定义 |
+| **Criteria** | 某个 Concept 的评测标准，带版本号 |
+| **Evidence** | 一次掌握程度的证明记录。只能追加，并记录评测时用的 criteria 版本 |
+| **Mastery** | 系统根据证据和版本化的规则，算出的当前掌握度（投影） |
+| **Blindspot** | 怀疑或已确认的知识缺口、误解或薄弱点 |
+| **Intervention** | 针对某个缺口设计的学习活动 |
+| **Note** | 用户的自由笔记（Markdown），通过 `[[wikilink]]` 关联到 Concept |
+| **Profile** | **必需的**用户级数据：学习者画像、已注册的 Workspace、跨 Workspace 的概念链接。当前用 Git 仓库实现，将来可以换成云服务 |
+| **Device** | 某一台设备的本地配置：Workspace 在这台机器上的路径、同步策略等。不提交、不同步 |
 
-## 2. Product Scope
+### 掌握度的评估维度
 
-### Core concepts
+`recall`（记忆）· `understanding`（理解）· `reasoning`（推理）· `application`（应用）· `transfer`（迁移）
 
--   **Workspace:** A long-lived knowledge domain, such as AI,
-    mathematics, or physics.
--   **Project:** A concrete learning or research goal within a
-    Workspace.
--   **Concept:** The fundamental unit of knowledge. A Concept is not
-    simply a note.
--   **Evidence:** A record of demonstrated knowledge or ability.
--   **Mastery:** The system's current assessment of a user's capability,
-    derived from evidence.
--   **Blindspot:** A suspected or confirmed gap, misconception, or
-    weakness.
--   **Intervention:** A learning activity designed to address a specific
-    gap.
+每个维度单独评估。**没测过记为 `null`，不是 0**：“没考过”和“考得差”必须能区分开。
 
-### Main user experience
+### 掌握状态
 
-The user describes a goal or asks a question. A Workspace-level
-SuperAgent decides whether to answer directly or coordinate specialist
-agents and plugins.
-
-The user can inspect and intervene in the execution process, but does
-not need to manually manage an agent team.
-
-## 3. Concept Lifecycle
-
-1.  **Discovery** --- Identify Concepts from user goals, questions,
-    resources, projects, and assessment results.
-2.  **Modeling** --- Define each Concept, its learning objectives,
-    prerequisites, relationships, and sources.
-3.  **Assessment Design** --- Define what mastery means before teaching
-    begins.
-4.  **Diagnosis** --- Estimate the user's current ability without
-    assuming they are a beginner.
-5.  **Blindspot Detection** --- Identify possible knowledge, reasoning,
-    application, prerequisite, or retention gaps.
-6.  **Intervention** --- Select teaching methods and exercises suited to
-    the diagnosed gap.
-7.  **Verification** --- Use independent questions or tasks to verify
-    learning, preferably with unfamiliar examples.
-8.  **Monitoring** --- Track retention, review needs, and the ability to
-    transfer knowledge to new situations.
-
-### Assessment dimensions
-
-Mastery should not be represented by one score alone. Assess these
-dimensions separately:
-
--   Recall
--   Understanding
--   Reasoning
--   Application
--   Transfer
-
-A correct answer once does not automatically prove mastery. Not tested
-must remain distinct from weak performance.
-
-### Mastery states
-
--   `not_assessed`
--   `diagnosed`
--   `learning`
--   `provisional_mastery`
--   `mastered`
--   `needs_review`
-
-The exact state and score calculation rules should be versioned and
-refined as the product evolves.
-
-## 4. System Architecture
-
-Mastery OS has three main layers.
-
-### 4.1 Knowledge Layer
-
-Owns the user's durable data:
-
--   Workspaces and Projects
--   Concepts and relationships
--   Assessment criteria and results
--   Evidence
--   Blindspots and interventions
--   Current mastery state and history
--   References to learning resources
-
-The Knowledge Layer is independent of any particular agent framework.
-
-### 4.2 Intelligence Layer
-
-Provides reasoning and learning capabilities:
-
--   SuperAgent / Workspace orchestrator
--   Teacher Agent
--   Assessment Agent
--   Evaluator Agent
--   Research Agent
--   Planning Agent
--   Extensible plugins and skills
-
-The SuperAgent selects and coordinates capabilities. Specialist agents
-produce results and proposed changes; they do not directly own or
-overwrite authoritative mastery state.
-
-### 4.3 Local Infrastructure Layer
-
-Provides local execution and data management:
-
--   File system: authoritative user data
--   Git: history, branches, diffs, and optional synchronization
--   SQLite: rebuildable local index and query acceleration
--   Local model runtime: optional offline AI
--   Optional cloud model adapters: only when configured and connectivity
-    is available
-
-## 5. Local-first and File-based Data Model
-
-### Source of truth
-
-The file system is the authoritative source for user data. SQLite is a
-derived index, not the canonical database.
-
-Deleting the local index must not cause data loss. The application
-should be able to rebuild it by scanning the Workspace files.
-
-### Suggested Workspace structure
-
-``` text
-MyWorkspace/
-├── .git/
-├── workspace.yaml
-├── projects/
-│   └── learn-transformers/
-│       └── project.yaml
-├── concepts/
-│   ├── transformer.md
-│   └── self-attention.md
-├── assessments/
-│   └── self-attention/
-│       ├── criteria.yaml
-│       └── sessions/
-│           └── session-001.json
-├── evidence/
-│   └── self-attention/
-│       ├── evidence-001.json
-│       └── evidence-002.json
-├── mastery/
-│   └── self-attention.yaml
-├── blindspots/
-├── interventions/
-├── resources/
-│   ├── papers/
-│   └── attachments/
-└── .mastery/
-    ├── index.db
-    ├── cache/
-    └── runtime/
+```text
+not_assessed ─► diagnosed ─► learning ─► provisional_mastery ─► mastered
+                                 ▲                                  │
+                                 └────────── needs_review ◄─────────┘
 ```
 
-### File format conventions
+状态迁移的条件写在版本化的规则文件里（`packages/rules-v1`），不写死在代码里。
 
-  -----------------------------------------------------------------------
-  Data                    Format                  Purpose
-  ----------------------- ----------------------- -----------------------
-  Concept                 Markdown with YAML      Human-readable
-                          frontmatter             knowledge definition
+## 3. 智能角色
 
-  Workspace / Project     YAML                    Structured
-                                                  configuration
+| 角色 | 作用域 | 职责 | 写权限 |
+|---|---|---|---|
+| **Supervisor** | 用户级（跨所有 Workspace） | 全局学习者模型、请求路由、跨学科前置依赖风险、全局复习排程 | 只通过 `ProfileStore` 写 Profile |
+| **SuperAgent** | Workspace 级（类似单科老师） | 规划学习，调度下属 agent，组织“诊断 → 干预 → 验证”闭环 | 提交 Proposal |
+| Teacher Agent | Workspace | 讲解，设计练习和 Intervention | 提交 Proposal |
+| Assessment Agent | Workspace | 根据 criteria 出题 | 提交 Proposal |
+| Evaluator Agent | Workspace | 评分，输出五个维度的结构化结果 | 提交 Evidence |
+| Research Agent | Workspace | 从本地或已配置的远程来源查找资料 | 提交 Proposal |
+| Planning Agent | Workspace | 安排学习目标和时间表 | 提交 Proposal |
 
-  Assessment criteria     YAML                    Versioned evaluation
-                                                  rules
+**所有 agent 都只产出结果和 Proposal（变更提案），不直接写文件。** 只有 Knowledge 服务（背后是 Mastery Core）能校验并落盘。
 
-  Assessment session /    JSON                    Structured assessment
-  response                                        records
+## 4. 架构
 
-  Evidence                JSON                    Append-only assessment
-                                                  evidence
+```text
+┌──────────────── React + TypeScript UI（五个平台共用）──────────────────┐
+│  Workspace / Concept 编辑 / 掌握度面板 / 评测 / 审批队列 / Agent 查看器 │
+└───────────────────────────────┬────────────────────────────────────────┘
+                                │ 类型化的 RPC + 事件流（postMessage）
+┌───────────────────────────────▼────────────────────────────────────────┐
+│  Runtime（运行在 Web Worker 里；CLI / 无界面模式运行在 Node 上）        │
+│                                                                        │
+│  Cordis Root Context ─ 用户级                                          │
+│   ├─ supervisor · profile · llm(providers…) · platform                 │
+│   └─ Workspace Fork × N                                                │
+│        ├─ superagent · agents 注册表 · tools · skills                  │
+│        ├─ knowledge（plugin-core：Mastery Core 的插件外壳，受保护）      │
+│        └─ store · index · git                                          │
+└───────────────────────────────┬────────────────────────────────────────┘
+                                │ 纯 TS 端口（不依赖 Cordis，不依赖 node:*）
+┌───────────────────────────────▼────────────────────────────────────────┐
+│  Mastery Core：校验 · 证据 · 规则计算 · 状态机 · 投影 · 复习调度        │
+└───────────────────────────────┬────────────────────────────────────────┘
+                                │ Platform 端口
+┌───────────────────────────────▼────────────────────────────────────────┐
+│  Platform 实现                                                         │
+│   · platform-memory（测试用）  · platform-node（CLI）                   │
+│   · platform-tauri（Rust 插件：文件 / gitoxide / rusqlite+FTS5 / watcher）│
+└────────────────────────────────────────────────────────────────────────┘
+        文件系统（权威） · Git（历史/同步） · SQLite（可重建索引）
+```
 
-  Current mastery         YAML                    Human-readable current
-                                                  projection
+### 写入路径
 
-  Resources               Original file formats   PDF, images, code, and
-                                                  other materials
+```text
+Agent ─► Proposal ─► knowledge 服务 ─► Mastery Core（schema 校验 → 引用校验
+      → criteria 版本校验 → 规则计算）─► store 原子写 ─► index 增量更新
+      ─► 领域事件（evidence/submitted、mastery/changed…）─► git 事务提交
+```
 
-  Search index / cache    SQLite and local files  Rebuildable application
-                                                  data
-  -----------------------------------------------------------------------
+需要人工确认的 Proposal（修改 Concept 定义、合并 Blindspot 等）进入 UI 的审批队列。
 
-Prefer small, independently addressable files over one large file that
-multiple agents or devices must edit.
+### 插件模型（Cordis）
 
-### Example Concept
+| 类型 | 说明 | 例子 |
+|---|---|---|
+| Service | 基础能力，实现可替换 | `llm`、`store`、`index`、`git`、`platform` |
+| Agent | 注册到 `agents` 服务；声明 capabilities；输入 Task，输出 Result + Proposal | `agent-teacher` |
+| Tool | 具体操作，由 agent 调用 | `tool-pdf`、`tool-python-sandbox` |
+| Skill | 可复用的提示词 / 工作流（Markdown + YAML），不是代码 | `skills/socratic-explain.md` |
+| Rules | 版本化的掌握度计算规则，注册到 `rules` 服务 | `rules-v1` |
 
-``` markdown
+`knowledge` 服务是**受保护的**：只能由官方的 `plugin-core` 提供，第三方插件只能使用它，不能替换它。
+
+每个 Workspace 在 `workspace.yaml` 里声明自己装哪些插件：
+
+```yaml
+plugins:
+  agent-teacher:   { style: socratic }
+  agent-evaluator: { model: cloud:anthropic }
+  ~agent-research: {}        # ~ 前缀表示禁用
+```
+
+## 5. 仓库结构
+
+```text
+mastery-os/
+├── README.md                 ← 本文件：架构、规则、协议（相对稳定）
+├── ROADMAP.md                ← 任务清单和当前进度（经常更新）
+├── CLAUDE.md                 ← AI 助手的简短入口，指向上面两个文件
+├── docs/
+│   ├── adr/                  架构决策记录（ADR-0001-*.md）
+│   └── protocol/             文件协议规范（从 schema 包自动生成 + 人工说明）
+├── fixtures/
+│   └── ws-transformers/      示例 Workspace，所有测试共用
+├── packages/
+│   ├── schema/               zod schema、JSON Schema 导出、schema_version、迁移
+│   ├── platform/             Platform 端口接口（只有类型）
+│   ├── platform-memory/      内存实现，测试用
+│   ├── platform-node/        Node 实现，CLI 用
+│   ├── store/                Markdown/YAML/JSON 读写、frontmatter、原子写、锁
+│   ├── core/                 Mastery Core（纯领域逻辑）
+│   ├── rules-v1/             掌握度规则 v1
+│   ├── index/                SQLite 索引、FTS、wikilink、重建
+│   ├── git/                  事务提交、同步、merge driver
+│   ├── runtime/              Cordis 宿主、Workspace fork、Loader
+│   ├── plugin-core/          把 core 包装成 knowledge 服务
+│   ├── llm/                  llm 服务和 provider 接口
+│   ├── providers/            ollama/ · openai/ · anthropic/ · mock/
+│   ├── agents/               assessor/ · evaluator/ · teacher/ · research/ · planner/
+│   ├── superagent/
+│   ├── supervisor/
+│   ├── profile/              ProfileStore 接口和 Profile 领域逻辑
+│   ├── profile-store-git/    ProfileStore 的 Git 实现（将来再加 profile-store-cloud/）
+│   ├── device/               device.yaml 读写、设备 ID、钥匙串访问
+│   ├── tools/                pdf/ · python-sandbox/ · web-search/
+│   ├── rpc/                  UI ↔ Runtime 的类型化 RPC 协议
+│   ├── cli/                  `mastery` 命令
+│   ├── mcp/                  可选：MCP 服务端点
+│   └── ui-*/                 UI 按功能拆包：ui-kit/ ui-editor/ ui-mastery/ ui-graph/ …
+└── apps/
+    └── desktop/              Tauri 2 应用（src-tauri/ 里是 Rust 插件）
+```
+
+**每个包控制在 5,000 行以内。** 超过就拆包。这样 AI 助手一次会话能装下一个包的完整上下文。
+
+## 6. 依赖规则（由 dependency-cruiser 在 CI 中强制检查）
+
+```text
+schema        ← 不依赖任何内部包
+platform      ← 只依赖 schema（只有类型）
+store         ← schema, platform
+core          ← schema, platform（只用端口类型）
+rules-v1      ← schema, core（只用规则接口）
+index, git    ← schema, platform, store
+profile       ← schema（只定义 ProfileStore 接口和 Profile 领域逻辑）
+profile-store-git ← profile, schema, platform, store, git
+device        ← schema, platform（读写 device.yaml，访问系统钥匙串）
+plugin-core   ← core, store, index, git, runtime 类型, cordis      ← Core 和 Cordis 唯一的交汇点
+runtime       ← cordis, schema, platform
+agents/*      ← cordis, llm 类型, plugin-core 暴露的 knowledge 接口类型
+ui-*          ← rpc, ui-kit（永远不 import runtime 或 core）
+```
+
+硬性禁止：
+
+1. `schema`、`core`、`rules-v1`、`store`、`index`、`git` **不能 import `cordis`**。
+2. 除了 `platform-node`、`cli`、`mcp` 以外，所有包**不能 import `node:*`**，也不能用 Node 专有的全局对象。所有 I/O 都通过 Platform 端口。
+3. `agents/*`、`superagent`、`supervisor` **不能 import `store`、`git`、`index`**。数据只能通过 `knowledge` 服务读取，写入只能通过提交 Proposal。
+4. `ui-*` 不能 import `runtime` 或 `core`，只能通过 `rpc` 通信。
+
+## 7. 数据协议
+
+### Workspace 目录
+
+```text
+MyWorkspace/
+├── .git/
+├── .gitignore               # 忽略 .mastery/
+├── .gitattributes           # mastery/*.yaml merge=mastery-recompute
+├── workspace.yaml
+├── projects/<slug>/project.yaml
+├── concepts/<slug>.md
+├── notes/**/*.md            # 自由笔记，系统只读和索引
+├── assessments/<concept-slug>/
+│   ├── criteria.yaml
+│   └── sessions/<ULID>.json
+├── evidence/<concept-slug>/<ULID>.json
+├── mastery/<concept-slug>.yaml          # 派生的投影，提交到 Git 方便阅读
+├── mastery/history/<concept-slug>.jsonl # 只追加的历史
+├── blindspots/<ULID>.yaml
+├── interventions/<ULID>.yaml
+├── resources/               # 原始文件；大文件可以用 Git LFS
+└── .mastery/                # 不提交：index.db、cache/、runtime/（agent 运行日志）
+```
+
+### 文件格式
+
+| 数据 | 格式 | 是否可编辑 |
+|---|---|---|
+| Concept | Markdown + YAML frontmatter | 用户可以编辑；外部修改会被重新校验 |
+| Workspace / Project / Criteria | YAML | 用户可以编辑 |
+| 评测会话 / Evidence | JSON | **只能追加**，不能修改 |
+| 掌握度投影 | YAML | **派生数据**，手工修改会被重算覆盖 |
+| Note | Markdown | 用户随意编辑 |
+| 索引 / 缓存 | SQLite + 本地文件 | 随时可以删除，可以重建 |
+
+### ID 和版本
+
+- **Concept ID**：Workspace 内部用 `slug`（`self-attention`），全局引用写成 `<workspace-id>:<slug>`（`ai:self-attention`）。frontmatter 里的 `id` 一旦确定就不再改；改名只改 `name`。
+- **Evidence、Session、Blindspot、Intervention 的 ID**：使用 ULID。多台设备同时生成也不会冲突，而且按时间有序。
+- **每个结构化文件都有 `schema_version`**（整数）。读取旧版本文件时用迁移函数在内存中升级；只有用户明确执行 `mastery migrate` 时才改写磁盘上的文件。
+- **每条 Evidence 都记录 `criteria_version`**。每个掌握度投影都记录 `rules_version`。
+
+### Concept 示例
+
+```markdown
 ---
-id: concept-self-attention
+schema_version: 1
+id: self-attention
 name: Self-Attention
-prerequisites:
-  - concept-matrix-multiplication
-  - concept-probability
+prerequisites: [matrix-multiplication, probability]
 status: active
 ---
 
 # Self-Attention
 
 ## Description
-
-A mechanism that calculates relationships between tokens in a sequence.
+计算序列中各个 token 之间关系的机制。
 
 ## Learning Objectives
-
-- Explain Query, Key, and Value.
-- Explain how attention scores are calculated.
-- Explain the role of softmax.
-- Interpret attention weights.
+- 解释 Query、Key、Value。
+- 解释注意力分数是怎么算出来的。
+- 解释 softmax 的作用。
 ```
 
-### Example Evidence
+### Evidence 示例
 
-``` json
+```json
 {
-  "id": "evidence-001",
-  "concept_id": "concept-self-attention",
+  "schema_version": 1,
+  "id": "01JD3K8Q8Z6V7X2N4M5P9R0T1W",
+  "concept_id": "self-attention",
+  "session_id": "01JD3K7A2B3C4D5E6F7G8H9J0K",
   "assessment_type": "independent_verification",
   "criteria_version": 1,
   "dimensions": {
-    "recall": 0.9,
-    "understanding": 0.85,
-    "reasoning": 0.8,
-    "application": 0.7,
-    "transfer": 0.6
+    "recall": 0.9, "understanding": 0.85, "reasoning": 0.8,
+    "application": 0.7, "transfer": null
   },
   "confidence": 0.88,
+  "evaluator": { "kind": "agent", "id": "agent-evaluator", "model": "ollama:qwen3-14b" },
   "created_at": "2026-11-19T10:00:00Z"
 }
 ```
 
-The examples are illustrative. A formal file-format specification must
-define required fields, validation, ID rules, and schema versions.
+### Profile（必需，跟着用户走）
 
-## 6. Git and Data Integrity
+**每个用户必须有且只有一个 Profile。** 应用启动时先加载 Profile，再打开 Workspace；没有 Profile 时，首次启动向导会先创建一个。`mastery init` 创建 Workspace 时，会自动把它注册到当前 Profile。
 
-Git is the version-control and synchronization mechanism, not the
-runtime database.
+Profile 通过 `ProfileStore` 端口访问，**上层代码（Supervisor、runtime、UI）不知道 Profile 存在哪里**：
 
-Expected capabilities:
+| 实现 | 状态 | 说明 |
+|---|---|---|
+| `profile-store-git` | 现在 | Profile 是一个本地 Git 仓库，可以推送到用户自选的远程 |
+| `profile-store-cloud` | 将来 | 云服务。**必须在本地保留完整副本**，离线时照常读写，联网后再同步（本地优先原则不变） |
 
--   Review learning history through commits and diffs.
--   Experiment with alternative learning plans or Concept models using
-    branches.
--   Restore previous versions.
--   Synchronize through user-chosen Git hosting, a self-hosted server,
-    local network, or removable storage.
--   Keep working locally when synchronization is unavailable.
+无论哪种实现，Profile 的数据模型都相同，都由 `schema` 包定义，并带 `schema_version`。从 Git 迁移到云服务（或反过来）就是一次导出和导入，不改变数据格式。
 
-### Commit boundaries
+Git 实现的目录结构：
 
-Avoid committing every tiny generated sentence. Prefer meaningful
-transactions such as:
-
--   Concept created or materially revised
--   Assessment session completed
--   Evidence recorded
--   Intervention completed
--   Mastery projection updated
-
-### Conflict and concurrency rules
-
--   Evidence is append-only; each evidence record gets its own file.
--   Agents submit proposed changes through the Knowledge Layer rather
-    than editing authoritative files arbitrarily.
--   Use atomic writes, file locks where needed, and version checks.
--   Derive current mastery from evidence and versioned rules where
-    practical.
--   Provide a conflict-resolution experience for changes that cannot be
-    merged safely.
--   Do not commit SQLite indexes, temporary files, or transient agent
-    runtime state.
-
-Large binary resources should not be treated like frequently changing
-text files. Support ordinary file storage and consider Git LFS or
-user-managed external storage for large assets.
-
-## 7. Offline AI and Optional Connectivity
-
-The application must remain useful without internet access.
-
-### Offline mode
-
--   Read, create, edit, search, and organize local knowledge.
--   View assessment history and mastery state.
--   Run local agents and models when configured and supported by the
-    device.
--   Rebuild indexes locally.
--   Continue recording evidence and learning activity.
-
-### Optional online capabilities
-
-Cloud models, remote research, and Git hosting may be configured as
-optional integrations. They must not be prerequisites for accessing or
-editing core data.
-
-The application should clearly indicate when a task requires a remote
-service. No user data should be sent to a cloud provider without the
-configured integration and applicable user consent.
-
-## 8. Agent and Plugin Responsibilities
-
--   **SuperAgent:** Understands goals, plans work, and coordinates
-    agents and plugins.
--   **Teacher Agent:** Explains concepts and creates learning
-    activities.
--   **Assessment Agent:** Produces assessment tasks based on criteria.
--   **Evaluator Agent:** Evaluates responses and produces structured
-    evaluation results.
--   **Research Agent:** Finds and synthesizes information from available
-    local or configured remote sources.
--   **Planning Agent:** Organizes learning goals and schedules.
-
-### Architectural boundaries
-
--   A plugin provides a capability.
--   A skill provides reusable instructions or a workflow.
--   A tool performs a concrete operation.
--   An agent uses capabilities to complete a task.
--   The SuperAgent coordinates agents and capabilities.
-
-Plugins may submit Evidence or proposed changes. **Only the Knowledge
-Layer / Mastery Core may validate evidence and update authoritative
-mastery state.**
-
-Cordis may be used for TypeScript plugin composition and lifecycle
-management. The Mastery Core must not depend on Cordis APIs. A more
-specialized workflow engine can be introduced later if durable
-pause/resume and complex human approval flows become necessary.
-
-## 9. Mastery Core Responsibilities
-
-The Mastery Core is a domain module, not merely CRUD operations.
-
-Core responsibilities:
-
--   Validate Concept and assessment references.
--   Validate evidence against the relevant criteria version.
--   Preserve historical evidence.
--   Calculate mastery dimensions and confidence.
--   Apply explicit mastery state-transition rules.
--   Update the current mastery projection.
--   Record mastery history.
--   Schedule review when appropriate.
-
-Illustrative operations:
-
-``` text
-submit_evidence()
-evaluate_mastery()
-recalculate_mastery()
-update_mastery_projection()
-schedule_review()
+```text
+MasteryProfile/
+├── profile.yaml          id、显示名称、学习偏好、目标、每周时间预算
+├── workspaces.yaml       已注册的 Workspace：id、名称、远程地址（不写本地路径）
+├── concept-links.yaml    跨 Workspace 的关系，例如 ai:self-attention requires math:matrix-multiplication
+├── learner-model/        Supervisor 维护的画像：学习风格、常见错误模式（敏感数据，默认私有）
+├── skills/               全局 skill，所有 Workspace 都能用
+└── defaults.yaml         插件和模型的默认配置，Workspace 可以覆盖（不含密钥）
 ```
 
-The Mastery Core can be tested and run without starting the agent
-runtime or an LLM.
+```yaml
+# workspaces.yaml（提交，跨设备共享）
+schema_version: 1
+workspaces:
+  - id: ai
+    name: AI
+    remote: git@github.com:me/mastery-ai.git
+  - id: math
+    name: 数学
+    remote: git@gitea.local:me/mastery-math.git
+```
 
-## 10. Initial Technical Direction
+### Device（每台设备一份，不同步）
 
-  Area                         Initial direction
-  ---------------------------- -------------------------------------------------------------
-  Desktop application          Tauri
-  UI                           React + TypeScript
-  Agent / plugin composition   Cordis, behind an adapter boundary
-  Core data                    Markdown, YAML, JSON, and original resource files
-  Version control              Git
-  Local index                  SQLite
-  Local AI                     Optional local model runtime
-  Remote AI                    Optional provider adapters
-  Search                       Filesystem scan + SQLite full-text search initially
-  Vector search                Optional future enhancement
-  Mobile                       Evaluate after desktop workflow and file protocol stabilize
+`~/.mastery/device.yaml` 记录**只属于这台设备**的配置。它不进 Profile，不提交，不同步，因为每台设备的路径、存储空间和网络条件都不一样。
 
-This is a starting direction, not a requirement to adopt every component
-immediately. The file protocol and core domain boundaries should be
-established before committing to a larger infrastructure stack.
+```yaml
+# ~/.mastery/device.yaml
+schema_version: 1
+device:
+  id: 01JD4A0Y3S8M2K7Q5N1V6B9C0D       # ULID，首次启动时生成，之后不变
+  name: 工作笔记本                       # 显示用，可修改
+  platform: macos                        # macos | windows | linux | ios | android
 
-## 11. MVP Priorities
+profile:
+  store: git                             # git | cloud（将来）
+  path: ~/MasteryProfile                 # store 为 git 时使用
+  # endpoint: https://…                  # store 为 cloud 时使用
+  # cache_path: ~/.mastery/profile-cache # cloud 的本地完整副本
 
-### Phase 1 --- Local knowledge foundation
+workspaces:
+  ai:
+    path: ~/Mastery/ai
+    sync: auto                           # auto | manual | on-demand
+  math:
+    path: ~/Mastery/math
+    sync: on-demand                      # 没有 clone 到本机；用到时再拉取
+    checkout: text-only                  # full | text-only（部分克隆，资源文件按需下载）
 
--   Create and open local Workspaces.
--   Define the directory structure and file schemas.
--   Create, edit, and link Concepts.
--   Import and reference local resources.
--   Initialize and manage Git repositories.
--   Build and rebuild the SQLite index.
+sync:
+  on_metered_network: false              # 计费网络下是否同步
+  interval_minutes: 15
 
-### Phase 2 --- Mastery Core
+storage:
+  resources_dir: ~/Mastery/_resources    # 外部资源文件的本地存放位置
+  max_cache_mb: 2048
 
--   Define assessment criteria.
--   Record assessment sessions and Evidence.
--   Implement mastery dimensions and state transitions.
--   Display mastery history.
--   Track blindspots and interventions.
+models:
+  local_runtime: ollama                  # 这台设备上可用的本地模型运行时
+  local_endpoint: http://127.0.0.1:11434
+```
 
-### Phase 3 --- Local intelligence
+规则：
 
--   Add the SuperAgent and a small set of specialist agents.
--   Connect agents to the Mastery Core through explicit interfaces.
--   Support local model providers.
--   Make agent execution inspectable and recoverable.
+- **密钥不写在 `device.yaml` 里。** API key、Git 凭据、云服务 token 都放在系统钥匙串（Keychain、Windows Credential Manager、Secret Service、Android Keystore），`device.yaml` 最多只记录钥匙串里条目的名称。
+- `workspaces.yaml` 里注册了、但 `device.yaml` 里没有的 Workspace，表示“这台设备还没拉取”，UI 里显示为可下载。
+- `device.yaml` 里有、但 Profile 里已经注销的 Workspace，启动时提示用户：保留本地副本，还是删除。
+- `device.yaml` 损坏或丢失时，可以根据 Profile 重新生成（路径需要用户重新确认），不会丢失学习数据。
 
-### Phase 4 --- Optional integrations
+### 全局索引
 
--   Remote model providers.
--   Research integrations.
--   Git hosting synchronization.
--   Additional plugins and mobile clients.
+全局索引（`~/.mastery/global.db`）根据 Profile 里注册的 Workspace，扫描它们的 `mastery/*.yaml` 生成，可以随时删除和重建。
 
-## 12. Key Design Decisions to Preserve
+### 启动顺序
 
-1.  Local files are the source of truth; SQLite is rebuildable.
-2.  Git is optional for basic file access but is a first-class
-    version-control workflow.
-3.  Core learning features must not require an account, server, or
-    internet connection.
-4.  Evidence is append-only and must retain the criteria version used to
-    evaluate it.
-5.  Mastery state is derived from evidence and explicit rules, not
-    directly assigned by an agent.
-6.  Agent runtime and Mastery Core remain independent.
-7.  Cloud AI and remote integrations are optional adapters.
-8.  Keep the initial implementation small; add distributed
-    infrastructure only when a concrete requirement demands it.
+```text
+读取 device.yaml（不存在 → 首次启动向导，生成 device id）
+  → 通过 ProfileStore 加载 Profile（不存在 → 创建或从远程拉取）
+  → 对照 workspaces.yaml 和 device.yaml，确定本机可用的 Workspace
+  → 打开或重建全局索引
+  → 启动 Root Context（Supervisor 等）
+  → 用户打开 Workspace → 创建 Workspace fork
+```
 
-## 13. Open Questions
+## 8. Git 约定
 
--   Should a Workspace always map to exactly one Git repository, or can
-    a repository contain multiple Workspaces?
--   What is the canonical ID and schema-versioning strategy for Concepts
-    and Evidence?
--   How should schema migrations work while preserving compatibility
-    with older files?
--   How should multiple devices and concurrent edits be reconciled?
--   Which local model runtimes and hardware profiles should be supported
-    first?
--   What is the minimum viable mobile experience for a file-based
-    system?
+- **按领域事务提交**，不要每改一句话就提交一次。事务包括：创建或实质修改 Concept、完成一次评测会话、记录证据、完成一次干预、更新掌握度投影。
+- commit message 格式：`mastery: <动作> <对象>`，附带结构化 trailer：
+  ```text
+  mastery: complete assessment self-attention
+
+  Mastery-Session: 01JD3K7A2B3C4D5E6F7G8H9J0K
+  Mastery-Concepts: self-attention
+  ```
+- `.gitattributes` 里的 `mastery/*.yaml merge=mastery-recompute`：发生合并冲突时，不做文本合并，而是根据合并后的全部证据重新计算投影。
+- 不提交 `.mastery/`、临时文件和 agent 运行时状态。
+
+## 9. 不变量（每一条都必须有测试）
+
+1. **删除 `.mastery/` 不丢数据**：执行 `mastery reindex` 后，所有查询结果和删除前一致。
+2. **Evidence 只追加**：任何代码路径都不能修改或删除已有的 Evidence 文件。
+3. **掌握度是确定的**：同一组证据加同一版本的规则，算出的投影逐字节相同（不依赖文件读取顺序和当前时间，时间只通过 Clock 端口传入）。
+4. **Agent 不能直接写掌握度**：投影只能由 Mastery Core 写出。
+5. **未测试不等于 0**：维度值为 `null` 的情况，在计算、存储、展示时都和 0 区分开。
+6. **原子写**：写入中途崩溃，不会留下半截文件（先写临时文件，再 rename）。
+7. **离线可用**：在没有网络、没有配置任何云 provider 的情况下，所有核心功能的测试都能通过。
+8. **Core 不依赖运行时**：`core` 的测试不启动 Cordis，不调用 LLM。
+9. **校验失败不改文件**：Proposal 校验不通过时，磁盘上的文件保持不变。
+10. **未经同意不发数据**：没有配置并获得用户同意时，任何用户数据都不会发送给云端 provider。
+11. **Profile 必需，但离线可用**：运行时必须有 Profile 才能启动；任何 `ProfileStore` 实现（包括将来的云服务）都必须在本地保留完整副本，断网时可以正常读写。
+12. **上层不知道 Profile 存在哪里**：除了 `profile-store-*` 实现包，没有任何代码直接读写 Profile 的文件或调用云服务接口。
+13. **设备配置不外泄**：`device.yaml` 不被提交、不被同步，里面也不出现任何密钥。
+14. **Workspace 的文件仍然自描述**：脱离 Profile，单看一个 Workspace 目录，里面的文件依然可读、可通过 `mastery validate` 校验。Profile 是运行时必需的，但不是读懂数据的前提。
+
+## 10. 技术栈
+
+| 领域 | 选型 |
+|---|---|
+| 语言 | TypeScript（strict）、Rust（只用于 Tauri 插件） |
+| 包管理 | pnpm workspace |
+| 构建 | tsup（库）、Vite（UI） |
+| 测试 | Vitest；属性测试用 fast-check；Rust 用 cargo test |
+| Schema | zod，并导出 JSON Schema |
+| 插件 | Cordis |
+| 桌面 / 移动 | Tauri 2（macOS、Windows、Linux、iOS、Android） |
+| UI | React、TanStack Router / Query、shadcn/ui、Tailwind |
+| 编辑器 | CodeMirror 6 |
+| 概念图 | React Flow |
+| 索引 | SQLite + FTS5（Node 用 better-sqlite3，Tauri 用 rusqlite） |
+| Git | Node 端调用系统 git；Tauri 端用 gitoxide 或 libgit2 |
+| ID | ULID |
+| 本地模型 | Ollama（第一个 provider） |
+| 依赖边界 | dependency-cruiser |
+
+## 11. 开发
+
+```bash
+pnpm install
+pnpm build            # 构建所有包
+pnpm test             # 所有测试
+pnpm lint             # eslint + dependency-cruiser + 类型检查
+pnpm check            # = lint + test，每个任务结束前必须通过
+
+pnpm --filter @mastery/core test        # 只测一个包
+pnpm mastery -- validate fixtures/ws-transformers
+```
+
+## 12. AI 助手工作约定
+
+1. **开始前**：读 `README.md`、`ROADMAP.md` 和要改的包的 `src/index.ts`。确认任务的依赖任务已经完成。
+2. **一次只做一个任务编号**，在单独的分支上做：`task/<编号>-<简短描述>`，例如 `task/2.4-state-machine`。
+3. **先计划后动手**：先给出方案（要改哪些文件、新增哪些测试），等人确认后再写代码。
+4. **先写测试**：Core、规则、schema、store 这些包，先写测试，再写实现。
+5. **不做任务范围外的事**：发现需要做的其他事，加到 ROADMAP 的“待整理”一节，不要顺手做掉。
+6. **不能为了让测试通过而修改不变量、依赖规则或已有测试的预期**。如果确实需要改，停下来说明理由，等人决定，并写一份 ADR。
+7. **结束前**：`pnpm check` 通过；在 ROADMAP 里勾选任务并填写“完成记录”；更新相关包的 README（如果有公共 API 变化）。
+8. **新增依赖要说明理由**。优先使用已经在技术栈里的库。
+9. **公共 API 都要有 TSDoc 注释**；导出类型集中在每个包的 `src/index.ts`。
+
+## 13. 术语对照
+
+| 中文 | 代码中的名称 |
+|---|---|
+| 工作区 | `Workspace` |
+| 概念 | `Concept` |
+| 评测标准 | `Criteria` |
+| 评测会话 | `AssessmentSession` |
+| 证据 | `Evidence` |
+| 掌握度投影 | `MasteryProjection` |
+| 盲区 | `Blindspot` |
+| 干预 | `Intervention` |
+| 变更提案 | `Proposal` |
+| 领域事件 | `DomainEvent` |
+
+## License
+
+待定。
