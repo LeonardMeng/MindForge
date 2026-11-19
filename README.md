@@ -178,6 +178,7 @@ mastery-os/
 schema        ← 不依赖任何内部包
 platform      ← 只依赖 schema（接口 + 所有实现共用的少量代码，同样不用 node:*、不做 I/O）
 platform-memory ← schema, platform（测试用的内存实现）
+platform-node ← schema, platform（Node 实现，CLI 用；可以用 node:*）
 store         ← schema, platform
 core          ← schema, platform（只用端口类型）
 rules-v1      ← schema, core（只用规则接口）

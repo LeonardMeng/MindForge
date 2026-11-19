@@ -6,7 +6,9 @@
 
 export {
   describeFileSystemContract,
+  type FileSystemContractOptions,
   type FileSystemContractSubject,
+  type SymlinkTarget,
 } from './file-system.js';
 export {
   describeClockContract,

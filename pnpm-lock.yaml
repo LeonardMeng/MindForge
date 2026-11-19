@@ -229,6 +229,18 @@ importers:
         specifier: workspace:*
         version: link:../schema
 
+  packages/platform-node:
+    dependencies:
+      '@mastery/platform':
+        specifier: workspace:*
+        version: link:../platform
+      '@mastery/schema':
+        specifier: workspace:*
+        version: link:../schema
+      ulid:
+        specifier: ^3.0.2
+        version: 3.0.2
+
   packages/schema:
     dependencies:
       zod:
@@ -1584,6 +1596,10 @@ packages:
   ufo@1.6.4:
     resolution: {integrity: sha512-JFNbkD1Svwe0KvGi8GOeLcP4kAWQ609twvCdcHxq1oSL8svv39ZuSvajcD8B+5D0eL4+s1Is2D/O6KN3qcTeRA==}
 
+  ulid@3.0.2:
+    resolution: {integrity: sha512-yu26mwteFYzBAot7KVMqFGCVpsF6g8wXfJzQUHvu1no3+rRRSFcSV2nKeYvNPLD2J4b08jYBDhHUjeH0ygIl9w==}
+    hasBin: true
+
   undici-types@8.9.0:
     resolution: {integrity: sha512-KTDyRTYX8sWmKXAikPHHSyc63CRPETMctyjKFupcC6OBLXT3xsN0e9aF7m+mIXutFWpUXuedtowG7iLOzp0kQg==}
 
@@ -2889,6 +2905,8 @@ snapshots:
   typescript@5.9.3: {}
 
   ufo@1.6.4: {}
+
+  ulid@3.0.2: {}
 
   undici-types@8.9.0: {}
 

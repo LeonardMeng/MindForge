@@ -54,6 +54,11 @@ export default {
       ['platform'],
       'platform-memory ← schema, platform（测试用的内存实现）',
     ),
+    allowlist(
+      'platform-node',
+      ['platform'],
+      'platform-node ← schema, platform（Node 实现，CLI 用）',
+    ),
     allowlist('store', ['platform'], 'store ← schema, platform'),
     allowlist('core', ['platform'], 'core ← schema, platform'),
     allowlist('rules-v1', ['core'], 'rules-v1 ← schema, core'),

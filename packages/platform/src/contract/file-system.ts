@@ -12,6 +12,27 @@ export interface FileSystemContractSubject {
    * 返回它的路径。实现方式由各平台决定（内存实现模拟崩溃，Node 实现直接写文件并改修改时间）。
    */
   leaveTempFile(dir: string, ageMs: number): Promise<string>;
+  /**
+   * 在 `path` 创建一个符号链接（只有支持符号链接的实现需要提供）：
+   * - `{ inside: p }`：指向根目录里的 `p`（`directory: true` 表示指向目录）；
+   * - `'outside-dir'`：指向根目录外面的一个目录，里面有 `secret.txt`；
+   * - `'outside-file'`：指向根目录外面的一个文件；
+   * - `'broken'`：指向一个不存在的位置。
+   */
+  symlink?(path: string, target: SymlinkTarget): Promise<void>;
+}
+
+/** {@link FileSystemContractSubject.symlink} 的目标。 */
+export type SymlinkTarget =
+  | { readonly inside: string; readonly directory?: boolean }
+  | 'outside-dir'
+  | 'outside-file'
+  | 'broken';
+
+/** 契约测试的选项：实现支持哪些能力。 */
+export interface FileSystemContractOptions {
+  /** 是否支持符号链接（内存实现不支持；Node、Tauri 支持）。支持时必须提供 `symlink`。 */
+  readonly symlinks?: boolean;
 }
 
 const encoder = new TextEncoder();
@@ -25,6 +46,7 @@ const encoder = new TextEncoder();
 export function describeFileSystemContract(
   name: string,
   create: () => FileSystemContractSubject | Promise<FileSystemContractSubject>,
+  options: FileSystemContractOptions = {},
 ): void {
   describe(`FileSystem contract: ${name}`, () => {
     let subject: FileSystemContractSubject;
@@ -365,15 +387,29 @@ export function describeFileSystemContract(
         );
       }
 
-      it('reports created, modified and removed files', async () => {
+      it('reports created, changed and removed files', async () => {
         await fs.mkdir('dir');
         const events: WatchEvent[] = [];
         const unwatch = fs.watch('', (event) => events.push(event));
         try {
           await fs.writeTextFile('dir/a.md', 'x');
           await waitForEvent(events, 'created', 'dir/a.md');
+          // 覆盖已存在的文件：modified 或 created 都算（原子写是“临时文件 + 改名”，
+          // Node 等实现分不清）。使用者把两者都当作“文件有了新内容”。
+          events.length = 0;
           await fs.writeTextFile('dir/a.md', 'y');
-          await waitForEvent(events, 'modified', 'dir/a.md');
+          await vi.waitFor(
+            () => {
+              expect(
+                events.some(
+                  (event) =>
+                    event.path === 'dir/a.md' &&
+                    (event.kind === 'modified' || event.kind === 'created'),
+                ),
+              ).toBe(true);
+            },
+            { timeout: 5000, interval: 20 },
+          );
           await fs.remove('dir/a.md');
           await waitForEvent(events, 'removed', 'dir/a.md');
         } finally {
@@ -414,6 +450,67 @@ export function describeFileSystemContract(
           () => fs.watch('missing', () => undefined),
           'platform.not_found',
         );
+      });
+    });
+
+    describe.skipIf(options.symlinks !== true)('symbolic links', () => {
+      /** 创建符号链接；支持符号链接的实现必须提供 symlink。 */
+      async function link(path: string, target: SymlinkTarget): Promise<void> {
+        if (subject.symlink === undefined) {
+          throw new Error('symlinks: true requires subject.symlink');
+        }
+        await subject.symlink(path, target);
+      }
+
+      it('follows a link to a file inside the root', async () => {
+        await fs.writeTextFile('real.md', 'content');
+        await link('link.md', { inside: 'real.md' });
+        expect(await fs.readTextFile('link.md')).toBe('content');
+        expect(await fs.list('')).toEqual([
+          { name: 'link.md', kind: 'file' },
+          { name: 'real.md', kind: 'file' },
+        ]);
+      });
+
+      it('follows a link to a directory inside the root', async () => {
+        await fs.mkdir('real');
+        await fs.writeTextFile('real/a.md', 'x');
+        await link('linked', { inside: 'real', directory: true });
+        expect(await fs.list('linked')).toEqual([
+          { name: 'a.md', kind: 'file' },
+        ]);
+        expect(await fs.readTextFile('linked/a.md')).toBe('x');
+        expect(await fs.stat('linked')).toMatchObject({ kind: 'directory' });
+      });
+
+      it('skips broken links', async () => {
+        await link('broken.md', 'broken');
+        expect(await fs.list('')).toEqual([]);
+        expect(await fs.stat('broken.md')).toBeNull();
+      });
+
+      it('refuses links that point outside the root (platform.outside_root)', async () => {
+        await link('out', 'outside-dir');
+        await link('evil.md', 'outside-file');
+        const code = 'platform.outside_root';
+        // 不在 list 里出现，也不能通过它们读、写、列出或查看根目录外面的东西。
+        expect(await fs.list('')).toEqual([]);
+        await expectPlatformError(fs.readTextFile('evil.md'), code);
+        await expectPlatformError(fs.readFile('out/secret.txt'), code);
+        await expectPlatformError(fs.readTextFile('out/secret.txt'), code);
+        await expectPlatformError(fs.writeTextFile('out/new.md', 'x'), code);
+        await expectPlatformError(fs.writeTextFile('evil.md', 'x'), code);
+        await expectPlatformError(fs.list('out'), code);
+        await expectPlatformError(fs.stat('out'), code);
+        await expectPlatformError(fs.stat('out/secret.txt'), code);
+        await expectPlatformError(fs.mkdir('out/sub'), code);
+        await expectPlatformError(
+          fs.rename('out/secret.txt', 'stolen.txt'),
+          code,
+        );
+        await expectPlatformError(fs.remove('out/secret.txt'), code);
+        await expectPlatformError(fs.cleanupTempFiles('out'), code);
+        expectPlatformErrorSync(() => fs.watch('out', () => undefined), code);
       });
     });
 

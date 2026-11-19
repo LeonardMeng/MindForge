@@ -26,6 +26,8 @@ const MESSAGES = {
     `permission denied for "${text(p.path)}"`,
   'platform.lock_timeout': (p: PlatformErrorParams) =>
     `timed out after ${text(p.timeoutMs)} ms waiting for lock "${text(p.name)}"`,
+  'platform.outside_root': (p: PlatformErrorParams) =>
+    `"${text(p.path)}" resolves to a location outside the root directory (through a symbolic link); access is refused`,
   'platform.io': (p: PlatformErrorParams) =>
     `I/O error at "${text(p.path)}": ${text(p.detail)}`,
 } as const;
