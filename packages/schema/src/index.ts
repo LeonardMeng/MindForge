@@ -33,6 +33,19 @@ export {
   type Dimension,
 } from './dimensions.js';
 export { WorkspaceConfig } from './workspace.js';
+export {
+  ConceptLinkRelation,
+  ConceptLinks,
+  ProfileConfig,
+  ProfileDefaults,
+  WorkspaceRegistry,
+} from './profile.js';
+export {
+  DeviceConfig,
+  DevicePlatform,
+  WorkspaceCheckout,
+  WorkspaceSync,
+} from './device.js';
 export { ProjectConfig, ProjectStatus } from './project.js';
 export {
   ConceptFrontmatter,

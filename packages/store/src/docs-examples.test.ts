@@ -4,7 +4,7 @@ import { validateFile, type FileKind } from '@mastery/schema';
 import { describe, expect, it } from 'vitest';
 
 import { splitFrontmatter } from './frontmatter.js';
-import { docExamples } from './test-helpers.js';
+import { docExamples, readmeYamlExamples } from './test-helpers.js';
 import { parseYaml } from './yaml.js';
 
 /** 每个说明页的示例是哪种文件。 */
@@ -16,7 +16,18 @@ const KIND_OF_DOC: Readonly<Record<string, FileKind>> = {
   'mastery.md': 'mastery-projection',
   'blindspot.md': 'blindspot',
   'intervention.md': 'intervention',
+  'profile.md': 'profile',
+  'workspaces.md': 'workspace-registry',
+  'concept-links.md': 'concept-links',
+  'defaults.md': 'profile-defaults',
+  'device.md': 'device',
 };
+
+/** README 里的 YAML 示例：第一行注释写着是哪个文件。 */
+const KIND_OF_README_EXAMPLE: readonly (readonly [string, FileKind])[] = [
+  ['# workspaces.yaml', 'workspace-registry'],
+  ['# ~/.mastery/device.yaml', 'device'],
+];
 
 describe('docs/protocol YAML examples', () => {
   const examples = docExamples();
@@ -45,4 +56,28 @@ describe('docs/protocol YAML examples', () => {
       expect(result.success ? [] : result.issues).toEqual([]);
     },
   );
+});
+
+describe('README.md YAML examples', () => {
+  const examples = readmeYamlExamples().flatMap((text) => {
+    const firstLine = text.split('\n')[0] ?? '';
+    const known = KIND_OF_README_EXAMPLE.find(([header]) =>
+      firstLine.startsWith(header),
+    );
+    return known === undefined ? [] : [[known[0], known[1], text] as const];
+  });
+
+  it('finds every example that names its file', () => {
+    expect(examples.map(([header]) => header)).toEqual(
+      KIND_OF_README_EXAMPLE.map(([header]) => header),
+    );
+  });
+
+  it.each(examples)('%s is valid', (_header, kind, text) => {
+    const parsed = parseYaml(text);
+    expect(parsed.ok ? [] : parsed.issues).toEqual([]);
+    if (!parsed.ok) return;
+    const result = validateFile(kind, parsed.data);
+    expect(result.success ? [] : result.issues).toEqual([]);
+  });
 });

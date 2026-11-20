@@ -45,3 +45,17 @@ export function docExample(file: string, lang: 'yaml' | 'markdown'): string {
   }
   return example.text;
 }
+
+const README = import.meta.glob<string>('../../../README.md', {
+  query: '?raw',
+  import: 'default',
+  eager: true,
+});
+
+/** 仓库 README.md 里所有 `yaml` 代码块的内容，按出现的顺序。 */
+export function readmeYamlExamples(): string[] {
+  const content = Object.values(README)[0] ?? '';
+  return [...content.matchAll(/^```yaml\n([\s\S]*?)^```$/gm)].map(
+    (match) => match[1] ?? '',
+  );
+}

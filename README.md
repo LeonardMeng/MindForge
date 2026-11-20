@@ -354,10 +354,11 @@ workspaces:
   ai:
     path: ~/Mastery/ai
     sync: auto                           # auto | manual | on-demand
+    checkout: full                       # full | text-only（部分克隆，资源文件按需下载）
   math:
     path: ~/Mastery/math
     sync: on-demand                      # 没有 clone 到本机；用到时再拉取
-    checkout: text-only                  # full | text-only（部分克隆，资源文件按需下载）
+    checkout: text-only
 
 sync:
   on_metered_network: false              # 计费网络下是否同步

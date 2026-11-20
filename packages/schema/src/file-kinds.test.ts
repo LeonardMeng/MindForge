@@ -25,6 +25,11 @@ describe('FILE_KINDS', () => {
       'blindspot',
       'intervention',
       'proposal',
+      'profile',
+      'workspace-registry',
+      'concept-links',
+      'profile-defaults',
+      'device',
     ]);
   });
 
@@ -115,6 +120,6 @@ describe('validateFile', () => {
 
   it('accepts every kind name as a FileKind', () => {
     const kinds: FileKind[] = [...FILE_KIND_NAMES];
-    expect(kinds).toHaveLength(11);
+    expect(kinds).toHaveLength(16);
   });
 });

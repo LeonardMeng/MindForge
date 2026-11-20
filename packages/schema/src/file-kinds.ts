@@ -3,10 +3,17 @@ import type { z } from 'zod';
 import { Blindspot } from './blindspot.js';
 import { ConceptFrontmatter } from './concept.js';
 import { Criteria } from './criteria.js';
+import { DeviceConfig } from './device.js';
 import { validate, type SchemaIssue } from './errors.js';
 import { Evidence } from './evidence.js';
 import { Intervention } from './intervention.js';
 import { MasteryHistoryEntry, MasteryProjection } from './mastery.js';
+import {
+  ConceptLinks,
+  ProfileConfig,
+  ProfileDefaults,
+  WorkspaceRegistry,
+} from './profile.js';
 import { createMigrator, type MigrationTable } from './migration.js';
 import { ProjectConfig } from './project.js';
 import { Proposal } from './proposal.js';
@@ -114,6 +121,36 @@ export const FILE_KINDS = {
     Proposal,
     'Proposal (storage to be decided in 4.2 / 6.8)',
     'A set of changes submitted by an agent or the user to the knowledge service.',
+  ),
+  profile: entry(
+    'profile',
+    ProfileConfig,
+    '<profile>/profile.yaml',
+    "The user's profile: display name, language and weekly time budget.",
+  ),
+  'workspace-registry': entry(
+    'workspace-registry',
+    WorkspaceRegistry,
+    '<profile>/workspaces.yaml',
+    'Workspaces registered in the profile, with their Git remotes (no local paths).',
+  ),
+  'concept-links': entry(
+    'concept-links',
+    ConceptLinks,
+    '<profile>/concept-links.yaml',
+    'Relations between concepts in different workspaces.',
+  ),
+  'profile-defaults': entry(
+    'profile-defaults',
+    ProfileDefaults,
+    '<profile>/defaults.yaml',
+    'Default plugin and model settings; a workspace can override them. No secrets.',
+  ),
+  device: entry(
+    'device',
+    DeviceConfig,
+    '~/.mastery/device.yaml',
+    'Settings that belong to one device. Never committed or synced; no secrets.',
   ),
 } as const satisfies Record<FileKind, FileKindEntry>;
 

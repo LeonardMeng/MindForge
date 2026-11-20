@@ -7,6 +7,7 @@ import {
 } from './constraints.js';
 import { pushIssue } from './errors.js';
 import { isPlainObject, NonEmptyString } from './fields.js';
+import { noSecrets } from './secrets.js';
 import { schemaVersionOf } from './versions.js';
 import { Slug } from './ids.js';
 
@@ -16,7 +17,7 @@ import { Slug } from './ids.js';
  * 只校验这一层的结构，配置对象的内容由各个插件自己的 schema 校验（4.3），这里原样保留。
  * 没有配置的插件写 `{}`，不能写 `null`；同一个插件不能同时以 `x` 和 `~x` 出现。
  */
-const Plugins = z
+export const Plugins = z
   .record(z.string(), z.unknown())
   .check((ctx) => {
     const names = Object.keys(ctx.value);
@@ -58,14 +59,18 @@ const Plugins = z
  * `workspace.yaml`：一个 Workspace 的配置。
  *
  * SuperAgent 也是普通插件（比如 `superagent-default`），写在 `plugins` 里，没有单独的字段。
+ *
+ * 这个文件会提交到 Git、跟着仓库分享，所以插件配置里不能有密钥（1.11，见 `secrets.ts`）。
  */
-export const WorkspaceConfig = z.strictObject({
-  schema_version: schemaVersionOf('workspace'),
-  /** Workspace 的 id，也是全局引用 `<id>:<slug>` 的前缀。 */
-  id: Slug,
-  name: NonEmptyString,
-  description: NonEmptyString.optional(),
-  plugins: Plugins,
-});
+export const WorkspaceConfig = noSecrets(
+  z.strictObject({
+    schema_version: schemaVersionOf('workspace'),
+    /** Workspace 的 id，也是全局引用 `<id>:<slug>` 的前缀。 */
+    id: Slug,
+    name: NonEmptyString,
+    description: NonEmptyString.optional(),
+    plugins: Plugins,
+  }),
+);
 /** `workspace.yaml` 的内容。 */
 export type WorkspaceConfig = z.infer<typeof WorkspaceConfig>;

@@ -32,6 +32,31 @@ export const PositiveInteger = z
   })
   .meta(POSITIVE_INTEGER_META);
 
+/**
+ * 范围内的整数。不是整数报 `field.not_integer`，超出范围报 `field.out_of_range`。
+ *
+ * @param range - 允许的最小值和最大值（含）
+ */
+export function integerIn(range: {
+  readonly min: number;
+  readonly max: number;
+}) {
+  return z
+    .number()
+    .check((ctx) => {
+      if (!Number.isInteger(ctx.value)) {
+        pushIssue(ctx, 'field.not_integer', { value: ctx.value });
+      } else if (ctx.value < range.min || ctx.value > range.max) {
+        pushIssue(ctx, 'field.out_of_range', { value: ctx.value, ...range });
+      }
+    })
+    .meta({
+      type: 'integer',
+      minimum: range.min,
+      ...(range.max === Number.MAX_SAFE_INTEGER ? {} : { maximum: range.max }),
+    });
+}
+
 /** `0..1` 的有限数，用于置信度、阈值等。 */
 export const UnitInterval = z
   .number()
@@ -66,7 +91,7 @@ function typeName(value: unknown): string {
  * `unrecognized_keys` 不会停下，后面的 schema 会把同一个多余字段再报一次；
  * 自定义错误则会让 pipe 停下。
  */
-function forwardIssues(
+export function forwardIssues(
   ctx: z.core.ParsePayload<unknown>,
   issues: readonly z.core.$ZodIssue[],
   prefix: readonly (string | number)[],
