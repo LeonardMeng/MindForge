@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { isPlatformError } from '../errors.js';
 import type { FileSystem, WatchEvent } from '../ports.js';
 import { expectPlatformError, expectPlatformErrorSync } from './helpers.js';
 
@@ -147,6 +148,85 @@ export function describeFileSystemContract(
         await fs.writeTextFile('dir/a.md', 'y');
         expect(await fs.list('dir')).toEqual([{ name: 'a.md', kind: 'file' }]);
         expect(await fs.cleanupTempFiles('', { olderThanMs: 0 })).toEqual([]);
+      });
+    });
+
+    describe('exclusive create', () => {
+      it('creates a new file with the given content', async () => {
+        await fs.createTextFile('a.md', '\uFEFFh\u00e9\r\n');
+        await fs.createFile('b.bin', new Uint8Array([0, 255]));
+        expect(await fs.readTextFile('a.md')).toBe('\uFEFFh\u00e9\r\n');
+        expect([...(await fs.readFile('b.bin'))]).toEqual([0, 255]);
+      });
+
+      it('refuses an existing file or directory and leaves it unchanged', async () => {
+        await fs.writeTextFile('a.md', 'old');
+        await fs.mkdir('dir');
+        const code = 'platform.already_exists';
+        await expectPlatformError(fs.createTextFile('a.md', 'new'), code);
+        await expectPlatformError(
+          fs.createFile('a.md', new Uint8Array()),
+          code,
+        );
+        await expectPlatformError(fs.createTextFile('dir', 'new'), code);
+        await expectPlatformError(fs.createTextFile('', 'new'), code);
+        expect(await fs.readTextFile('a.md')).toBe('old');
+        expect(await fs.list('')).toEqual([
+          { name: 'a.md', kind: 'file' },
+          { name: 'dir', kind: 'directory' },
+        ]);
+      });
+
+      it('lets exactly one of two concurrent creates win', async () => {
+        const results = await Promise.allSettled([
+          fs.createTextFile('a.md', 'first'),
+          fs.createTextFile('a.md', 'second'),
+        ]);
+        const won = results.flatMap((r, i) =>
+          r.status === 'fulfilled' ? [i === 0 ? 'first' : 'second'] : [],
+        );
+        expect(won).toHaveLength(1);
+        const lost = results.find((r) => r.status === 'rejected');
+        expect(isPlatformError(lost?.reason, 'platform.already_exists')).toBe(
+          true,
+        );
+        expect(await fs.readTextFile('a.md')).toBe(won[0]);
+      });
+
+      it('requires the parent directory, and cannot create below a file', async () => {
+        await expectPlatformError(
+          fs.createTextFile('a/b.md', 'x'),
+          'platform.not_found',
+        );
+        await fs.writeTextFile('a.md', 'x');
+        await expectPlatformError(
+          fs.createTextFile('a.md/b.md', 'x'),
+          'platform.not_a_directory',
+        );
+      });
+
+      it('leaves no temp file behind, whether it succeeds or is refused', async () => {
+        await fs.mkdir('dir');
+        await fs.createTextFile('dir/a.md', 'x');
+        await expectPlatformError(
+          fs.createTextFile('dir/a.md', 'y'),
+          'platform.already_exists',
+        );
+        expect(await fs.list('dir')).toEqual([{ name: 'a.md', kind: 'file' }]);
+        expect(await fs.cleanupTempFiles('', { olderThanMs: 0 })).toEqual([]);
+      });
+
+      it('rejects invalid paths', async () => {
+        for (const path of ['../x', '/abs', 'a\\b', 'CON.md', 'a?.md']) {
+          await expectPlatformError(
+            fs.createTextFile(path, ''),
+            'platform.invalid_path',
+          );
+          await expectPlatformError(
+            fs.createFile(path, new Uint8Array()),
+            'platform.invalid_path',
+          );
+        }
       });
     });
 
@@ -511,6 +591,13 @@ export function describeFileSystemContract(
         await expectPlatformError(fs.remove('out/secret.txt'), code);
         await expectPlatformError(fs.cleanupTempFiles('out'), code);
         expectPlatformErrorSync(() => fs.watch('out', () => undefined), code);
+      });
+      it('refuses to create a file through a link that points outside the root', async () => {
+        await link('out', 'outside-dir');
+        await expectPlatformError(
+          fs.createTextFile('out/new.md', 'x'),
+          'platform.outside_root',
+        );
       });
     });
 

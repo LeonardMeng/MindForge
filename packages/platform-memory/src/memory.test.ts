@@ -66,6 +66,17 @@ describe('MemoryFileSystem crash simulation', () => {
     expect(removed[0]).toMatch(/^\.mastery-tmp-/);
   });
 
+  it('creates nothing when an exclusive create crashes half way', async () => {
+    const fs = new MemoryFileSystem();
+    fs.crashOnNextWrite();
+    await expect(fs.createTextFile('a.md', 'content')).rejects.toBeInstanceOf(
+      SimulatedCrashError,
+    );
+    expect(await fs.stat('a.md')).toBeNull();
+    await fs.createTextFile('a.md', 'again');
+    expect(await fs.readTextFile('a.md')).toBe('again');
+  });
+
   it('only crashes the next write', async () => {
     const fs = new MemoryFileSystem();
     fs.crashOnNextWrite();

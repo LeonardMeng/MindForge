@@ -139,6 +139,18 @@ export class MemoryFileSystem implements FileSystem {
     });
   }
 
+  createFile(path: string, data: Uint8Array): Promise<void> {
+    return run(() => {
+      this.#create(normalizePath(path), data.slice());
+    });
+  }
+
+  createTextFile(path: string, text: string): Promise<void> {
+    return run(() => {
+      this.#create(normalizePath(path), encoder.encode(text));
+    });
+  }
+
   rename(from: string, to: string): Promise<void> {
     return run(() => {
       const source = normalizePath(from);
@@ -363,6 +375,14 @@ export class MemoryFileSystem implements FileSystem {
     }
     this.#nodes.set(path, { kind: 'file', data, modifiedAtMs: this.#nowMs() });
     this.#emit(existing === undefined ? 'created' : 'modified', path);
+  }
+
+  /** 独占地创建：目标已存在时报 `platform.already_exists`；其余同 {@link MemoryFileSystem.#write}。 */
+  #create(path: string, data: Uint8Array): void {
+    if (path === '' || this.#nodes.has(path)) {
+      throw new PlatformError('platform.already_exists', { path });
+    }
+    this.#write(path, data);
   }
 
   #createDirectory(path: string): void {

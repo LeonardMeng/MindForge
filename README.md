@@ -194,6 +194,8 @@ ui-*          ← schema, rpc, ui-kit（永远不 import runtime、core、platfo
 
 **所有包都可以依赖 `schema`**，包括 `ui-*`（6.6 的编辑器要在保存前直接调用 schema 的校验函数）。上图中其他包的依赖列表里没有逐一写出 schema。
 
+**测试文件（`*.test.ts`）可以依赖 `platform-memory`**，普通源文件不行。`ui-*` 和 `agents/*` 除外：它们本来就不能用 platform，测试也一样。
+
 没有出现在上图里的包，暂时只受下面“硬性禁止”的约束；新建包时要按第 12 节第 10 条补上它的依赖列表。
 
 硬性禁止：
@@ -429,6 +431,7 @@ models:
 | 构建 | tsup（库）、Vite（UI） |
 | 测试 | Vitest；属性测试用 fast-check；Rust 用 cargo test |
 | Schema | zod，并导出 JSON Schema |
+| YAML | yaml（eemeli/yaml，只在 store 里用；YAML 1.2 core schema，严格模式：不允许锚点、别名、标签、重复的键） |
 | 插件 | Cordis |
 | 桌面 / 移动 | Tauri 2（macOS、Windows、Linux、iOS、Android） |
 | UI | React、TanStack Router / Query、shadcn/ui、Tailwind |

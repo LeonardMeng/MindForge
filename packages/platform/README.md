@@ -8,7 +8,7 @@ Platform 端口：所有 I/O 都通过这里的接口（ADR-0003）。实现有 
 
 | 接口 | 要点 |
 |---|---|
-| `FileSystem` | 以一个根目录为准的相对路径；`writeFile` / `writeTextFile` **原子写入**；`list` 只列一层、按名字排序、不返回临时文件；`stat` 对不存在的路径返回 `null`；`watch` 异步送达事件（只是提示，见下）；`cleanupTempFiles` 只删 10 分钟以前的临时文件 |
+| `FileSystem` | 以一个根目录为准的相对路径；`writeFile` / `writeTextFile` **原子写入**；`createFile` / `createTextFile` **原子、独占地创建**（目标已存在时报 `platform.already_exists`，并发时只有一个成功；Evidence 这类只能追加的文件用它）；`list` 只列一层、按名字排序、不返回临时文件；`stat` 对不存在的路径返回 `null`；`watch` 异步送达事件（只是提示，见下）；`cleanupTempFiles` 只删 10 分钟以前的临时文件 |
 | `Clock` | `now()` 返回 `IsoDateTime`（UTC，精确到秒） |
 | `IdGenerator` | `ulid()`，同一个生成器严格递增 |
 | `Lock` | 有名字的互斥锁，`acquire(name, { timeoutMs })`，超时报 `platform.lock_timeout` |

@@ -21,13 +21,17 @@ const thirdParty = (pattern) =>
 /**
  * 白名单（README 第 6 节依赖图）：from 包只能依赖自己和 allowed 里的内部包。
  * schema 对所有包开放（README 第 6 节的补充说明），这里统一加上。
+ * platform-memory 也放进来，但只有测试文件能用它，由 platform-memory-only-in-tests 检查。
  */
 const allowlist = (pkg, allowed, readme) => ({
   name: `allowlist:${pkg}`,
   severity: 'error',
   comment: `README 第 6 节依赖图：${readme}`,
   from: { path: src(pkg) },
-  to: { path: ANY_INTERNAL, pathNot: pkgs(pkg, 'schema', ...allowed) },
+  to: {
+    path: ANY_INTERNAL,
+    pathNot: pkgs(pkg, 'schema', 'platform-memory', ...allowed),
+  },
 });
 
 /** 只能引用类型（README 第 6 节里写着“只用…类型”的依赖）：必须是 `import type`。 */
@@ -99,6 +103,18 @@ export default {
         'README 第 6 节依赖图：ui-* ← schema, rpc, ui-kit（不能 import runtime、core、platform）',
       from: { path: '^packages/(ui-[^/]+)/src/' },
       to: { path: ANY_INTERNAL, pathNot: '^packages/($1|schema|rpc|ui-kit)/' },
+    },
+
+    {
+      name: 'platform-memory-only-in-tests',
+      severity: 'error',
+      comment:
+        'README 第 6 节依赖图的补充说明：platform-memory 是测试用的实现，只有测试文件（*.test.ts）能 import 它；ui-* 和 agents/* 的测试也不能（它们本来就不能用 platform）',
+      from: {
+        path: ANY_SRC,
+        pathNot: ['\\.test\\.ts$', src('platform-memory')],
+      },
+      to: { path: pkgs('platform-memory') },
     },
 
     // ── 只能引用类型：README 第 6 节依赖图里标注“类型”的依赖 ────────────────
