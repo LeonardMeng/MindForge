@@ -31,7 +31,7 @@
 ## 当前状态
 
 - **当前里程碑：** M1
-- **下一个任务：** 2.4（🏁 M1 检查点和 M2 并行进行，见下面 M1 检查点的说明）
+- **下一个任务：** 2.5（🏁 M1 检查点和 M2 并行进行，见下面 M1 检查点的说明）
 - **阻塞项：** 无
 
 ---
@@ -214,7 +214,7 @@
 - **验收**：用表格驱动测试覆盖至少 15 个场景；用 fast-check 做属性测试：只有 `null` 的维度结果仍是 `null`；分数在 0..1 之间；证据顺序打乱不改变结果。
 - **不做**：状态迁移。
 
-### [ ] 2.4 🔍 规则 v1：状态机
+### [x] 2.4 🔍 规则 v1：状态机
 - **包**：`rules-v1`
 - **依赖**：2.3
 - **产出**：六个状态之间的迁移条件，例如 `provisional_mastery → mastered` 要求至少两次独立验证、其中一次 transfer 达到阈值、两次间隔至少 N 天；每次判定都生成 `explanation`（为什么是这个状态，还差什么）。
@@ -632,9 +632,13 @@
 - （来自 2.2，4.2 决定）`plugin-core` 的白名单（README 第 6 节）还没有 `core-store`；4.2 用 `createStoreRepository` 接上 Core 时要补上（或者改由 CLI / runtime 注入 Repository）。另外，README 第 6 节硬性禁止第 1 条（不能 import cordis）的包列表里没有 `core-store`，它的白名单也不允许 cordis 以外的内部包，但 cordis 是第三方包，白名单挡不住；要不要把 `core-store` 加进第 1 条，由人决定。
 - （来自 2.2）`createStoreRepository` 的 `appendHistory`：store 报的“读取之后被改过”（两个进程同时创建 history 文件）和非法的 Concept slug 都归为 `unreadable`。2.5 如果需要区分（比如重试），再给 `AppendHistoryResult` 加原因。
 - （来自 2.3）“打乱证据顺序结果不变”的属性测试，在去掉排序后仍然通过（验证过）：输出舍入到 4 位小数，求和顺序带来的最后一位差异几乎总被舍入抹掉。排序保证的是恰好落在舍入边界上的情况，没有测试能稳定地覆盖到。可以考虑导出一个不舍入的内部函数专门测它，由人决定。
-- （来自 2.3，2.4 处理）ADR 模板规定“已定的 ADR 不改写内容”，但 ROADMAP 计划 ADR-0007 在 2.3 和 2.4 两次决定。2.4 的状态机阈值是追加进 ADR-0007，还是另写一份 ADR，到 2.4 再定。
-- （来自 2.3，2.4 处理）总置信度只平均**有分数**的维度。criteria 考察、但还没有任何证据的维度要不要拉低置信度或影响状态，属于 2.4（aggregate 不读 criteria）。
+- （来自 2.3，2.4 已处理：状态机追加进 ADR-0007，ADR 的状态里写明分两次写成）ADR 模板规定“已定的 ADR 不改写内容”，但 ROADMAP 计划 ADR-0007 在 2.3 和 2.4 两次决定。2.4 的状态机阈值是追加进 ADR-0007，还是另写一份 ADR，到 2.4 再定。
+- （来自 2.3，2.4 已处理：没测过的考察维度不影响置信度，但让 P 不成立，explanation 列为 `missing.untested`）总置信度只平均**有分数**的维度。criteria 考察、但还没有任何证据的维度要不要拉低置信度或影响状态，属于 2.4（aggregate 不读 criteria）。
 - （来自 2.3，2.5 / 2.8 处理）生产环境的 RulesRegistry（注册 `rulesV1`）由谁组装：CLI（2.8，README 第 6 节 `cli` 的依赖要加上 `core`、`core-store`、`rules-v1`）还是 `plugin-core`（4.2）。
+- （来自 2.4，**2.7 必须先确认或修改再实现**）按时间的 `mastered → needs_review` 不能写进保存的投影：它取决于今天的日期，会破坏不变量 3 和 merge driver 的重算。建议的方向：保存的投影只包含由证据决定的状态，加上一个根据证据确定地算出的 `review_due_at`；“到期需要复习”在读取投影时推导（status、UI、Supervisor）。这样保存的状态里，`needs_review` 只来自证据（从 `mastered` 退步）。
+- （来自 2.4）状态机每一步都重新聚合前面的全部证据，代价随证据数量平方增长。现在的数量下没有问题；证据很多时可以改成增量聚合（结果必须逐字节相同）。
+- （来自 2.4）“进入 `mastered` 要求这一步的证据是通过的独立验证”也影响第一次掌握：两次相隔 7 天的通过的独立验证之后，如果 P 是靠一次练习才恢复的，状态停在 `provisional_mastery`，等下一次通过的独立验证。M5 检查点复审时看是否合理。
+- （来自 2.4）criteria 升级版本后，旧版本的独立验证不再算通过，重放的结果可能从 `mastered` 直接变成 `learning`（不是 `needs_review`），直到按新标准重新验证。2.5 的 `cause: rules` 和 M5 检查点时看这是否是想要的。
 
 
 ## 完成记录
@@ -668,3 +672,4 @@
 | 2026-11-20 | 2.1 | `task/2.1-core-ports` | 新建 `@mastery/core`（只依赖 schema 和 platform 的类型）：`Ports`（`Repository`、`Clock`、`EventSink`、`RulesRegistry`）、`Result<T, E>` 和 `ok()` / `err()`、领域错误（普通数据，消息只从消息表生成，类型名和 ROADMAP 一致）、领域事件（`evidence/submitted`、`mastery/changed`）。`Repository` 只有 2.2 和 2.5 需要的操作；`listEvidence` 返回 `{ items, tooNew, unreadable }`，不会悄悄丢掉用不了的证据。`EventSink` 约定：只在写入成功后发出；事件可能丢失，使用者要能根据文件对账；`publish()` 把监听者的错误交给 `reportError`，不影响操作结果。`@mastery/core/testing`（内存 Repository、事件记录器、规则表）和 `@mastery/core/contract`（Repository 契约测试，内存实现已通过，`createStoreRepository` 在 2.2 也要通过）。`tests/dependency-rules.test.ts` 加样例：core 不能 import cordis、`node:*`、store，也不能 import platform 的值。M1 检查点经人确认和 M2 并行。没有改已有的断言。共 1303 个测试（16 个按平台、实现或能力跳过） | 无 |
 | 2026-11-20 | 2.2 | `task/2.2-submit-evidence` | `submitEvidence(ports, input)`：校验 schema（错误的文件位置是 `<input>`）；`created_at` 最多比 `clock.now()` 晚 `EVIDENCE_CLOCK_TOLERANCE_MS`（5 分钟，边界两侧都有测试）；Concept 存在、读得了、不是 `archived`（`draft` 和 `active` 接受）；criteria 存在、读得了、版本相同，证据打分的维度都是 criteria 考察的维度；有会话时会话存在、读得了，`concept_id`、`criteria_version` 一致，打分的维度在会话里都有分数，证据不早于会话完成时间；一个会话只产生一条证据；追加写入后发出 `evidence/submitted`。不算掌握度。新增错误码 `core.concept_archived`、`core.criteria_unreadable`、`core.dimension_not_assessed`、`core.session_unreadable`、`core.session_already_used`、`core.evidence_before_session`、`core.evidence_in_future`。新建 `@mastery/core-store`（README 第 5、6 节和 dependency-cruiser 补上 `core-store ← core, store, schema, platform`，`tests/dependency-rules.test.ts` 加样例）：`createStoreRepository(store)` 通过 2.1 的 Repository 契约测试；不变量 9 用 ws-transformers fixture 和真实的 store 测试 18 种拒绝情况，每种都比较提交前后全部文件的内容。真实的 store 里，别的 Concept 目录下的会话是 `session_not_found`，放错目录的会话文件是 `session_unreadable`；`concept_id` 不一致的检查是防御性的，用替换了 `getSession` 的 Repository 测试。没有改已有的断言。共 1370 个测试（16 个按平台、实现或能力跳过） | 按会话查证据改用索引、validate 对没有证据的会话报警告、`plugin-core` 的白名单等见“待整理” |
 | 2026-11-20 | 2.3 | `task/2.3-rules-v1-aggregation` | `core` 的 `Rules` 接口加上 `aggregate(evidence) → Aggregate`（`dimensions`、`confidence`、`perDimension` 的 `{ score, confidence, evidenceCount }`），`@mastery/core/testing` 加 `stubRules(version)`。新建 `@mastery/rules-v1`（README 第 6 节和 dependency-cruiser 已有它的规则，没有改）：`aggregateV1`、`rulesV1`、冻结的 `V1_PARAMETERS`。每个维度只看给它打了分的证据；年龄从**这个维度**最新的证据算起（不用 `now`）；双曲衰减 `H / (H + ageDays)`，H = 30；类型权重 1.0 / 0.6 / 0.3；证据的 `confidence` 只影响置信度；维度置信度 = `C / (C + 1)` × (1 − 2 × 加权平均绝对偏差)；总置信度是有分数的维度的平均；所有 criteria 版本一起聚合；只用加减乘除和绝对值；按 id 排序后求和；输出 4 位小数，没有 `-0`。参数写进 ADR-0007（暂定，M5 检查点后复审）。测试：19 个表格场景（期望值用分数精确算出），另有 5 个测试（五个维度互不影响、空输入、版本号、参数冻结、不修改输入），6 个 fast-check 属性（只有 `null` 的维度仍是 `null`、0..1 且不是 `-0`、最多 4 位小数、打乱顺序不变、加不打分的证据不变、两次字节相同）；把参考时间临时改成全部证据里最新的时间，表格和属性测试各有一个失败（验证过）。**改了 `core.test.ts` 里 2 处断言**（经人确认）：`registry.get(1)` 和 `registry.current()` 从 `toEqual({ version: … })` 改为 `toBe(同一个规则对象)`，含义不变，因为规则对象现在带有 `aggregate` 函数；`core` 和 `core-store` 测试里的 `{ version: 1 }` 换成 `stubRules(1)`（只是测试准备）。共 1400 个测试（16 个按平台、实现或能力跳过） | 排序的测试覆盖、ADR-0007 在 2.4 怎么补、生产环境的 RulesRegistry 等见“待整理” |
+| 2026-11-20 | 2.4 | `task/2.4-rules-v1-state-machine` | `core` 的 `Rules` 加上 `evaluate(evidence, criteria) → Evaluation`（`state`、`aggregate`、`explanation`、`steps`：每条证据一步，记录前后状态、证据 id、`created_at`、到这一步的聚合，2.5 据此推导历史）；`stubRules` 补上 `evaluate`。`rules-v1`：`evaluateV1` 按 `(created_at, id)` 重放证据；通过的独立验证只算当前 criteria 版本；P = 考察的维度都达到阈值（没测过算没达到）且至少 1 次通过的独立验证；M = P、至少 2 次通过的独立验证、相隔至少 7 天、每个考察的维度都被通过的独立验证打过分（criteria 考察 transfer 时就包含 transfer，所以没有单独的 transfer 条件，经人确认）；迁移按 ADR-0007 的表，进入 `mastered` 总是要求这一步的证据是通过的独立验证（经人确认，堵住退步后靠练习直接回到 `mastered` 的漏洞）；explanation 的 code 和英文消息表 `formatExplanation`。`V1_PARAMETERS` 加上 `minIndependentVerifications: 2`、`minVerificationGapDays: 7`；ADR-0007 补上“状态机（2.4）”一节（暂定）。测试：每条迁移路径（包括跳过的、`mastered → needs_review → learning → provisional_mastery → mastered`、`learning → mastered`），条件的边界（间隔 7 天减 1 秒、覆盖、transfer、旧 criteria 版本、没通过的独立验证），8 个 explanation 内联快照（代码和英文），6 个 fast-check 属性；把“进入 `mastered` 要求通过的独立验证”或覆盖条件临时去掉时，对应的测试会失败（验证过）。**改了 `aggregate.test.ts` 里 1 处断言**（经人确认的第 7 点）：`V1_PARAMETERS` 的期望值加上两个新参数。共 1442 个测试（16 个按平台、实现或能力跳过） | 2.7 的到期复习不能写进投影、平方代价、第一次掌握的细节、criteria 升级的后果等见“待整理” |

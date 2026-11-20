@@ -1,7 +1,8 @@
 import type { Aggregate, DimensionAggregate } from '@mastery/core';
 import { DIMENSIONS, type Dimension, type Evidence } from '@mastery/schema';
 
-const DAY_MS = 86_400_000;
+/** 一天的毫秒数。 */
+export const DAY_MS = 86_400_000;
 
 /**
  * 规则 v1 的参数（ADR-0007，**暂定**，M5 检查点后根据实际使用复审）。改动任何一个都要升级规则版本。
@@ -17,6 +18,10 @@ export const V1_PARAMETERS = Object.freeze({
   } satisfies Record<Evidence['assessment_type'], number>),
   /** 输出保留的小数位数。 */
   decimals: 4,
+  /** `mastered` 至少要几次通过的独立验证（只算当前 criteria 版本的）。 */
+  minIndependentVerifications: 2,
+  /** 通过的独立验证中，最早和最晚的至少相隔几天。 */
+  minVerificationGapDays: 7,
 });
 
 const SCALE = 10 ** V1_PARAMETERS.decimals;
