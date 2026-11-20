@@ -31,7 +31,7 @@
 ## 当前状态
 
 - **当前里程碑：** M1
-- **下一个任务：** 1.14
+- **下一个任务：** 1.15
 - **阻塞项：** 无
 
 ---
@@ -165,11 +165,11 @@
 - **验收**：通过 1.12 的契约测试。
 - **不做**：远程同步。
 
-### [ ] 1.14 Device
+### [x] 1.14 Device
 - **包**：`device`
 - **依赖**：1.11、1.7
 - **产出**：读写 `~/.mastery/device.yaml`；首次运行生成设备 ULID；`SecretStore` 端口（钥匙串）及内存实现；对照 Profile 的 `workspaces.yaml` 计算本机 Workspace 状态（已拉取 / 未拉取 / 已注销但本地还在）。
-- **验收**：三种状态各有测试；device.yaml 丢失后能根据 Profile 重新生成；device.yaml 不会出现在任何 Git 仓库里（测试 `init` 生成的 `.gitignore` 和 Profile 目录）。
+- **验收**：三种状态各有测试；device.yaml 丢失后能根据 Profile 重新生成；设备目录有只含 `*` 的 `.gitignore`，设备目录落在 Profile 或 Workspace 里时能检查出来。（“`init` 生成的 `.gitignore` 和 Profile 目录”的测试移到 1.15，经人确认。）
 - **不做**：真实的系统钥匙串实现（M6 在 Tauri 里实现，CLI 端用 keytar 或同等方案）。
 
 ### [ ] 1.15 CLI：profile、init 和 validate
@@ -180,7 +180,7 @@
   - `mastery profile show`：显示 Profile 和本机 Workspace 状态；
   - `mastery init <dir>`：生成 Workspace 目录结构、`workspace.yaml`、`.gitignore`、`.gitattributes`，并**注册到当前 Profile**、写入 device.yaml；没有 Profile 时报错并提示先运行 `mastery profile init`；
   - `mastery validate <dir>`：校验全部文件，检查引用（前置依赖是否存在，有没有循环依赖）。`validate` 不需要 Profile（不变量 14）。
-- **验收**：`profile init` → `init` → `validate` 走通；没有 Profile 时 `init` 失败并给出提示；对 fixture 运行 `validate` 通过（不需要 Profile）；人为制造循环依赖时报错并给出依赖环路径。
+- **验收**：`profile init` → `init` → `validate` 走通；`init` 生成的 `.gitignore` 和 Profile 目录不会让 device.yaml 被提交（从 1.14 移来）；没有 Profile 时 `init` 失败并给出提示；对 fixture 运行 `validate` 通过（不需要 Profile）；人为制造循环依赖时报错并给出依赖环路径。
 - **不做**：交互式向导。
 
 > **🏁 M1 检查点：** 人手动用这套格式写几天笔记和 Concept，确认格式顺手了再继续。发现问题就回头修改 schema，这时候改代价最小。
@@ -610,7 +610,6 @@
 - （来自 1.9）JSON 文件用 `JSON.parse` 解析，重复的键不会报错（后面的覆盖前面的），和 YAML 的严格程度不一致。这些文件都由应用写出，风险小；需要时换成能报告重复键的解析。
 - （来自 1.9，第一个真正的迁移时处理）旧版本的可修改文件保存时写成当前版本的规范形式，注释不保留。有了真正的迁移以后，考虑在迁移后的文档上修改，保留注释。
 - （来自 1.10，3.x 决定）wikilink 的解析规则还没有正式定义。fixture 的测试按 Obsidian 的做法：按文件名（不含 `.md`）找 Concept 或笔记，`#标题` 要能找到对应的标题行，文件名不能重名。3.x 实现索引的 wikilink 时，要定下重名、大小写、找不到时怎么处理，并决定 `mastery validate` 是否检查 wikilink。
-- （来自 1.11，1.14 实现）`device.yaml` 的 schema 接受 `profile.store: cloud`，但在 9.7 实现之前，1.14 读取 device.yaml 时必须明确拒绝它，给出“暂不支持云端 Profile”的错误，不能当成 git 处理或静默忽略。
 - （来自 1.11，7.4 决定）学习目标暂时不放进 `profile.yaml`。7.4 / 8.4 需要时，倾向于每个目标一个文件（和长期记忆的设计一样），而不是共享文件里的一个列表，避免多台设备同时修改产生冲突。
 - （来自 1.11，8.1 / 9.1 处理）`workspaces.yaml` 的 `remote` 不接受本机路径。U 盘、挂载的 NAS 这类远程在每台设备上路径不同，需要在 `device.yaml` 里按 Workspace 覆盖远程地址。
 - （来自 1.11）密钥检查只是一道保险，不是安全边界：换个名字或换种写法就能绕过。以后 `device.yaml` 要记录钥匙串条目的名称时，字段名不能含有被拦截的词（比如用 `keychain_entry`）。找到密钥时只报密钥的错误，去掉之后才报其他问题。
@@ -620,6 +619,10 @@
 - （来自 1.13，8.1 实现）Profile 的 Git 同步（pull、merge、push）必须持有和写入相同的锁 `PROFILE_WRITE_LOCK`（`profile-write`），否则同步和写入会交错，破坏“重新读取、比较 revision、按顺序写入”的保证。
 - （来自 1.13，1.15 处理）`profile-store-git` 的测试只在内存文件系统上运行（依赖规则不允许它的测试 import `platform-node`）。1.15 的 CLI 测试要在真实磁盘的临时目录里跑一遍 Profile 的创建、注册和外部修改，覆盖 Node 的文件监听和锁。
 - （来自 1.13，3.6 处理）`profile-store-git` 现在不依赖 `git`（README 第 6 节允许，但没用到）。3.6 接入 Git 提交时再加上依赖。
+- （来自 1.14，1.15 实现）`workspaceStates` 只根据配置给出 `configured`；CLI 要检查 `device.yaml` 里的目录是否存在，把 `configured` 细分为“已拉取”和“缺失”（目录不在了）。
+- （来自 1.14，1.15 实现）CLI 启动时如果 `~/.mastery` 在任何 Git 工作区里（比如 dotfiles 仓库），给出警告。设备目录的 `.gitignore`（`*`）已经保证不会提交，但用户应该知道。
+- （来自 1.14）`device.yaml` 的写入没有锁：两个程序（CLI 和桌面应用）同时写时，后写的那个收到 `device.modified_since_read`，需要重新读取再写。如果实际中经常遇到，再考虑加锁或自动重试。
+- （来自 1.14）考虑把 `profile-store-git` 也改成用 store 的 `yamlFile` 读写，让所有用户可以编辑的 YAML 都走同一条代码路径（现在它直接用 `parseYaml` / `patchYaml`，规则相同但代码是两份）。
 - （来自 1.4，7.2 处理）验证证据和干预的关联：优先考虑在 Intervention 里记录验证证据的 id（Intervention 文件本来就可以修改），这样不用改 Evidence 的格式，关联关系也只存一处。
 - （来自 1.4，8.3 决定）引入跨 Workspace 的前置依赖后，Blindspot 的 `prerequisite_id` 可能需要支持 `GlobalConceptRef`。
 - （来自 1.1）`packages/schema/src/testing.ts` 的测试构造函数目前只在 schema 包内部使用。其他包的测试要用时，再决定放在哪里（比如 `testkit` 包），不从 schema 的公共 API 导出。
@@ -652,3 +655,4 @@
 | 2026-11-20 | 1.12 | `task/1.12-profile-store-port` | 新建 `@mastery/profile`（只依赖 schema）：`ProfileBackend` 端口（只保存四个文档和同步）和 `ProfileStore` 接口；`createProfileStore(backend, { now, generateId, maxAttempts })` 执行全部规则（schema 校验、版本过新时只读、Workspace id 不重复、注销时清理链接并返回删掉的链接、链接两端已注册、Profile id 不变、冲突中的文档不能写、不让跨文档问题变多）；领域失败作为结果返回，I/O 错误抛出；乐观并发，单步操作每次重试都重新读取、重新执行、重新检查规则，次数固定且可测试；注入的 `now()`、`generateId()` 返回值不合格时抛出。内存实现：多台设备共用 `MemoryProfileRemote`，可以模拟离线和外部修改；同步只有一边改过时直接拉取或推送，两边都改过时按文档冲突，`resolveConflict` 选本地或远程。契约测试在 `@mastery/profile/contract`（基本部分 + 可选的同步部分，包括“两台离线设备各自注册不同 Workspace”现在会冲突的测试）。README 第 6 节和 Profile 一节写明两层的分工；`tests/dependency-rules.test.ts` 加样例确认 profile 不能依赖 store、git、`node:*`。没有改已有的断言。共 1143 个测试（6 个按平台或实现跳过） | 冲突的自动合并（8.1）、解决冲突后的跨文档问题见“待整理” |
 | 2026-11-20 | 1.8（修复） | `task/1.12-profile-store-port`（单独提交） | Windows CI 上 `NodeLock` 的契约测试“第二个持有者等第一个释放”偶尔失败：第一个持有者删除锁文件时，等待者正好在读它，Windows 把文件置为“删除挂起”，这期间独占创建报 EPERM，被当成权限错误抛出。修复：Windows 上创建、读取、改名锁文件遇到 EPERM / EACCES 时按“锁正忙”稍后重试；到期仍然如此时报 `platform.permission_denied`（而不是误导的 `lock_timeout`）；其他系统上照旧立即报权限错误。`NodeLock` 新增两个测试用钩子 `beforeCreate`、`beforeRead`，新增 4 个测试（3 个只在 Windows 上运行，1 个只在其他系统上运行；在 Linux 上把平台判断临时改成 Windows 验证过前 3 个）。没有改已有的断言 | 无 |
 | 2026-11-20 | 1.13 | `task/1.13-profile-store-git` | 新建 `@mastery/profile-store-git`（依赖 profile、platform、store；暂不依赖 git）：`createGitProfileBackend({ fs, lock })` 把四个文档存成 Profile 根目录下的 YAML 文件，用 store 的严格解析读、`patchYaml` 只改动变化的部分写（注释保留）；`profile.yaml` 是 Profile 存在的标志；revision 先分别算每个文件的 SHA-256，再对 `[文档名, 哈希或 missing]` 列表算 SHA-256（Web Crypto）；整个写入（重新读取、比较 revision、按顺序写入）在写锁 `profile-write` 里完成；`watch` 把自己写入的变化报成 `local`，别的程序的修改报成 `external`。1.12 的端口调整：`ProfileBackend.write` 接收**有序**的写入列表；`BackendSnapshot` 的每个文档是 `ok` / `missing` / `unreadable`（带解析问题）；`createProfileStore` 逐个检查所有写入顺序，选一个让每一步之后都不多出跨文档问题的顺序，没有时报 `profile.no_safe_write_order` 且什么都不写；创建时 `profile` 文档最后写；新增 `profile.document_missing`。store 导出 `patchYaml` 和 `fromRawIssue`。测试：1.12 的契约（基本部分）；三种多文件修改在每一步之后崩溃都留下合法的 Profile；创建到一半崩溃可以重新创建；没有安全顺序的修改被拒绝；把顺序检查临时去掉时这些测试会失败（验证过）。没有改已有的断言。共 1200 个测试（16 个按平台、实现或能力跳过） | 真实磁盘上的测试、Profile 的 `.gitignore`、同步持有同一把锁等见“待整理” |
+| 2026-11-20 | 1.14 | `task/1.14-device` | 新建 `@mastery/device`（README 第 6 节和 dependency-cruiser 改为 `device ← schema, platform, store`）：`loadDevice` / `saveDevice`（读取之后被改过时报 `device.modified_since_read`，只改动变化的部分）、`initDevice`（生成设备 ULID）、`regenerateDevice`（新的 id、不含 Workspace、返回需要确认路径的 Workspace）、`profile.store: cloud` 报 `device.cloud_profile_unsupported`；`workspaceStates` 只根据配置给出 `configured` / `not_configured` / `unregistered_local`（`sync: on-demand` 不参与判断，README 和 schema 注释里“on-demand 表示没有拉取到本机”的说法已改正）；`initDevice` 和 `regenerateDevice` 在设备目录创建只含 `*` 的 `.gitignore`（已有的不动）；`checkDeviceLocation` 检查设备目录是否落在 Profile 或 Workspace 里；`SecretStore` 端口和 `MemorySecretStore`，错误在任何渲染方式下都不含值（有测试）。store 新增通用的 `yamlFile(fs, path, kind)`：把 `createStore` 内部的读写逻辑抽成共用的一层，`createStore` 和 `yamlFile` 走同一条代码路径（store 原有的 118 个测试不变且全部通过）。“`init` 生成的 `.gitignore` 和 Profile 目录”的验收移到 1.15（经人确认）。没有改已有的断言。共 1241 个测试（16 个按平台、实现或能力跳过） | CLI 细分 configured、`~/.mastery` 在 Git 工作区里的警告、device.yaml 并发写入等见“待整理” |

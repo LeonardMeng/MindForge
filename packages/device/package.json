@@ -1,0 +1,30 @@
+{
+  "name": "@mastery/device",
+  "version": "0.0.0",
+  "private": true,
+  "description": "设备配置：读写 device.yaml、首次运行生成设备 ULID、Workspace 在本机的状态；SecretStore 端口（系统钥匙串）。",
+  "type": "module",
+  "exports": {
+    ".": {
+      "@mastery/source": "./src/index.ts",
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsup src/index.ts --format esm --dts --clean",
+    "test": "vitest run --config ../../vitest.config.ts --root .",
+    "typecheck": "tsc -p tsconfig.json"
+  },
+  "dependencies": {
+    "@mastery/platform": "workspace:*",
+    "@mastery/schema": "workspace:*",
+    "@mastery/store": "workspace:*"
+  },
+  "devDependencies": {
+    "@mastery/platform-memory": "workspace:*"
+  }
+}

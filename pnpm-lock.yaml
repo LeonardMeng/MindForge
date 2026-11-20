@@ -214,6 +214,22 @@ importers:
 
   packages/_template: {}
 
+  packages/device:
+    dependencies:
+      '@mastery/platform':
+        specifier: workspace:*
+        version: link:../platform
+      '@mastery/schema':
+        specifier: workspace:*
+        version: link:../schema
+      '@mastery/store':
+        specifier: workspace:*
+        version: link:../store
+    devDependencies:
+      '@mastery/platform-memory':
+        specifier: workspace:*
+        version: link:../platform-memory
+
   packages/platform:
     dependencies:
       '@mastery/schema':

@@ -24,7 +24,7 @@ export const DevicePlatform = z.enum([
 /** 设备的平台。 */
 export type DevicePlatform = z.infer<typeof DevicePlatform>;
 
-/** Workspace 在这台设备上的同步方式。`on-demand` 表示还没有拉取到本机，用到时再拉。 */
+/** Workspace 在这台设备上的同步方式：什么时候拉取更新。`on-demand` 表示用到时才拉取；它不表示 Workspace 在不在本机。 */
 export const WorkspaceSync = z.enum(['auto', 'manual', 'on-demand']);
 /** Workspace 在这台设备上的同步方式。 */
 export type WorkspaceSync = z.infer<typeof WorkspaceSync>;

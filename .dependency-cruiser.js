@@ -83,7 +83,11 @@ export default {
       ['profile', 'platform', 'store', 'git'],
       'profile-store-git ← profile, schema, platform, store, git',
     ),
-    allowlist('device', ['platform'], 'device ← schema, platform'),
+    allowlist(
+      'device',
+      ['platform', 'store'],
+      'device ← schema, platform, store（用 store 的 yamlFile 读写 device.yaml）',
+    ),
     allowlist(
       'plugin-core',
       ['core', 'store', 'index', 'git', 'runtime'],

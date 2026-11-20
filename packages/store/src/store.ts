@@ -14,6 +14,7 @@ import {
   type ConceptFrontmatter,
   type Criteria,
   type Evidence,
+  type FileData,
   type FileKind,
   type FileValidationResult,
   type Intervention,
@@ -225,7 +226,306 @@ const tooNew = <I extends { readonly code: string }>(issues: readonly I[]) =>
  */
 export function createStore(fs: FileSystem, options: StoreOptions = {}): Store {
   const validate = options.validateFile ?? validateFile;
+  const {
+    readText,
+    snapshot,
+    parse,
+    read,
+    prepare,
+    serializeNew,
+    create,
+    save,
+    append,
+    list,
+  } = createFileOps(fs, validate);
 
+  const fileNamed =
+    (isId: (id: string) => boolean, extension: string) =>
+    (name: string, kind: 'file' | 'directory'): Accepted => {
+      if (kind !== 'file' || !name.endsWith(extension)) return 'unexpected';
+      const id = name.slice(0, -extension.length);
+      return isId(id) ? { id } : 'unexpected';
+    };
+  const dirNamed = (name: string, kind: 'file' | 'directory'): Accepted =>
+    kind === 'directory' && isSlug(name) ? { id: name } : 'unexpected';
+
+  function editable<T>(
+    spec: Spec<T>,
+    pathOf: (id: string) => string,
+    listAll: () => Promise<ListResult>,
+  ): EditableCollection<T> {
+    return {
+      list: listAll,
+      read: (id) => read(spec, pathOf(id), [id]),
+      save: (value, saveOptions) => save(spec, value, saveOptions),
+    };
+  }
+
+  function appendOnly<T>(
+    spec: Spec<T>,
+    dirOf: (conceptId: string) => string,
+  ): AppendOnlyCollection<T> {
+    return {
+      list: (conceptId) => list(dirOf(conceptId), fileNamed(isUlid, '.json')),
+      read: (conceptId, id) =>
+        read(spec, `${dirOf(conceptId)}/${id}.json`, [conceptId, id]),
+      append: (value) => append(spec, value),
+    };
+  }
+
+  const exists = (file: string, missing: string) => async () =>
+    (await fs.stat(file)) === null
+      ? storeIssue(missing, 'store.missing_file')
+      : null;
+
+  const projectPath = (id: string) => `projects/${id}/project.yaml`;
+  const conceptPath = (id: string) => `concepts/${id}.md`;
+  const criteriaPath = (id: string) => `assessments/${id}/criteria.yaml`;
+  const blindspotPath = (id: string) => `blindspots/${id}.yaml`;
+  const interventionPath = (id: string) => `interventions/${id}.yaml`;
+  const masteryPath = (id: string) => `mastery/${id}.yaml`;
+  const historyPath = (id: string) => `mastery/history/${id}.jsonl`;
+  const sessionsDir = (id: string) => `assessments/${id}/sessions`;
+  const evidenceDir = (id: string) => `evidence/${id}`;
+
+  const WORKSPACE: Spec<WorkspaceConfig> = yamlSpec(
+    'workspace',
+    () => [],
+    () => 'workspace.yaml',
+  );
+  const PROJECT: Spec<ProjectConfig> = yamlSpec(
+    'project',
+    (v) => [[['id'], v.id]],
+    (v) => projectPath(v.id),
+  );
+  const CRITERIA: Spec<Criteria> = yamlSpec(
+    'criteria',
+    (v) => [[['concept_id'], v.concept_id]],
+    (v) => criteriaPath(v.concept_id),
+  );
+  const BLINDSPOT: Spec<Blindspot> = yamlSpec(
+    'blindspot',
+    (v) => [[['id'], v.id]],
+    (v) => blindspotPath(v.id),
+  );
+  const INTERVENTION: Spec<Intervention> = yamlSpec(
+    'intervention',
+    (v) => [[['id'], v.id]],
+    (v) => interventionPath(v.id),
+  );
+  const MASTERY: Spec<MasteryProjection> = yamlSpec(
+    'mastery-projection',
+    (v) => [[['concept_id'], v.concept_id]],
+    (v) => masteryPath(v.concept_id),
+  );
+  const SESSION: Spec<AssessmentSession> = jsonSpec(
+    'assessment-session',
+    (v) => `${sessionsDir(v.concept_id)}/${v.id}.json`,
+  );
+  const EVIDENCE: Spec<Evidence> = jsonSpec(
+    'evidence',
+    (v) => `${evidenceDir(v.concept_id)}/${v.id}.json`,
+  );
+  const CONCEPT: Spec<Concept> = {
+    kind: 'concept-frontmatter',
+    format: 'concept',
+    identity: (v) => [[['frontmatter', 'id'], v.frontmatter.id]],
+    pathOf: (v) => conceptPath(v.frontmatter.id),
+    wrap: (data, source) => ({
+      frontmatter: data as ConceptFrontmatter,
+      body: 'body' in source ? source.body : (source.parts?.body ?? ''),
+    }),
+    unwrap: (v) => v.frontmatter,
+    prefix: ['frontmatter'],
+    warnings: (v, file) =>
+      [
+        ...conceptFrontmatterWarnings(v.frontmatter),
+        ...parseConceptBody(v.body).warnings,
+      ].map((issue) => fromSchemaIssue(file, issue)),
+  };
+
+  const HISTORY_KIND = 'mastery-history-entry';
+
+  /** 解析 history 文件的每一行。 */
+  function parseHistory(file: string, text: string) {
+    const lines = text.split('\n');
+    if (lines.at(-1) === '') lines.pop();
+    const entries: MasteryHistoryEntry[] = [];
+    const issues: StoreIssue[] = [];
+    let oldest: number | null = null;
+    let newer: SchemaIssue | undefined;
+    lines.forEach((raw, index) => {
+      const line = raw.endsWith('\r') ? raw.slice(0, -1) : raw;
+      let data: unknown;
+      try {
+        data = JSON.parse(line);
+      } catch (error) {
+        const detail = error instanceof Error ? error.message : String(error);
+        issues.push(storeIssue(file, 'json.syntax', { detail }, [index]));
+        return;
+      }
+      const result = validate(HISTORY_KIND, data);
+      if (!result.success) {
+        newer ??= tooNew(result.issues);
+        issues.push(
+          ...result.issues.map((issue) =>
+            fromSchemaIssue(file, issue, [index]),
+          ),
+        );
+        return;
+      }
+      if (result.from < result.to)
+        oldest = Math.min(oldest ?? result.from, result.from);
+      entries.push(result.data as MasteryHistoryEntry);
+    });
+    return { entries, issues, oldest, newer };
+  }
+
+  return {
+    workspace: {
+      read: () => read(WORKSPACE, 'workspace.yaml', []),
+      save: (value, saveOptions) => save(WORKSPACE, value, saveOptions),
+    },
+    projects: editable(PROJECT, projectPath, () =>
+      list('projects', dirNamed, (id) =>
+        exists(projectPath(id), projectPath(id))(),
+      ),
+    ),
+    concepts: editable(CONCEPT, conceptPath, () =>
+      list('concepts', fileNamed(isSlug, '.md')),
+    ),
+    criteria: editable(CRITERIA, criteriaPath, async () => {
+      const dirs = await list('assessments', dirNamed);
+      const ids: string[] = [];
+      for (const id of dirs.ids) {
+        if ((await fs.stat(criteriaPath(id))) !== null) ids.push(id);
+      }
+      return { ids, issues: dirs.issues };
+    }),
+    blindspots: editable(BLINDSPOT, blindspotPath, () =>
+      list('blindspots', fileNamed(isUlid, '.yaml')),
+    ),
+    interventions: editable(INTERVENTION, interventionPath, () =>
+      list('interventions', fileNamed(isUlid, '.yaml')),
+    ),
+    sessions: appendOnly(SESSION, sessionsDir),
+    evidence: appendOnly(EVIDENCE, evidenceDir),
+    mastery: {
+      list: () =>
+        list('mastery', (name, kind) =>
+          kind === 'directory' && name === 'history'
+            ? 'skip'
+            : fileNamed(isSlug, '.yaml')(name, kind),
+        ),
+      read: (conceptId) => read(MASTERY, masteryPath(conceptId), [conceptId]),
+      write: async (value) => {
+        const prepared = prepare(MASTERY, value, undefined);
+        if (!prepared.ok) return prepared;
+        const { file } = prepared;
+        const text = serializeNew(MASTERY, prepared.value);
+        const current = await readText(file);
+        if (current !== null) {
+          const parsed = parse('yaml', file, current);
+          if (parsed.ok) {
+            const existing = validate(MASTERY.kind, parsed.file.data);
+            const newer = existing.success
+              ? undefined
+              : tooNew(existing.issues);
+            if (newer !== undefined) {
+              return { ok: false, issues: [versionTooNew(file, newer)] };
+            }
+          }
+          if (current === text) {
+            return {
+              ok: true,
+              written: false,
+              snapshot: await snapshot(file, text),
+            };
+          }
+        } else {
+          await fs.mkdir(parentPath(file), { recursive: true });
+        }
+        await fs.writeTextFile(file, text);
+        return {
+          ok: true,
+          written: true,
+          snapshot: await snapshot(file, text),
+        };
+      },
+    },
+    history: {
+      read: async (conceptId) => {
+        const file = historyPath(conceptId);
+        const text = await readText(file);
+        if (text === null) return null;
+        const { entries, issues, oldest, newer } = parseHistory(file, text);
+        if (issues.length > 0) {
+          return { ok: false, readOnly: newer !== undefined, issues };
+        }
+        return {
+          ok: true,
+          value: entries,
+          snapshot: await snapshot(file, text),
+          migratedFrom: oldest,
+          warnings: [],
+        };
+      },
+      append: async (conceptId, entry) => {
+        const file = historyPath(conceptId);
+        if (!isSlug(conceptId)) {
+          return {
+            ok: false,
+            issues: [
+              storeIssue(file, 'store.path_mismatch', {
+                field: 'concept_id',
+                expected: 'a slug',
+                actual: conceptId,
+              }),
+            ],
+          };
+        }
+        const result = validate(HISTORY_KIND, entry);
+        if (!result.success) {
+          return {
+            ok: false,
+            issues: result.issues.map((issue) => fromSchemaIssue(file, issue)),
+          };
+        }
+        const line = `${JSON.stringify(result.data)}\n`;
+        const current = await readText(file);
+        if (current === null) {
+          const created = await create(file, line);
+          // 别人刚好也在创建这个文件：按“读取之后被改过”处理，调用者重试即可。
+          return created.ok
+            ? created
+            : {
+                ok: false,
+                issues: [storeIssue(file, 'store.modified_since_read')],
+              };
+        }
+        const { issues, newer } = parseHistory(file, current);
+        if (newer !== undefined) {
+          return { ok: false, issues: [versionTooNew(file, newer)] };
+        }
+        if (issues.length > 0) return { ok: false, issues };
+        const separator = current === '' || current.endsWith('\n') ? '' : '\n';
+        const text = current + separator + line;
+        await fs.writeTextFile(file, text);
+        return {
+          ok: true,
+          written: true,
+          snapshot: await snapshot(file, text),
+        };
+      },
+    },
+  };
+}
+
+/** {@link createStore} 和 {@link yamlFile} 共用的读写逻辑：所有用户可编辑的文件都走这一条路径。 */
+function createFileOps(
+  fs: FileSystem,
+  validate: NonNullable<StoreOptions['validateFile']>,
+) {
   async function readText(file: string): Promise<string | null> {
     try {
       return await fs.readTextFile(file);
@@ -522,288 +822,47 @@ export function createStore(fs: FileSystem, options: StoreOptions = {}): Store {
     return { ids, issues };
   }
 
-  const fileNamed =
-    (isId: (id: string) => boolean, extension: string) =>
-    (name: string, kind: 'file' | 'directory'): Accepted => {
-      if (kind !== 'file' || !name.endsWith(extension)) return 'unexpected';
-      const id = name.slice(0, -extension.length);
-      return isId(id) ? { id } : 'unexpected';
-    };
-  const dirNamed = (name: string, kind: 'file' | 'directory'): Accepted =>
-    kind === 'directory' && isSlug(name) ? { id: name } : 'unexpected';
-
-  function editable<T>(
-    spec: Spec<T>,
-    pathOf: (id: string) => string,
-    listAll: () => Promise<ListResult>,
-  ): EditableCollection<T> {
-    return {
-      list: listAll,
-      read: (id) => read(spec, pathOf(id), [id]),
-      save: (value, saveOptions) => save(spec, value, saveOptions),
-    };
-  }
-
-  function appendOnly<T>(
-    spec: Spec<T>,
-    dirOf: (conceptId: string) => string,
-  ): AppendOnlyCollection<T> {
-    return {
-      list: (conceptId) => list(dirOf(conceptId), fileNamed(isUlid, '.json')),
-      read: (conceptId, id) =>
-        read(spec, `${dirOf(conceptId)}/${id}.json`, [conceptId, id]),
-      append: (value) => append(spec, value),
-    };
-  }
-
-  const exists = (file: string, missing: string) => async () =>
-    (await fs.stat(file)) === null
-      ? storeIssue(missing, 'store.missing_file')
-      : null;
-
-  const projectPath = (id: string) => `projects/${id}/project.yaml`;
-  const conceptPath = (id: string) => `concepts/${id}.md`;
-  const criteriaPath = (id: string) => `assessments/${id}/criteria.yaml`;
-  const blindspotPath = (id: string) => `blindspots/${id}.yaml`;
-  const interventionPath = (id: string) => `interventions/${id}.yaml`;
-  const masteryPath = (id: string) => `mastery/${id}.yaml`;
-  const historyPath = (id: string) => `mastery/history/${id}.jsonl`;
-  const sessionsDir = (id: string) => `assessments/${id}/sessions`;
-  const evidenceDir = (id: string) => `evidence/${id}`;
-
-  const WORKSPACE: Spec<WorkspaceConfig> = yamlSpec(
-    'workspace',
-    () => [],
-    () => 'workspace.yaml',
-  );
-  const PROJECT: Spec<ProjectConfig> = yamlSpec(
-    'project',
-    (v) => [[['id'], v.id]],
-    (v) => projectPath(v.id),
-  );
-  const CRITERIA: Spec<Criteria> = yamlSpec(
-    'criteria',
-    (v) => [[['concept_id'], v.concept_id]],
-    (v) => criteriaPath(v.concept_id),
-  );
-  const BLINDSPOT: Spec<Blindspot> = yamlSpec(
-    'blindspot',
-    (v) => [[['id'], v.id]],
-    (v) => blindspotPath(v.id),
-  );
-  const INTERVENTION: Spec<Intervention> = yamlSpec(
-    'intervention',
-    (v) => [[['id'], v.id]],
-    (v) => interventionPath(v.id),
-  );
-  const MASTERY: Spec<MasteryProjection> = yamlSpec(
-    'mastery-projection',
-    (v) => [[['concept_id'], v.concept_id]],
-    (v) => masteryPath(v.concept_id),
-  );
-  const SESSION: Spec<AssessmentSession> = jsonSpec(
-    'assessment-session',
-    (v) => `${sessionsDir(v.concept_id)}/${v.id}.json`,
-  );
-  const EVIDENCE: Spec<Evidence> = jsonSpec(
-    'evidence',
-    (v) => `${evidenceDir(v.concept_id)}/${v.id}.json`,
-  );
-  const CONCEPT: Spec<Concept> = {
-    kind: 'concept-frontmatter',
-    format: 'concept',
-    identity: (v) => [[['frontmatter', 'id'], v.frontmatter.id]],
-    pathOf: (v) => conceptPath(v.frontmatter.id),
-    wrap: (data, source) => ({
-      frontmatter: data as ConceptFrontmatter,
-      body: 'body' in source ? source.body : (source.parts?.body ?? ''),
-    }),
-    unwrap: (v) => v.frontmatter,
-    prefix: ['frontmatter'],
-    warnings: (v, file) =>
-      [
-        ...conceptFrontmatterWarnings(v.frontmatter),
-        ...parseConceptBody(v.body).warnings,
-      ].map((issue) => fromSchemaIssue(file, issue)),
-  };
-
-  const HISTORY_KIND = 'mastery-history-entry';
-
-  /** 解析 history 文件的每一行。 */
-  function parseHistory(file: string, text: string) {
-    const lines = text.split('\n');
-    if (lines.at(-1) === '') lines.pop();
-    const entries: MasteryHistoryEntry[] = [];
-    const issues: StoreIssue[] = [];
-    let oldest: number | null = null;
-    let newer: SchemaIssue | undefined;
-    lines.forEach((raw, index) => {
-      const line = raw.endsWith('\r') ? raw.slice(0, -1) : raw;
-      let data: unknown;
-      try {
-        data = JSON.parse(line);
-      } catch (error) {
-        const detail = error instanceof Error ? error.message : String(error);
-        issues.push(storeIssue(file, 'json.syntax', { detail }, [index]));
-        return;
-      }
-      const result = validate(HISTORY_KIND, data);
-      if (!result.success) {
-        newer ??= tooNew(result.issues);
-        issues.push(
-          ...result.issues.map((issue) =>
-            fromSchemaIssue(file, issue, [index]),
-          ),
-        );
-        return;
-      }
-      if (result.from < result.to)
-        oldest = Math.min(oldest ?? result.from, result.from);
-      entries.push(result.data as MasteryHistoryEntry);
-    });
-    return { entries, issues, oldest, newer };
-  }
-
   return {
-    workspace: {
-      read: () => read(WORKSPACE, 'workspace.yaml', []),
-      save: (value, saveOptions) => save(WORKSPACE, value, saveOptions),
-    },
-    projects: editable(PROJECT, projectPath, () =>
-      list('projects', dirNamed, (id) =>
-        exists(projectPath(id), projectPath(id))(),
-      ),
-    ),
-    concepts: editable(CONCEPT, conceptPath, () =>
-      list('concepts', fileNamed(isSlug, '.md')),
-    ),
-    criteria: editable(CRITERIA, criteriaPath, async () => {
-      const dirs = await list('assessments', dirNamed);
-      const ids: string[] = [];
-      for (const id of dirs.ids) {
-        if ((await fs.stat(criteriaPath(id))) !== null) ids.push(id);
-      }
-      return { ids, issues: dirs.issues };
-    }),
-    blindspots: editable(BLINDSPOT, blindspotPath, () =>
-      list('blindspots', fileNamed(isUlid, '.yaml')),
-    ),
-    interventions: editable(INTERVENTION, interventionPath, () =>
-      list('interventions', fileNamed(isUlid, '.yaml')),
-    ),
-    sessions: appendOnly(SESSION, sessionsDir),
-    evidence: appendOnly(EVIDENCE, evidenceDir),
-    mastery: {
-      list: () =>
-        list('mastery', (name, kind) =>
-          kind === 'directory' && name === 'history'
-            ? 'skip'
-            : fileNamed(isSlug, '.yaml')(name, kind),
-        ),
-      read: (conceptId) => read(MASTERY, masteryPath(conceptId), [conceptId]),
-      write: async (value) => {
-        const prepared = prepare(MASTERY, value, undefined);
-        if (!prepared.ok) return prepared;
-        const { file } = prepared;
-        const text = serializeNew(MASTERY, prepared.value);
-        const current = await readText(file);
-        if (current !== null) {
-          const parsed = parse('yaml', file, current);
-          if (parsed.ok) {
-            const existing = validate(MASTERY.kind, parsed.file.data);
-            const newer = existing.success
-              ? undefined
-              : tooNew(existing.issues);
-            if (newer !== undefined) {
-              return { ok: false, issues: [versionTooNew(file, newer)] };
-            }
-          }
-          if (current === text) {
-            return {
-              ok: true,
-              written: false,
-              snapshot: await snapshot(file, text),
-            };
-          }
-        } else {
-          await fs.mkdir(parentPath(file), { recursive: true });
-        }
-        await fs.writeTextFile(file, text);
-        return {
-          ok: true,
-          written: true,
-          snapshot: await snapshot(file, text),
-        };
-      },
-    },
-    history: {
-      read: async (conceptId) => {
-        const file = historyPath(conceptId);
-        const text = await readText(file);
-        if (text === null) return null;
-        const { entries, issues, oldest, newer } = parseHistory(file, text);
-        if (issues.length > 0) {
-          return { ok: false, readOnly: newer !== undefined, issues };
-        }
-        return {
-          ok: true,
-          value: entries,
-          snapshot: await snapshot(file, text),
-          migratedFrom: oldest,
-          warnings: [],
-        };
-      },
-      append: async (conceptId, entry) => {
-        const file = historyPath(conceptId);
-        if (!isSlug(conceptId)) {
-          return {
-            ok: false,
-            issues: [
-              storeIssue(file, 'store.path_mismatch', {
-                field: 'concept_id',
-                expected: 'a slug',
-                actual: conceptId,
-              }),
-            ],
-          };
-        }
-        const result = validate(HISTORY_KIND, entry);
-        if (!result.success) {
-          return {
-            ok: false,
-            issues: result.issues.map((issue) => fromSchemaIssue(file, issue)),
-          };
-        }
-        const line = `${JSON.stringify(result.data)}\n`;
-        const current = await readText(file);
-        if (current === null) {
-          const created = await create(file, line);
-          // 别人刚好也在创建这个文件：按“读取之后被改过”处理，调用者重试即可。
-          return created.ok
-            ? created
-            : {
-                ok: false,
-                issues: [storeIssue(file, 'store.modified_since_read')],
-              };
-        }
-        const { issues, newer } = parseHistory(file, current);
-        if (newer !== undefined) {
-          return { ok: false, issues: [versionTooNew(file, newer)] };
-        }
-        if (issues.length > 0) return { ok: false, issues };
-        const separator = current === '' || current.endsWith('\n') ? '' : '\n';
-        const text = current + separator + line;
-        await fs.writeTextFile(file, text);
-        return {
-          ok: true,
-          written: true,
-          snapshot: await snapshot(file, text),
-        };
-      },
-    },
+    readText,
+    snapshot,
+    parse,
+    read,
+    prepare,
+    serializeNew,
+    create,
+    save,
+    append,
+    list,
   };
 }
 
+/**
+ * 一个用户可以编辑的 YAML 文件（比如 `~/.mastery/device.yaml`），规则和 Workspace 里的文件完全一样：
+ * 严格解析、迁移后按 schema 校验、版本过新时只读；保存时检查读取之后有没有被改过
+ * （`store.modified_since_read`），只改动变化的部分（注释保留），原子写入；不带 `base` 时独占创建。
+ *
+ * @param fs - 文件系统
+ * @param path - 文件相对于 `fs` 根目录的路径
+ * @param kind - 文件种类（schema 的 `FILE_KINDS`）
+ * @param options - 测试用的选项
+ */
+export function yamlFile<K extends FileKind>(
+  fs: FileSystem,
+  path: string,
+  kind: K,
+  options: StoreOptions = {},
+): EditableFile<FileData<K>> {
+  const ops = createFileOps(fs, options.validateFile ?? validateFile);
+  const spec = yamlSpec<FileData<K>>(
+    kind,
+    () => [],
+    () => path,
+  );
+  return {
+    read: () => ops.read(spec, path, []),
+    save: (value, saveOptions) => ops.save(spec, value, saveOptions),
+  };
+}
 function yamlSpec<T>(
   kind: FileKind,
   identity: Spec<T>['identity'],
