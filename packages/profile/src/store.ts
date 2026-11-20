@@ -8,8 +8,10 @@ import {
 import type { BackendSnapshot, ProfileBackend } from './backend.js';
 import { deepEqual } from './equal.js';
 import {
+  fromBackendIssue,
   fromSchemaIssue,
   profileError,
+  profileIssue,
   type ProfileError,
   type ProfileIssue,
 } from './errors.js';
@@ -98,6 +100,75 @@ const fail = <T>(error: ProfileError): ProfileResult<T> => ({
   error,
 });
 
+/** 一组元素的全部排列，按原来的顺序依次生成（第一个就是原顺序）。 */
+function permutations<T>(items: readonly T[]): T[][] {
+  if (items.length <= 1) return [[...items]];
+  return items.flatMap((item, index) =>
+    permutations([...items.slice(0, index), ...items.slice(index + 1)]).map(
+      (rest) => [item, ...rest],
+    ),
+  );
+}
+
+/** 把一部分文档换成新内容后的 Profile。 */
+function withDocuments(
+  profile: Profile,
+  documents: readonly ProfileDocument[],
+  data: Readonly<Record<ProfileDocument, unknown>>,
+): Profile {
+  const next: Record<string, unknown> = { ...profile };
+  for (const document of documents) {
+    next[PROFILE_FIELDS[document]] = data[document];
+  }
+  return next as unknown as Profile;
+}
+
+/**
+ * 选一个写入顺序：按这个顺序逐个写入时，**每一步之后**的 Profile 都不比原来多出跨文档的问题，
+ * 所以中途崩溃总是留下合法的 Profile。顺序不是写死的，而是逐个检查所有排列（最多 4 个文档，24 种）。
+ *
+ * - 最终结果本身就违反规则：返回那条规则的错误。
+ * - 最终结果没问题，但没有一个顺序能让中间状态也没问题：返回 `profile.no_safe_write_order`。
+ */
+function safeWriteOrder(
+  loaded: LoadedProfile,
+  changed: readonly ProfileDocument[],
+  data: Readonly<Record<ProfileDocument, unknown>>,
+): ProfileResult<ProfileDocument[]> {
+  const added = (documents: readonly ProfileDocument[]) =>
+    rules.newIssues(
+      loaded.issues,
+      rules.crossDocumentIssues(withDocuments(loaded.profile, documents, data)),
+    );
+  const final = added(changed);
+  const first = final[0];
+  if (first !== undefined) {
+    // 现在跨文档的规则只有一条：概念链接两端的 Workspace 要已注册。
+    const { ref, workspace } = first.params as {
+      ref: string;
+      workspace: string;
+    };
+    return fail(
+      profileError(
+        'profile.link_workspace_not_registered',
+        { ref, workspace },
+        final,
+      ),
+    );
+  }
+  for (const order of permutations(changed)) {
+    const safe = order.every(
+      (_, index) => added(order.slice(0, index + 1)).length === 0,
+    );
+    if (safe) return { ok: true, value: order };
+  }
+  return fail(
+    profileError('profile.no_safe_write_order', {
+      documents: changed.join(', '),
+    }),
+  );
+}
+
 /**
  * 在一个后端上创建 {@link ProfileStore}。**所有领域规则都在这里执行**，后端只保存文档和同步。
  *
@@ -136,10 +207,20 @@ export function createProfileStore(
     const issues: ProfileIssue[] = [];
     const data: Partial<Record<ProfileDocument, unknown>> = {};
     for (const document of PROFILE_DOCUMENTS) {
-      const result = validateFile(
-        DOCUMENT_KINDS[document],
-        snapshot.documents[document],
-      );
+      const read = snapshot.documents[document];
+      if (read.status === 'missing') {
+        issues.push(
+          profileIssue(document, 'profile.document_missing', { document }, []),
+        );
+        continue;
+      }
+      if (read.status === 'unreadable') {
+        issues.push(
+          ...read.issues.map((issue) => fromBackendIssue(document, issue)),
+        );
+        continue;
+      }
+      const result = validateFile(DOCUMENT_KINDS[document], read.data);
       if (result.success) {
         data[document] = result.data;
         continue;
@@ -234,35 +315,15 @@ export function createProfileStore(
         profileError('profile.conflict_unresolved', { document: conflicted }),
       );
     }
-    const nextProfile = Object.fromEntries(
-      PROFILE_DOCUMENTS.map((document) => [
-        PROFILE_FIELDS[document],
-        validated.value[document],
-      ]),
-    ) as unknown as Profile;
-    const added = rules.newIssues(
-      loaded.issues,
-      rules.crossDocumentIssues(nextProfile),
+    const order = safeWriteOrder(loaded, changed, validated.value);
+    if (!order.ok) return order;
+    const written = await backend.write(
+      order.value.map((document) => ({
+        document,
+        data: validated.value[document],
+      })),
+      loaded.revision,
     );
-    const first = added[0];
-    if (first !== undefined) {
-      // 现在跨文档的规则只有一条：概念链接两端的 Workspace 要已注册。
-      const { ref, workspace } = first.params as {
-        ref: string;
-        workspace: string;
-      };
-      return fail(
-        profileError(
-          'profile.link_workspace_not_registered',
-          { ref, workspace },
-          added,
-        ),
-      );
-    }
-    const documents = Object.fromEntries(
-      changed.map((document) => [document, validated.value[document]]),
-    );
-    const written = await backend.write(documents, loaded.revision);
     if (written.ok) return { ok: true, value: written.revision };
     return { ok: 'retry' };
   }
@@ -313,7 +374,18 @@ export function createProfileStore(
       };
       const validated = validateAll(profile);
       if (!validated.ok) return validated;
-      const written = await backend.write(validated.value, null);
+      // profile 文档是 Profile 存在的标志，最后写：创建到一半崩溃时，Profile 还不存在，可以重新创建。
+      const order = [
+        ...PROFILE_DOCUMENTS.filter((d) => d !== 'profile'),
+        'profile' as const,
+      ];
+      const written = await backend.write(
+        order.map((document) => ({
+          document,
+          data: validated.value[document],
+        })),
+        null,
+      );
       if (!written.ok) return fail(profileError('profile.already_exists'));
       return load();
     },

@@ -1,0 +1,30 @@
+{
+  "name": "@mastery/profile-store-git",
+  "version": "0.0.0",
+  "private": true,
+  "description": "ProfileStore 的 Git 实现：现在只做文件读写（ProfileBackend），Git 提交在 3.6 之后接入。",
+  "type": "module",
+  "exports": {
+    ".": {
+      "@mastery/source": "./src/index.ts",
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsup src/index.ts --format esm --dts --clean",
+    "test": "vitest run --config ../../vitest.config.ts --root .",
+    "typecheck": "tsc -p tsconfig.json"
+  },
+  "dependencies": {
+    "@mastery/platform": "workspace:*",
+    "@mastery/profile": "workspace:*",
+    "@mastery/store": "workspace:*"
+  },
+  "devDependencies": {
+    "@mastery/platform-memory": "workspace:*"
+  }
+}

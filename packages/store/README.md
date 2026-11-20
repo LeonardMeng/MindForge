@@ -92,3 +92,7 @@ schema 的错误码（`field.*`、`migration.*` 等）原样转发，字段路�
 - `docs-examples.test.ts`：`docs/protocol/*.md` 里的 YAML 示例和 Concept 示例都能通过校验，同时作为上面测试的样例数据（`test-helpers.ts` 用 Vite 的 `import.meta.glob` 读取，不用 `node:*`）。
 
 本包用到 `crypto.subtle`、`TextEncoder` 等 Web 标准的全局对象，`tsconfig.json` 的 `lib` 是 `["ES2023", "WebWorker"]`。
+
+## 给其他包用的 YAML 工具
+
+`parseYaml`（严格解析）、`stringifyYaml`（规范形式）、`patchYaml`（在原文上只改动变化的部分）和 `fromRawIssue`（给解析问题加上文件路径和提示）也从本包导出。`profile-store-git` 用它们读写 Profile 的四个 YAML 文件，规则和 Workspace 的文件完全一样。

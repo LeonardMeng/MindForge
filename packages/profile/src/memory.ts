@@ -1,7 +1,9 @@
 import type { IsoDateTime } from '@mastery/schema';
 
 import type {
+  BackendDocument,
   BackendSnapshot,
+  BackendWrite,
   BackendWriteResult,
   ProfileBackend,
 } from './backend.js';
@@ -68,6 +70,7 @@ export class MemoryProfileBackend implements ProfileBackend {
   #revision = 0;
   #online = true;
   #lastSyncedAt: IsoDateTime | null = null;
+  readonly #writeLog: ProfileDocument[][] = [];
 
   constructor(options: MemoryProfileBackendOptions = {}) {
     this.#remote = options.remote;
@@ -91,22 +94,26 @@ export class MemoryProfileBackend implements ProfileBackend {
   }
 
   write(
-    documents: Partial<Record<ProfileDocument, unknown>>,
+    writes: readonly BackendWrite[],
     base: Revision | null,
   ): Promise<BackendWriteResult> {
-    const changed = ordered(Object.keys(documents) as ProfileDocument[]);
     if (base === null) {
-      if (this.#local !== null)
+      // profile 文档是 Profile 存在的标志；别的文档可能是上次创建到一半留下的，直接覆盖。
+      if (this.#local?.has('profile') === true)
         return Promise.resolve({ ok: false, reason: 'exists' });
-      this.#local = new Map();
+      this.#local ??= new Map();
     } else if (this.#local === null || base !== this.#revisionString()) {
       return Promise.resolve({ ok: false, reason: 'modified' });
     }
-    for (const document of changed) {
-      this.#local.set(document, cloneJson(documents[document]));
+    for (const { document, data } of writes) {
+      this.#local.set(document, cloneJson(data));
       this.#dirty.add(document);
     }
-    this.#bump(changed, 'local');
+    this.#writeLog.push(writes.map((write) => write.document));
+    this.#bump(
+      writes.map((write) => write.document),
+      'local',
+    );
     return Promise.resolve({ ok: true, revision: this.#revisionString() });
   }
 
@@ -206,21 +213,29 @@ export class MemoryProfileBackend implements ProfileBackend {
     return Promise.resolve({ ok: true, revision: this.#revisionString() });
   }
 
+  /** 测试用：每次 `write` 按顺序写了哪些文档。 */
+  get writeLog(): readonly (readonly ProfileDocument[])[] {
+    return this.#writeLog;
+  }
+
   #revisionString(): Revision {
     return `r${String(this.#revision)}`;
   }
 
   #snapshot(): BackendSnapshot | null {
     const local = this.#local;
-    if (local === null || PROFILE_DOCUMENTS.some((d) => !local.has(d)))
-      return null;
+    if (local?.has('profile') !== true) return null;
     return {
       documents: Object.fromEntries(
-        PROFILE_DOCUMENTS.map((document) => [
-          document,
-          cloneJson(local.get(document)),
-        ]),
-      ) as Record<ProfileDocument, unknown>,
+        PROFILE_DOCUMENTS.map(
+          (document): [ProfileDocument, BackendDocument] => [
+            document,
+            local.has(document)
+              ? { status: 'ok', data: cloneJson(local.get(document)) }
+              : { status: 'missing' },
+          ],
+        ),
+      ) as Record<ProfileDocument, BackendDocument>,
       revision: this.#revisionString(),
       conflicts: ordered(this.#conflicts.keys()),
     };

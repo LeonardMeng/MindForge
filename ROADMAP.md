@@ -31,7 +31,7 @@
 ## 当前状态
 
 - **当前里程碑：** M1
-- **下一个任务：** 1.13
+- **下一个任务：** 1.14
 - **阻塞项：** 无
 
 ---
@@ -158,7 +158,7 @@
 - **验收**：一套 ProfileStore 契约测试，内存实现通过；dependency-cruiser 确认 `profile` 不依赖 `git`、`store`、`node:*`。
 - **不做**：Git 实现、云实现。
 
-### [ ] 1.13 profile-store-git
+### [x] 1.13 profile-store-git
 - **包**：`profile-store-git`
 - **依赖**：1.12、1.9
 - **产出**：基于文件的 ProfileStore 实现（此时只做文件读写；Git 提交在 3.6 完成后接入）。
@@ -615,8 +615,11 @@
 - （来自 1.11，8.1 / 9.1 处理）`workspaces.yaml` 的 `remote` 不接受本机路径。U 盘、挂载的 NAS 这类远程在每台设备上路径不同，需要在 `device.yaml` 里按 Workspace 覆盖远程地址。
 - （来自 1.11）密钥检查只是一道保险，不是安全边界：换个名字或换种写法就能绕过。以后 `device.yaml` 要记录钥匙串条目的名称时，字段名不能含有被拦截的词（比如用 `keychain_entry`）。找到密钥时只报密钥的错误，去掉之后才报其他问题。
 - （来自 1.12，8.1 处理）Profile 的同步冲突现在按文档整体处理：两台设备离线时各自注册了不同的 Workspace，同步后在 `workspaces.yaml` 上冲突，只能整体选本地或远程（契约测试里记录了这个现状）。8.1 应该自动合并不重叠的修改（比如两边各自新增的注册、各自新增的概念链接），只有真正冲突的地方才交给用户。
-- （来自 1.12，1.13 实现）`profile-store-git` 只实现 `ProfileBackend`（读写四个 YAML 文件、`watch`），规则全部由 `createProfileStore` 执行。`revision` 可以用四个文件内容的哈希；写入时比较 revision，被外部改过就返回 `modified`。用 `store` 包读写文件（严格 YAML、只改动变化的部分）。8.1 之前没有远程：`syncStatus().remote` 为 `none`，契约测试不传 `sync`。
 - （来自 1.12）选 `local` 或 `remote` 解决冲突之后，跨文档的规则可能不再满足（比如远程版本的 `workspaces.yaml` 没有本地链接用到的 Workspace）。现在的处理：`load()` 照常成功并在 `issues` 里列出，写入只要不让问题变多就允许。UI（6.x / 8.x）应该把这些 `issues` 显示出来，引导用户修复。
+- （来自 1.13，1.15 处理）`mastery profile init` 生成的 Profile 目录里要有 `.gitignore`，包含 `.mastery/`（写锁 `profile-write` 的锁文件在 `.mastery/runtime/locks/`）和 `.mastery-tmp-*`（崩溃留下的临时文件）。
+- （来自 1.13，8.1 实现）Profile 的 Git 同步（pull、merge、push）必须持有和写入相同的锁 `PROFILE_WRITE_LOCK`（`profile-write`），否则同步和写入会交错，破坏“重新读取、比较 revision、按顺序写入”的保证。
+- （来自 1.13，1.15 处理）`profile-store-git` 的测试只在内存文件系统上运行（依赖规则不允许它的测试 import `platform-node`）。1.15 的 CLI 测试要在真实磁盘的临时目录里跑一遍 Profile 的创建、注册和外部修改，覆盖 Node 的文件监听和锁。
+- （来自 1.13，3.6 处理）`profile-store-git` 现在不依赖 `git`（README 第 6 节允许，但没用到）。3.6 接入 Git 提交时再加上依赖。
 - （来自 1.4，7.2 处理）验证证据和干预的关联：优先考虑在 Intervention 里记录验证证据的 id（Intervention 文件本来就可以修改），这样不用改 Evidence 的格式，关联关系也只存一处。
 - （来自 1.4，8.3 决定）引入跨 Workspace 的前置依赖后，Blindspot 的 `prerequisite_id` 可能需要支持 `GlobalConceptRef`。
 - （来自 1.1）`packages/schema/src/testing.ts` 的测试构造函数目前只在 schema 包内部使用。其他包的测试要用时，再决定放在哪里（比如 `testkit` 包），不从 schema 的公共 API 导出。
@@ -648,3 +651,4 @@
 | 2026-11-20 | 1.11 | `task/1.11-schema-profile-device` | schema 新增 `ProfileConfig`（`id`、`name`、`language`（BCP 47，只有一种大小写写法）、`weekly_minutes`；目标暂不放）、`WorkspaceRegistry`（id 不重复；`remote` 必须写出、可以是 `null`，不能是本机路径，`http(s)://` 不能带任何用户信息，`ssh://` 不能带密码）、`ConceptLinks`（`{ from, relation: requires, to }`，只接受跨 Workspace、不指向自己、不重复）、`ProfileDefaults`（`plugins` 同 workspace.yaml、`model`）、`DeviceConfig`（README 第 7 节的字段，所有段必填；`checkout` 必填，README 示例补上 `checkout: full`；本机路径必须是绝对路径；`store: cloud` 的格式已定）。密钥检查（`secrets.ts`）用在 device、defaults、workspaces 和 workspace.yaml：拆词后整词比较的字段名规则（`secret.field_not_allowed`，提示用钥匙串、无害的名字改名；`max_tokens` 不算）和常见 token 格式（`secret.value_not_allowed`，不在错误里重复值本身），文档写明只是保险、不是安全边界。5 种文件登记进 `FILE_KINDS`，生成 5 个 JSON Schema（已有的不变）和 5 页协议说明；store 的文档示例测试加上这 5 页和 README 第 7 节里的两个示例。**修改了 1.6 测试里 2 处断言**：`file-kinds.test.ts` 的登记表列表加上 5 种新文件、种类数量从 11 改为 16，都是登记新文件的直接结果，其他断言不变。共 1103 个测试（6 个按平台或实现跳过） | Profile 领域检查、云端 Profile 的拒绝、设备专属远程等见“待整理” |
 | 2026-11-20 | 1.12 | `task/1.12-profile-store-port` | 新建 `@mastery/profile`（只依赖 schema）：`ProfileBackend` 端口（只保存四个文档和同步）和 `ProfileStore` 接口；`createProfileStore(backend, { now, generateId, maxAttempts })` 执行全部规则（schema 校验、版本过新时只读、Workspace id 不重复、注销时清理链接并返回删掉的链接、链接两端已注册、Profile id 不变、冲突中的文档不能写、不让跨文档问题变多）；领域失败作为结果返回，I/O 错误抛出；乐观并发，单步操作每次重试都重新读取、重新执行、重新检查规则，次数固定且可测试；注入的 `now()`、`generateId()` 返回值不合格时抛出。内存实现：多台设备共用 `MemoryProfileRemote`，可以模拟离线和外部修改；同步只有一边改过时直接拉取或推送，两边都改过时按文档冲突，`resolveConflict` 选本地或远程。契约测试在 `@mastery/profile/contract`（基本部分 + 可选的同步部分，包括“两台离线设备各自注册不同 Workspace”现在会冲突的测试）。README 第 6 节和 Profile 一节写明两层的分工；`tests/dependency-rules.test.ts` 加样例确认 profile 不能依赖 store、git、`node:*`。没有改已有的断言。共 1143 个测试（6 个按平台或实现跳过） | 冲突的自动合并（8.1）、解决冲突后的跨文档问题见“待整理” |
 | 2026-11-20 | 1.8（修复） | `task/1.12-profile-store-port`（单独提交） | Windows CI 上 `NodeLock` 的契约测试“第二个持有者等第一个释放”偶尔失败：第一个持有者删除锁文件时，等待者正好在读它，Windows 把文件置为“删除挂起”，这期间独占创建报 EPERM，被当成权限错误抛出。修复：Windows 上创建、读取、改名锁文件遇到 EPERM / EACCES 时按“锁正忙”稍后重试；到期仍然如此时报 `platform.permission_denied`（而不是误导的 `lock_timeout`）；其他系统上照旧立即报权限错误。`NodeLock` 新增两个测试用钩子 `beforeCreate`、`beforeRead`，新增 4 个测试（3 个只在 Windows 上运行，1 个只在其他系统上运行；在 Linux 上把平台判断临时改成 Windows 验证过前 3 个）。没有改已有的断言 | 无 |
+| 2026-11-20 | 1.13 | `task/1.13-profile-store-git` | 新建 `@mastery/profile-store-git`（依赖 profile、platform、store；暂不依赖 git）：`createGitProfileBackend({ fs, lock })` 把四个文档存成 Profile 根目录下的 YAML 文件，用 store 的严格解析读、`patchYaml` 只改动变化的部分写（注释保留）；`profile.yaml` 是 Profile 存在的标志；revision 先分别算每个文件的 SHA-256，再对 `[文档名, 哈希或 missing]` 列表算 SHA-256（Web Crypto）；整个写入（重新读取、比较 revision、按顺序写入）在写锁 `profile-write` 里完成；`watch` 把自己写入的变化报成 `local`，别的程序的修改报成 `external`。1.12 的端口调整：`ProfileBackend.write` 接收**有序**的写入列表；`BackendSnapshot` 的每个文档是 `ok` / `missing` / `unreadable`（带解析问题）；`createProfileStore` 逐个检查所有写入顺序，选一个让每一步之后都不多出跨文档问题的顺序，没有时报 `profile.no_safe_write_order` 且什么都不写；创建时 `profile` 文档最后写；新增 `profile.document_missing`。store 导出 `patchYaml` 和 `fromRawIssue`。测试：1.12 的契约（基本部分）；三种多文件修改在每一步之后崩溃都留下合法的 Profile；创建到一半崩溃可以重新创建；没有安全顺序的修改被拒绝；把顺序检查临时去掉时这些测试会失败（验证过）。没有改已有的断言。共 1200 个测试（16 个按平台、实现或能力跳过） | 真实磁盘上的测试、Profile 的 `.gitignore`、同步持有同一把锁等见“待整理” |
