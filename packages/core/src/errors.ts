@@ -48,6 +48,12 @@ const MESSAGES_EN = {
   'core.evidence_invalid': () => 'the evidence is not valid; see the issues',
   'core.rules_version_unknown': (p: Params) =>
     `rules version ${text(p.version)} is not available in this version of Mastery OS`,
+  'core.evidence_unreadable': (p: Params) =>
+    `concept "${text(p.concept_id)}" has ${text(p.count)} evidence file(s) that cannot be read; ` +
+    'fix them before recomputing its mastery (see the issues)',
+  'core.mastery_version_too_new': (p: Params) =>
+    `${text(p.file)} was written by a newer version of Mastery OS; upgrade Mastery OS before recomputing ` +
+    `the mastery of "${text(p.concept_id)}"`,
   'core.evidence_version_too_new': (p: Params) =>
     `concept "${text(p.concept_id)}" has ${text(p.count)} evidence file(s) written by a newer version ` +
     'of Mastery OS; upgrade Mastery OS before recomputing its mastery',
@@ -112,5 +118,9 @@ export type EvidenceBeforeSession = CoreError<'core.evidence_before_session'>;
 export type EvidenceInFuture = CoreError<'core.evidence_in_future'>;
 /** 要用的规则版本不存在。 */
 export type RulesVersionUnknown = CoreError<'core.rules_version_unknown'>;
+/** 有读不了的证据：不能重算，否则投影会悄悄漏掉它（2.5）。 */
+export type EvidenceUnreadable = CoreError<'core.evidence_unreadable'>;
+/** 投影或历史是更新版本写的：不能覆盖（2.5）。 */
+export type MasteryVersionTooNew = CoreError<'core.mastery_version_too_new'>;
 /** 有更新版本写的证据：不能重算（1.6 的规则，2.5 使用）。 */
 export type EvidenceVersionTooNew = CoreError<'core.evidence_version_too_new'>;

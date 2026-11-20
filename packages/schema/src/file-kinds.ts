@@ -102,7 +102,7 @@ export const FILE_KINDS = {
     'mastery-history-entry',
     MasteryHistoryEntry,
     'mastery/history/<slug>.jsonl (one line)',
-    'One line of the append-only mastery history.',
+    'One line of the mastery history (derived from the evidence and written only by Mastery Core).',
   ),
   blindspot: entry(
     'blindspot',

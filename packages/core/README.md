@@ -27,7 +27,7 @@ Mastery Core（ADR-0002）：纯领域逻辑。不依赖 Cordis，不做 I/O，�
 
 ### Repository
 
-只有 2.2 和 2.5 需要的操作，以后的任务需要时再加：`getConcept`、`getCriteria`、`getSession`、`listEvidence`、`appendEvidence`（只追加）、`getMastery`、`writeMastery`、`getHistory`、`appendHistory`。
+只有 2.2 和 2.5 需要的操作，以后的任务需要时再加：`getConcept`、`getCriteria`、`getSession`、`listEvidence`、`appendEvidence`（只追加）、`getMastery`、`writeMastery`、`getHistory`、`writeHistory`（历史是派生数据，整个写出，2.5）。
 
 - 读一个文件返回 `found` / `missing` / `unreadable`（`tooNew` 表示是更新版本写的）。
 - **`listEvidence` 不会悄悄丢掉用不了的文件**：返回 `{ items, tooNew, unreadable }`，能用的证据按 id 升序，版本过新的、读不了的单独列出。2.5 据此决定能不能重算（有版本过新的证据时不重算）。
@@ -61,6 +61,21 @@ Mastery Core（ADR-0002）：纯领域逻辑。不依赖 Cordis，不做 I/O，�
 - 会话按证据的 Concept 目录查找，所以真实的 store 里别的 Concept 的会话是 `session_not_found`；放错目录、`concept_id` 不对的会话文件是 `session_unreadable`（store 的路径检查）。`concept_id` 的检查是防御性的，用替换了 `getSession` 的 Repository 测试。
 - “会话已经用过”现在扫一遍 `listEvidence`，只看得到读得了的证据（3.x 改由索引回答）。
 - 写入成功后发出 `evidence/submitted`，`at` 是 `clock.now()`。
+
+## 重算：`recalculate(ports, conceptId)`
+
+读取 Concept（归档的也重算）、criteria 和全部证据，用 `rules.current()` 判定，写出投影 `mastery/<slug>.yaml` 和**由证据推导的历史** `mastery/history/<slug>.jsonl`（`deriveHistory`：第一步一条，之后 `state`、`dimensions` 或 `confidence` 变了的每一步一条）。返回 `{ projection, projectionWritten, changed, historyWritten }`。
+
+| 情况 | 结果 |
+|---|---|
+| 有更新版本写的证据 / 读不了的证据 | `core.evidence_version_too_new` / `core.evidence_unreadable`，什么都不写（绝不退回 `not_assessed`） |
+| 已有投影是更新的规则算的 | `core.rules_version_unknown`（不降级） |
+| 投影或历史文件是更新版本写的 | `core.mastery_version_too_new` |
+| 投影或历史读不了 | 直接覆盖（派生数据） |
+| 没有证据文件，也没有投影 | 什么都不写，`projection: null` |
+| 没有证据文件，但有投影 | 写成 `not_assessed` |
+
+投影按值比较：值变了才写、才发出 `mastery/changed`；只是格式不同时写回规范形式，不发事件。历史每次都和推导结果对齐，字节相同时不写，所以两次写之间崩溃后再算一次就能补齐。不读时钟；多个进程同时重算需要 4.1 的写锁。
 
 ## 领域事件
 

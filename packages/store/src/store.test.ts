@@ -3,7 +3,11 @@ import {
   MemoryFileSystem,
   SimulatedCrashError,
 } from '@mastery/platform-memory';
-import { validateFile, type FileKind } from '@mastery/schema';
+import {
+  validateFile,
+  type FileKind,
+  type MasteryHistoryEntry,
+} from '@mastery/schema';
 import { describe, expect, it } from 'vitest';
 
 import sessionExample from '../../../docs/protocol/examples/assessment-session.json' with { type: 'json' };
@@ -587,50 +591,95 @@ describe('mastery projection: derived, written by Mastery Core', () => {
   });
 });
 
-describe('mastery history: append only lines', () => {
+describe('mastery history: derived, written as a whole', () => {
   const PATH = 'mastery/history/self-attention.jsonl';
-  const entry = historyExample as unknown as Parameters<
-    Store['history']['append']
-  >[1];
+  const entry = historyExample as unknown as MasteryHistoryEntry;
+  const line = (value: unknown) => `${JSON.stringify(value)}\n`;
 
-  it('creates the file, then appends one canonical line at a time', async () => {
+  it('writes one canonical compact line per entry, and skips identical writes', async () => {
     const { fs, store } = await setup();
-    expect(await store.history.append('self-attention', entry)).toMatchObject({
-      ok: true,
-    });
-    const first = await fs.readTextFile(PATH);
-    expect(first).toBe(`${JSON.stringify(historyExample)}\n`);
-    await store.history.append('self-attention', { ...entry, confidence: 0.5 });
-    const second = await fs.readTextFile(PATH);
-    expect(second.startsWith(first)).toBe(true);
-    expect(second.split('\n')).toHaveLength(3);
+    const second = { ...entry, confidence: 0.5 };
+    expect(
+      await store.history.write('self-attention', [entry, second]),
+    ).toMatchObject({ ok: true, written: true });
+    expect(await fs.readTextFile(PATH)).toBe(
+      line(historyExample) + line({ ...historyExample, confidence: 0.5 }),
+    );
+    expect(
+      await store.history.write('self-attention', [entry, second]),
+    ).toMatchObject({ ok: true, written: false });
     const read = ok(await store.history.read('self-attention'));
     expect(read.value.map((e) => e.confidence)).toEqual([0.82, 0.5]);
   });
 
-  it('keeps the existing bytes and adds a missing final newline', async () => {
-    const existing = JSON.stringify(
-      { ...historyExample, confidence: 0.1 },
-      null,
-      0,
-    );
-    const { fs, store } = await setup({ [PATH]: existing });
-    await store.history.append('self-attention', entry);
-    expect(await fs.readTextFile(PATH)).toBe(
-      `${existing}\n${JSON.stringify(historyExample)}\n`,
-    );
+  it('replaces the whole file, including earlier lines', async () => {
+    const { fs, store } = await setup({
+      [PATH]:
+        line({ ...historyExample, confidence: 0.1 }) + line(historyExample),
+    });
+    await store.history.write('self-attention', [entry]);
+    expect(await fs.readTextFile(PATH)).toBe(line(historyExample));
   });
 
-  it('reports a bad line with its index, and refuses to append to a file with problems', async () => {
-    const good = JSON.stringify(historyExample);
-    const text = `${good}\n{"schema_version": 1}\n`;
-    const { fs, store } = await setup({ [PATH]: text });
+  it('rewrites a non-canonical file into the canonical form', async () => {
+    const { fs, store } = await setup({
+      [PATH]: JSON.stringify(historyExample, null, 0).replace(':', ': '),
+    });
+    expect(await store.history.write('self-attention', [entry])).toMatchObject({
+      ok: true,
+      written: true,
+    });
+    expect(await fs.readTextFile(PATH)).toBe(line(historyExample));
+  });
+
+  it('writes no file for an empty history, and empties an existing one', async () => {
+    const empty = await setup();
+    expect(await empty.store.history.write('self-attention', [])).toMatchObject(
+      { ok: true, written: false },
+    );
+    expect(await empty.fs.stat(PATH)).toBeNull();
+    const existing = await setup({ [PATH]: line(historyExample) });
+    expect(
+      await existing.store.history.write('self-attention', []),
+    ).toMatchObject({ ok: true, written: true });
+    expect(await existing.fs.readTextFile(PATH)).toBe('');
+  });
+
+  it('overwrites a file with a bad line (derived data)', async () => {
+    const { fs, store } = await setup({
+      [PATH]: `${line(historyExample)}{"schema_version": 1}\n`,
+    });
+    expect(await store.history.write('self-attention', [entry])).toMatchObject({
+      ok: true,
+      written: true,
+    });
+    expect(await fs.readTextFile(PATH)).toBe(line(historyExample));
+  });
+
+  it('reports a bad line with its index when reading', async () => {
+    const { store } = await setup({
+      [PATH]: `${line(historyExample)}{"schema_version": 1}\n`,
+    });
     const read = await store.history.read('self-attention');
     expect(read?.ok === false ? read.issues[0]?.path[0] : undefined).toBe(1);
-    expect(
-      codes(await store.history.append('self-attention', entry)),
-    ).not.toEqual([]);
-    expect(await fs.readTextFile(PATH)).toBe(text);
+  });
+
+  it('refuses an invalid entry with its index, and writes nothing', async () => {
+    const { fs, store } = await setup();
+    const result = await store.history.write('self-attention', [
+      entry,
+      { ...entry, confidence: 9 },
+    ]);
+    expect(result.ok).toBe(false);
+    expect(result.ok === false ? result.issues[0]?.path[0] : undefined).toBe(1);
+    expect(await fs.stat(PATH)).toBeNull();
+  });
+
+  it('refuses a concept id that is not a slug', async () => {
+    const { store } = await setup();
+    expect(codes(await store.history.write('Not A Slug', [entry]))).toEqual([
+      'store.path_mismatch',
+    ]);
   });
 });
 
@@ -656,16 +705,14 @@ describe('files written by a newer version are read only', () => {
     expect(await fs.readTextFile(path)).toBe(newer);
   });
 
-  it('refuses to append to a history with a line from a newer version', async () => {
+  it('refuses to overwrite a history with a line from a newer version', async () => {
     const path = 'mastery/history/self-attention.jsonl';
     const text = `${JSON.stringify({ ...historyExample, schema_version: 99 })}\n`;
     const { fs, store } = await setup({ [path]: text });
-    const entry = historyExample as unknown as Parameters<
-      Store['history']['append']
-    >[1];
-    expect(codes(await store.history.append('self-attention', entry))).toEqual([
-      'store.version_too_new',
-    ]);
+    const entry = historyExample as unknown as MasteryHistoryEntry;
+    expect(codes(await store.history.write('self-attention', [entry]))).toEqual(
+      ['store.version_too_new'],
+    );
     expect(await fs.readTextFile(path)).toBe(text);
   });
 });

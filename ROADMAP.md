@@ -31,7 +31,7 @@
 ## 当前状态
 
 - **当前里程碑：** M1
-- **下一个任务：** 2.5（🏁 M1 检查点和 M2 并行进行，见下面 M1 检查点的说明）
+- **下一个任务：** 2.6（🏁 M1 检查点和 M2 并行进行，见下面 M1 检查点的说明）
 - **阻塞项：** 无
 
 ---
@@ -221,7 +221,7 @@
 - **验收**：每条迁移路径都有测试；`explanation` 有快照测试。
 - **不做**：复习调度。
 
-### [ ] 2.5 🔍 重算和投影
+### [x] 2.5 🔍 重算和投影
 - **包**：`core`
 - **依赖**：2.2、2.4
 - **产出**：`recalculate(conceptId)`：读取全部证据，按规则算出投影；只在结果变化时写入 `mastery/<slug>.yaml`、追加历史、发出 `mastery/changed` 事件。
@@ -594,7 +594,7 @@
 - （来自 0.2）行内写法 `import { type X } from '…'` 会被 dependency-cruiser 当成“只引用类型”，但在 `verbatimModuleSyntax` 下运行时会留下一个空的副作用 import。可以考虑开启 eslint 的 `@typescript-eslint/no-import-type-side-effects`，统一写成 `import type`。
 - （来自 1.1，2.7 处理）复习日期可能需要只有日期的类型 `IsoDate`（`YYYY-MM-DD`），到时再加。
 - （来自 1.2，4.3 决定）插件名目前按 Slug 规则。第三方插件如果用 npm 的 scope 包名（比如 `@someone/agent-x`），插件名的规则要不要放宽；同一个插件要不要支持多个实例。
-- （来自 1.3，3.7 处理）两台设备各自往同一个 `mastery/history/<slug>.jsonl` 末尾追加时，Git 文本合并会冲突。方向：让 history 也能逐字节确定，由 merge driver 根据证据重算（和投影一样），而不是做文本合并。`cause: rules`（规则升级）时 `at` 怎么确定，到 3.7 再决定。
+- （来自 1.3，**2.5 已处理**：历史改为由证据推导、整个写出，同样的证据、criteria 和规则得到逐字节相同的历史，merge driver 可以像投影一样重算它；规则升级时整个历史按新规则重新推导，不写 `cause: rules`）两台设备各自往同一个 `mastery/history/<slug>.jsonl` 末尾追加时，Git 文本合并会冲突。方向：让 history 也能逐字节确定，由 merge driver 根据证据重算（和投影一样），而不是做文本合并。`cause: rules`（规则升级）时 `at` 怎么确定，到 3.7 再决定。
 - （来自 1.3）进行中的评测会话以后可以暂存在 `.mastery/runtime/` 里，用于崩溃后恢复，不进入权威数据。
 - （来自 1.4，4.2 实现）Proposal 的 `requires_approval` 只是提交者的请求：Core 按规则判断，只能把 `false` 升级为 `true`，不能反过来。以后可以在 `workspace.yaml` 里让用户配置哪些操作需要审批，但用户配置也只能收紧，不能放宽 Core 的最低要求。
 - （来自 1.4，4.2 处理）并发冲突：提案生成后、批准前文件已被改动时怎么办。可能需要在更新类操作里带上“提案时文件内容的哈希”。Proposal 不是长期保存的数据，到时再加字段代价很小。
@@ -602,7 +602,7 @@
 - （来自 1.5）一致性测试：把 schema 现有的合法和非法样例，同时用 zod 和一个 JSON Schema 校验器（比如 ajv，只作为 devDependency，不违反 ADR-0013）各跑一遍，结果应该一致；因为跨字段规则而只被 zod 拒绝的样例，单独列出来并注明原因。
 - （来自 1.5，M6 之前不做）让 VS Code 这类编辑器在用户编辑 `workspace.yaml`、Concept 的 frontmatter 时，直接用 `docs/protocol/schemas/` 里的 JSON Schema 做自动补全和实时校验。
 - （来自 1.6，2.5 实现）如果某个 Concept 有任何证据是 `version_too_new`，就不重算这个 Concept 的掌握度，也不写投影，并提示用户升级 Mastery OS。否则会因为漏算证据而写出错误的投影，再通过 Git 同步到其他设备。
-- （来自 1.7，4.1 实现）同一个 Workspace 目录，同一时间只能有一个进程做写操作，用 1.7 的 Lock 端口实现（比如 `.mastery/runtime/write.lock`）。只读的 CLI 命令（validate、status、search）不需要拿锁。1.9 之后还要注意：store 的 `save(value, { base })` 是“先比较哈希再写入”，history 的 `append` 是“读出整个文件再原子写回”，两者在两个进程同时写时都需要这把锁才正确；Evidence 和评测会话的 `append` 用独占创建，不依赖锁。
+- （来自 1.7，4.1 实现）同一个 Workspace 目录，同一时间只能有一个进程做写操作，用 1.7 的 Lock 端口实现（比如 `.mastery/runtime/write.lock`）。只读的 CLI 命令（validate、status、search）不需要拿锁。1.9 之后还要注意：store 的 `save(value, { base })` 是“先比较哈希再写入”，history 的 `write`（2.5 起取代 `append`）是“读出整个文件再原子写回”，两者在两个进程同时写时都需要这把锁才正确；2.5 的 `recalculate` 整个过程（读证据、写历史、写投影）也要在这把锁里；Evidence 和评测会话的 `append` 用独占创建，不依赖锁。
 - （来自 1.8）Linux 上别的工具（比如从 macOS 拷来的压缩包）创建的 NFD 文件名：`list` 会把它报成 NFC，但用 NFC 名字读不到（Linux 不做规范化）。目前不处理；遇到时再考虑在打开文件时按 NFD 名字重试，或者由 `mastery doctor` 提示改名。
 - （来自 1.8）`list` 会跳过不是合法路径段的名字（Windows 保留名、`<>:"|?*`、控制字符、以点或空格结尾等），这些文件对 Mastery 不可见。以后 `mastery doctor` 应该列出它们，提示用户改名，而不是让它们悄悄消失。
 - （来自 1.8，4.1 使用）`NodeLock` 清除过期锁时默认用 `process.emitWarning` 留下记录。4.1 接入 CLI 时，应该把 `onStaleLock` 接到正式的日志或事件上。
@@ -630,7 +630,7 @@
 - （来自 2.2，3.x 处理）“一个会话只产生一条证据”现在由 `submitEvidence` 扫一遍 `listEvidence(conceptId)` 检查，只看得到读得了的证据（版本过新、读不了的证据里的 `session_id` 看不到），证据多了也慢。有索引后改为按 `session_id` 查索引。
 - （来自 2.2，`mastery validate` 处理）没有任何证据指向的评测会话（比如会话写入之后证据被拒绝）应该报**警告**，不是错误：会话是只追加的记录，这种情况是正常的。
 - （来自 2.2，4.2 决定）`plugin-core` 的白名单（README 第 6 节）还没有 `core-store`；4.2 用 `createStoreRepository` 接上 Core 时要补上（或者改由 CLI / runtime 注入 Repository）。另外，README 第 6 节硬性禁止第 1 条（不能 import cordis）的包列表里没有 `core-store`，它的白名单也不允许 cordis 以外的内部包，但 cordis 是第三方包，白名单挡不住；要不要把 `core-store` 加进第 1 条，由人决定。
-- （来自 2.2）`createStoreRepository` 的 `appendHistory`：store 报的“读取之后被改过”（两个进程同时创建 history 文件）和非法的 Concept slug 都归为 `unreadable`。2.5 如果需要区分（比如重试），再给 `AppendHistoryResult` 加原因。
+- （来自 2.2，2.5 已处理：`appendHistory` 已删除）`createStoreRepository` 的 `appendHistory`：store 报的“读取之后被改过”（两个进程同时创建 history 文件）和非法的 Concept slug 都归为 `unreadable`。2.5 如果需要区分（比如重试），再给 `AppendHistoryResult` 加原因。
 - （来自 2.3）“打乱证据顺序结果不变”的属性测试，在去掉排序后仍然通过（验证过）：输出舍入到 4 位小数，求和顺序带来的最后一位差异几乎总被舍入抹掉。排序保证的是恰好落在舍入边界上的情况，没有测试能稳定地覆盖到。可以考虑导出一个不舍入的内部函数专门测它，由人决定。
 - （来自 2.3，2.4 已处理：状态机追加进 ADR-0007，ADR 的状态里写明分两次写成）ADR 模板规定“已定的 ADR 不改写内容”，但 ROADMAP 计划 ADR-0007 在 2.3 和 2.4 两次决定。2.4 的状态机阈值是追加进 ADR-0007，还是另写一份 ADR，到 2.4 再定。
 - （来自 2.3，2.4 已处理：没测过的考察维度不影响置信度，但让 P 不成立，explanation 列为 `missing.untested`）总置信度只平均**有分数**的维度。criteria 考察、但还没有任何证据的维度要不要拉低置信度或影响状态，属于 2.4（aggregate 不读 criteria）。
@@ -638,7 +638,10 @@
 - （来自 2.4，**2.7 必须先确认或修改再实现**）按时间的 `mastered → needs_review` 不能写进保存的投影：它取决于今天的日期，会破坏不变量 3 和 merge driver 的重算。建议的方向：保存的投影只包含由证据决定的状态，加上一个根据证据确定地算出的 `review_due_at`；“到期需要复习”在读取投影时推导（status、UI、Supervisor）。这样保存的状态里，`needs_review` 只来自证据（从 `mastered` 退步）。
 - （来自 2.4）状态机每一步都重新聚合前面的全部证据，代价随证据数量平方增长。现在的数量下没有问题；证据很多时可以改成增量聚合（结果必须逐字节相同）。
 - （来自 2.4）“进入 `mastered` 要求这一步的证据是通过的独立验证”也影响第一次掌握：两次相隔 7 天的通过的独立验证之后，如果 P 是靠一次练习才恢复的，状态停在 `provisional_mastery`，等下一次通过的独立验证。M5 检查点复审时看是否合理。
-- （来自 2.4）criteria 升级版本后，旧版本的独立验证不再算通过，重放的结果可能从 `mastered` 直接变成 `learning`（不是 `needs_review`），直到按新标准重新验证。2.5 的 `cause: rules` 和 M5 检查点时看这是否是想要的。
+- （来自 2.4）criteria 升级版本后，旧版本的独立验证不再算通过，重放的结果可能从 `mastered` 直接变成 `learning`（不是 `needs_review`），直到按新标准重新验证。2.5 的 `cause: rules` 和 M5 检查点时看这是否是想要的。（2.5：criteria 变了而规则版本没变时，`mastery/changed` 的 `cause` 是最后一条证据，不是 `rules`；`MasteryChangeCause` 没有“criteria 变了”这一种，见下面 2.5 的一条。）
+- （来自 2.5）`mastery/changed` 的 `cause` 只有 `evidence`、`time`、`rules` 三种。criteria 升级版本（规则版本不变）导致的变化，现在报成最后一条证据；没有证据文件但有投影、重写成 `not_assessed` 时，现在报成 `rules`。两者都不准确。要不要给 `MasteryChangeCause` 加 `criteria`（以及“证据消失”）一种，改 schema 时决定。
+- （来自 2.5）`recalculate` 先写历史、再写投影。两次写之间崩溃时，下一次重算会补齐（历史每次都和推导结果对齐），但中间这段时间历史比投影新。只有一个进程写时没有问题；多进程见 4.1 的锁。
+- （来自 2.5）README 第 9 节不变量 4 只写了“投影只能由 Mastery Core 写出”。历史现在也是派生数据、也只由 Core 写出，要不要把不变量 4 改成“投影和历史”，由人决定（2.5 没有改）。
 
 
 ## 完成记录
@@ -673,3 +676,4 @@
 | 2026-11-20 | 2.2 | `task/2.2-submit-evidence` | `submitEvidence(ports, input)`：校验 schema（错误的文件位置是 `<input>`）；`created_at` 最多比 `clock.now()` 晚 `EVIDENCE_CLOCK_TOLERANCE_MS`（5 分钟，边界两侧都有测试）；Concept 存在、读得了、不是 `archived`（`draft` 和 `active` 接受）；criteria 存在、读得了、版本相同，证据打分的维度都是 criteria 考察的维度；有会话时会话存在、读得了，`concept_id`、`criteria_version` 一致，打分的维度在会话里都有分数，证据不早于会话完成时间；一个会话只产生一条证据；追加写入后发出 `evidence/submitted`。不算掌握度。新增错误码 `core.concept_archived`、`core.criteria_unreadable`、`core.dimension_not_assessed`、`core.session_unreadable`、`core.session_already_used`、`core.evidence_before_session`、`core.evidence_in_future`。新建 `@mastery/core-store`（README 第 5、6 节和 dependency-cruiser 补上 `core-store ← core, store, schema, platform`，`tests/dependency-rules.test.ts` 加样例）：`createStoreRepository(store)` 通过 2.1 的 Repository 契约测试；不变量 9 用 ws-transformers fixture 和真实的 store 测试 18 种拒绝情况，每种都比较提交前后全部文件的内容。真实的 store 里，别的 Concept 目录下的会话是 `session_not_found`，放错目录的会话文件是 `session_unreadable`；`concept_id` 不一致的检查是防御性的，用替换了 `getSession` 的 Repository 测试。没有改已有的断言。共 1370 个测试（16 个按平台、实现或能力跳过） | 按会话查证据改用索引、validate 对没有证据的会话报警告、`plugin-core` 的白名单等见“待整理” |
 | 2026-11-20 | 2.3 | `task/2.3-rules-v1-aggregation` | `core` 的 `Rules` 接口加上 `aggregate(evidence) → Aggregate`（`dimensions`、`confidence`、`perDimension` 的 `{ score, confidence, evidenceCount }`），`@mastery/core/testing` 加 `stubRules(version)`。新建 `@mastery/rules-v1`（README 第 6 节和 dependency-cruiser 已有它的规则，没有改）：`aggregateV1`、`rulesV1`、冻结的 `V1_PARAMETERS`。每个维度只看给它打了分的证据；年龄从**这个维度**最新的证据算起（不用 `now`）；双曲衰减 `H / (H + ageDays)`，H = 30；类型权重 1.0 / 0.6 / 0.3；证据的 `confidence` 只影响置信度；维度置信度 = `C / (C + 1)` × (1 − 2 × 加权平均绝对偏差)；总置信度是有分数的维度的平均；所有 criteria 版本一起聚合；只用加减乘除和绝对值；按 id 排序后求和；输出 4 位小数，没有 `-0`。参数写进 ADR-0007（暂定，M5 检查点后复审）。测试：19 个表格场景（期望值用分数精确算出），另有 5 个测试（五个维度互不影响、空输入、版本号、参数冻结、不修改输入），6 个 fast-check 属性（只有 `null` 的维度仍是 `null`、0..1 且不是 `-0`、最多 4 位小数、打乱顺序不变、加不打分的证据不变、两次字节相同）；把参考时间临时改成全部证据里最新的时间，表格和属性测试各有一个失败（验证过）。**改了 `core.test.ts` 里 2 处断言**（经人确认）：`registry.get(1)` 和 `registry.current()` 从 `toEqual({ version: … })` 改为 `toBe(同一个规则对象)`，含义不变，因为规则对象现在带有 `aggregate` 函数；`core` 和 `core-store` 测试里的 `{ version: 1 }` 换成 `stubRules(1)`（只是测试准备）。共 1400 个测试（16 个按平台、实现或能力跳过） | 排序的测试覆盖、ADR-0007 在 2.4 怎么补、生产环境的 RulesRegistry 等见“待整理” |
 | 2026-11-20 | 2.4 | `task/2.4-rules-v1-state-machine` | `core` 的 `Rules` 加上 `evaluate(evidence, criteria) → Evaluation`（`state`、`aggregate`、`explanation`、`steps`：每条证据一步，记录前后状态、证据 id、`created_at`、到这一步的聚合，2.5 据此推导历史）；`stubRules` 补上 `evaluate`。`rules-v1`：`evaluateV1` 按 `(created_at, id)` 重放证据；通过的独立验证只算当前 criteria 版本；P = 考察的维度都达到阈值（没测过算没达到）且至少 1 次通过的独立验证；M = P、至少 2 次通过的独立验证、相隔至少 7 天、每个考察的维度都被通过的独立验证打过分（criteria 考察 transfer 时就包含 transfer，所以没有单独的 transfer 条件，经人确认）；迁移按 ADR-0007 的表，进入 `mastered` 总是要求这一步的证据是通过的独立验证（经人确认，堵住退步后靠练习直接回到 `mastered` 的漏洞）；explanation 的 code 和英文消息表 `formatExplanation`。`V1_PARAMETERS` 加上 `minIndependentVerifications: 2`、`minVerificationGapDays: 7`；ADR-0007 补上“状态机（2.4）”一节（暂定）。测试：每条迁移路径（包括跳过的、`mastered → needs_review → learning → provisional_mastery → mastered`、`learning → mastered`），条件的边界（间隔 7 天减 1 秒、覆盖、transfer、旧 criteria 版本、没通过的独立验证），8 个 explanation 内联快照（代码和英文），6 个 fast-check 属性；把“进入 `mastered` 要求通过的独立验证”或覆盖条件临时去掉时，对应的测试会失败（验证过）。**改了 `aggregate.test.ts` 里 1 处断言**（经人确认的第 7 点）：`V1_PARAMETERS` 的期望值加上两个新参数。共 1442 个测试（16 个按平台、实现或能力跳过） | 2.7 的到期复习不能写进投影、平方代价、第一次掌握的细节、criteria 升级的后果等见“待整理” |
+| 2026-11-20 | 2.5 | `task/2.5-recalculate` | `recalculate(ports, conceptId)`：读 Concept（归档的也重算）、criteria、全部证据，用 `rules.current()` 判定，写出投影和**由证据推导的历史**（`deriveHistory`：第一步一条，之后 `state`、`dimensions` 或 `confidence` 变了的每一步一条，`at` 是证据的 `created_at`，`cause` 是那条证据）。拒绝时什么都不写：有更新版本写的证据（`core.evidence_version_too_new`）或读不了的证据（新增 `core.evidence_unreadable`），已有投影是更新的规则算的（`core.rules_version_unknown`，不降级），投影或历史文件是更新版本写的（新增 `core.mastery_version_too_new`）；读不了的投影和历史直接覆盖。没有证据文件也没有投影时什么都不写；没有证据文件但有投影时写成 `not_assessed`；有证据但版本过新或读不了时报错，绝不退回 `not_assessed`。投影按值比较，值变了才写并发出 `mastery/changed`（`cause` 是最后一条证据，规则版本变了时是 `rules`），只是格式不同时写回规范形式、不发事件；历史每次都和推导结果对齐，字节相同时不写，所以两次写之间崩溃后再算一次就能补齐。**写历史的方式改为整个写出**（经人确认）：store 的 `history.write`、Repository 的 `writeHistory`（契约测试 7 个）；**删除了 `appendHistory`**（Repository 端口、契约、内存实现、store 的 `history.append`、core-store），连同它的测试：store 4 个、契约 3 个（两个实现各跑一次，共 6 次）。功能删除，不是为了让测试通过而改预期。README 第 7 节和不变量 3（投影**和历史**逐字节相同，并写明取决于 criteria）、协议说明页（历史是派生的；描述证据表明的路径，不是应用当时显示过什么，后者在 Git 历史里；示例的 explanation 换成 v1 的 code）、schema 的注释和 JSON Schema 描述同步更新。core-store 的测试用 rules-v1 做端到端检查：dependency-cruiser 只允许 core-store 的 `*.test.ts` import rules-v1，新样例证明普通源文件仍被拒绝。端到端测试（真实 store、fixture、规则 v1）：投影和历史的内联快照；再算一次什么都不写；两个 Workspace 按不同顺序写入同样的证据，投影和历史逐字节相同；一条条加证据和一次加完结果相同；晚到的证据重写历史的中间部分；`submitEvidence` 之后重算；每种拒绝前后全部文件不变，包括只有一条版本过新的证据时 `mastered` 投影不动。把“有版本过新的证据就拒绝”临时去掉时，4 个测试失败（验证过）。没有改已有测试的预期。共 1492 个测试（16 个按平台、实现或能力跳过） | `cause` 表达不了 criteria 变化、两次写之间的顺序、不变量 4 要不要包括历史等见“待整理” |

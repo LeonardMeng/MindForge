@@ -72,8 +72,8 @@ export default {
     allowlist('core', ['platform'], 'core ← schema, platform'),
     allowlist(
       'core-store',
-      ['core', 'store', 'platform'],
-      'core-store ← core, store, schema, platform',
+      ['core', 'store', 'platform', 'rules-v1'],
+      'core-store ← core, store, schema, platform（测试还可以用 rules-v1）',
     ),
     allowlist('rules-v1', ['core'], 'rules-v1 ← schema, core'),
     allowlist(
@@ -141,6 +141,14 @@ export default {
         pathNot: ['\\.test\\.ts$', src('platform-memory'), src('testkit')],
       },
       to: { path: pkgs('platform-memory') },
+    },
+    {
+      name: 'core-store-rules-v1-only-in-tests',
+      severity: 'error',
+      comment:
+        'README 第 6 节依赖图：core-store 的测试（*.test.ts）可以用 rules-v1 做端到端检查，普通源文件不行（规则由调用者通过 RulesRegistry 传入）',
+      from: { path: src('core-store'), pathNot: '\\.test\\.ts$' },
+      to: { path: pkgs('rules-v1') },
     },
     {
       name: 'testkit-only-in-tests',

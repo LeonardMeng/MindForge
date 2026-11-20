@@ -82,4 +82,13 @@ describe('dependency rules', () => {
       'platform-memory-only-in-tests packages/core-store/src/uses-platform-memory.ts -> packages/platform-memory/src/index.ts',
     ]);
   });
+
+  it('lets only core-store test files import rules-v1 (ROADMAP 2.5)', async () => {
+    const found = (await violations('dependency-rules-core-store-rules'))
+      .map((v) => `${v.rule.name} ${v.from} -> ${v.to}`)
+      .sort();
+    expect(found).toEqual([
+      'core-store-rules-v1-only-in-tests packages/core-store/src/uses-rules-v1.ts -> packages/rules-v1/src/index.ts',
+    ]);
+  });
 });

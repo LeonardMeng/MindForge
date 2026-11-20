@@ -1,7 +1,7 @@
 /**
  * @packageDocumentation
  * Mastery Core（ADR-0002）：纯领域逻辑，不依赖 Cordis，不做 I/O。端口、结果类型、领域错误、
- * 领域事件，以及领域操作（2.2 起：{@link submitEvidence}）。
+ * 领域事件，以及领域操作（{@link submitEvidence}，2.2；{@link recalculate}，2.5）。
  *
  * 子路径：`@mastery/core/testing`（测试用的内存 Repository 和事件记录器），
  * `@mastery/core/contract`（Repository 的契约测试）。
@@ -23,7 +23,9 @@ export {
   type EvidenceBeforeSession,
   type EvidenceInFuture,
   type EvidenceInvalid,
+  type EvidenceUnreadable,
   type EvidenceVersionTooNew,
+  type MasteryVersionTooNew,
   type RepositoryIssue,
   type RulesVersionUnknown,
   type SessionAlreadyUsed,
@@ -38,6 +40,12 @@ export {
   type SubmitEvidenceError,
 } from './evidence.js';
 export {
+  deriveHistory,
+  recalculate,
+  type RecalculateError,
+  type RecalculateResult,
+} from './recalculate.js';
+export {
   publish,
   type DomainEvent,
   type EventSink,
@@ -46,11 +54,11 @@ export {
 } from './events.js';
 export type {
   AppendEvidenceResult,
-  AppendHistoryResult,
   EvidenceList,
   Repository,
   RepositoryRead,
   UnusableEvidence,
+  WriteHistoryResult,
   WriteMasteryResult,
 } from './repository.js';
 export type {

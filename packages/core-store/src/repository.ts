@@ -4,7 +4,7 @@ import type {
   RepositoryRead,
   UnusableEvidence,
 } from '@mastery/core';
-import { validateFile, type Evidence } from '@mastery/schema';
+import type { Evidence } from '@mastery/schema';
 import type { ReadResult, Store, StoreIssue } from '@mastery/store';
 
 const toIssue = (issue: StoreIssue): RepositoryIssue => ({
@@ -129,29 +129,14 @@ export function createStoreRepository(store: Store): Repository {
     getHistory: async (conceptId) =>
       toRead(await store.history.read(conceptId), (entries) => entries),
 
-    appendHistory: async (conceptId, entry) => {
-      // 先校验新的一行，这样“新的一行不合法”和“已有的行有问题”能区分开。
-      const checked = validateFile('mastery-history-entry', entry);
-      if (!checked.success) {
-        const file = `mastery/history/${conceptId}.jsonl`;
-        return {
-          ok: false,
-          reason: 'invalid',
-          issues: checked.issues.map((issue) => ({
-            file,
-            code: issue.code,
-            path: issue.path,
-            message: issue.message,
-          })),
-        };
-      }
-      const result = await store.history.append(conceptId, entry);
-      if (result.ok) return { ok: true };
+    writeHistory: async (conceptId, entries) => {
+      const result = await store.history.write(conceptId, entries);
+      if (result.ok) return { ok: true, written: result.written };
       return {
         ok: false,
         reason: hasCode(result.issues, 'store.version_too_new')
           ? 'too_new'
-          : 'unreadable',
+          : 'invalid',
         issues: result.issues.map(toIssue),
       };
     },
