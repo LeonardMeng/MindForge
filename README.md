@@ -185,8 +185,8 @@ store         ← schema, platform
 core          ← schema, platform（只用端口类型）
 rules-v1      ← schema, core（只用规则接口）
 index, git    ← schema, platform, store
-profile       ← schema（只定义 ProfileStore 接口和 Profile 领域逻辑）
-profile-store-git ← profile, schema, platform, store, git
+profile       ← schema（ProfileStore 和 ProfileBackend 两个端口；createProfileStore 执行全部领域规则；测试用的内存实现）
+profile-store-git ← profile, schema, platform, store, git（实现 ProfileBackend，只保存文档和同步）
 device        ← schema, platform（读写 device.yaml，访问系统钥匙串）
 plugin-core   ← core, store, index, git, runtime 类型, cordis      ← Core 和 Cordis 唯一的交汇点
 runtime       ← cordis, schema, platform
@@ -305,6 +305,13 @@ Profile 通过 `ProfileStore` 端口访问，**上层代码（Supervisor、runti
 |---|---|---|
 | `profile-store-git` | 现在 | Profile 是一个本地 Git 仓库，可以推送到用户自选的远程 |
 | `profile-store-cloud` | 将来 | 云服务。**必须在本地保留完整副本**，离线时照常读写，联网后再同步（本地优先原则不变） |
+
+实现分两层，规则只写一次：
+
+- **`ProfileBackend`**（端口）：只负责保存 Profile 的四个文档（`profile.yaml`、`workspaces.yaml`、`concept-links.yaml`、`defaults.yaml`）和同步，不检查任何规则。`profile-store-git`、将来的 `profile-store-cloud` 实现的是这个端口。
+- **`createProfileStore(backend)`**（`profile` 包）：在任何后端之上提供 `ProfileStore`，执行**全部**领域规则：Workspace id 不重复、概念链接两端的 Workspace 都已注册、注销 Workspace 时清理相关链接、Profile id 不能变、有未解决同步冲突的文档不能写。写入用乐观并发（带上读取时的 revision）。这和 `knowledge` 服务包装 Core 的方式一样。
+
+不变量 12 不变：只有 `profile-store-*` 包接触 Profile 的文件或云服务接口；上层代码只拿到 `ProfileStore`。
 
 无论哪种实现，Profile 的数据模型都相同，都由 `schema` 包定义，并带 `schema_version`。从 Git 迁移到云服务（或反过来）就是一次导出和导入，不改变数据格式。
 

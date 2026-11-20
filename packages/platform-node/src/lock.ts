@@ -29,6 +29,21 @@ const DEFAULT_POLL_INTERVAL_MS = 50;
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
+const IS_WINDOWS = process.platform === 'win32';
+
+/**
+ * Windows 上，文件被删除时如果还有别的句柄开着（比如另一个进程正在读锁文件），它会处于
+ * “删除挂起”状态：名字还在，但打开、创建、改名都会报 EPERM 或 EACCES，直到最后一个句柄关闭。
+ * 这只是暂时的，按“锁正忙”处理，稍后再试。其他系统上这两个错误是真正的权限问题。
+ */
+function isBusyOnWindows(error: unknown): boolean {
+  const errno = errnoOf(error);
+  return IS_WINDOWS && (errno === 'EPERM' || errno === 'EACCES');
+}
+
+/** 锁文件暂时打不开（Windows 的删除挂起），见 {@link isBusyOnWindows}。 */
+const BUSY = 'busy';
+
 /** 锁文件的内容。心跳是锁文件的修改时间，由持有者定期更新。 */
 interface LockFileContent {
   readonly token: string;
@@ -67,6 +82,10 @@ export interface NodeLockOptions {
   readonly hooks?: {
     /** 判定锁已过期之后、开始接管之前调用（测试用它制造两个进程同时接管的竞争）。 */
     readonly afterStaleCheck?: () => Promise<void>;
+    /** 独占创建锁文件之前调用；抛出带 `code` 的错误可以模拟系统错误（比如 Windows 的 EPERM）。 */
+    readonly beforeCreate?: () => void;
+    /** 读取锁文件之前调用；用法同 `beforeCreate`。 */
+    readonly beforeRead?: () => void;
   };
 }
 
@@ -117,9 +136,18 @@ export class NodeLock implements Lock {
 
     for (;;) {
       const token = ulid();
-      if (await this.#tryCreate(path, token)) return this.#handle(path, token);
+      const created = await this.#tryCreate(path, token);
+      if (created === true) return this.#handle(path, token);
 
-      const current = await readLock(path);
+      const current = created === BUSY ? created : await this.#read(path);
+      if (current === BUSY) {
+        // Windows 的删除挂起：稍后再试。到期时还是这样，多半是真正的权限问题，照实报告。
+        if (Date.now() >= deadline) {
+          throw new PlatformError('platform.permission_denied', { path });
+        }
+        await sleep(this.#pollIntervalMs);
+        continue;
+      }
       if (current !== null) {
         const reason = this.#staleReason(current);
         if (reason !== null) {
@@ -146,8 +174,11 @@ export class NodeLock implements Lock {
     }
   }
 
-  /** 用独占创建写入锁文件；已存在时返回 false。 */
-  async #tryCreate(path: string, token: string): Promise<boolean> {
+  /** 用独占创建写入锁文件；已存在时返回 false，Windows 上暂时打不开时返回 `busy`。 */
+  async #tryCreate(
+    path: string,
+    token: string,
+  ): Promise<boolean | typeof BUSY> {
     const content: LockFileContent = {
       token,
       pid: process.pid,
@@ -155,10 +186,12 @@ export class NodeLock implements Lock {
       acquired_at: new Date().toISOString(),
     };
     try {
+      this.#hooks?.beforeCreate?.();
       await writeFile(path, JSON.stringify(content), { flag: 'wx' });
       return true;
     } catch (error) {
       if (errnoOf(error) === 'EEXIST') return false;
+      if (isBusyOnWindows(error)) return BUSY;
       throw toPlatformError(error, path);
     }
   }
@@ -191,11 +224,12 @@ export class NodeLock implements Lock {
     try {
       await rename(path, moved);
     } catch (error) {
-      // 别人已经接管（或锁已释放）：按“锁被占用”处理，下一轮再看。
-      if (errnoOf(error) === 'ENOENT') return false;
+      // 别人已经接管（或锁已释放），或者 Windows 上正在删除：按“锁被占用”处理，下一轮再看。
+      if (errnoOf(error) === 'ENOENT' || isBusyOnWindows(error)) return false;
       throw toPlatformError(error, path);
     }
-    const taken = await readLock(moved);
+    const read = await this.#read(moved);
+    const taken = read === BUSY ? null : read;
     if (taken?.content?.token !== judged.content?.token) {
       // 判定过期之后、改名之前，锁已经换了新的持有者：把它还回去（link 是原子的，目标已存在时失败）。
       await link(moved, path).catch(() => undefined);
@@ -229,10 +263,29 @@ export class NodeLock implements Lock {
         released = true;
         clearInterval(heartbeat);
         // 只删除自己的锁：如果锁已经被别人接管，不能删掉别人的。
-        const current = await readLock(path);
-        if (current?.content?.token === token) await rm(path, { force: true });
+        const current = await this.#read(path);
+        // 正在删除（BUSY）说明已经不是我们的了。
+        if (current !== BUSY && current?.content?.token === token) {
+          await rm(path, { force: true });
+        }
       },
     };
+  }
+
+  /** 读取锁文件；文件不存在时返回 null，Windows 上暂时打不开时返回 `busy`。 */
+  async #read(path: string): Promise<CurrentLock | null | typeof BUSY> {
+    try {
+      this.#hooks?.beforeRead?.();
+      const [text, info] = await Promise.all([
+        readFile(path, 'utf8'),
+        stat(path),
+      ]);
+      return { content: parseLock(text), modifiedAtMs: info.mtimeMs };
+    } catch (error) {
+      if (errnoOf(error) === 'ENOENT') return null;
+      if (isBusyOnWindows(error)) return BUSY;
+      throw toPlatformError(error, path);
+    }
   }
 }
 
@@ -242,20 +295,6 @@ interface CurrentLock {
   readonly content: LockFileContent | null;
   /** 修改时间，即最后一次心跳。 */
   readonly modifiedAtMs: number;
-}
-
-/** 读取锁文件；文件不存在时返回 null。 */
-async function readLock(path: string): Promise<CurrentLock | null> {
-  try {
-    const [text, info] = await Promise.all([
-      readFile(path, 'utf8'),
-      stat(path),
-    ]);
-    return { content: parseLock(text), modifiedAtMs: info.mtimeMs };
-  } catch (error) {
-    if (errnoOf(error) === 'ENOENT') return null;
-    throw toPlatformError(error, path);
-  }
 }
 
 function parseLock(text: string): LockFileContent | null {

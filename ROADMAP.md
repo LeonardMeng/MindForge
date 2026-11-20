@@ -31,7 +31,7 @@
 ## 当前状态
 
 - **当前里程碑：** M1
-- **下一个任务：** 1.12
+- **下一个任务：** 1.13
 - **阻塞项：** 无
 
 ---
@@ -151,7 +151,7 @@
 - **验收**：README 里的示例都能通过校验；含密钥字段的 device.yaml 被拒绝。
 - **不做**：读写逻辑。
 
-### [ ] 1.12 🔍 ProfileStore 端口和 Profile 领域逻辑
+### [x] 1.12 🔍 ProfileStore 端口和 Profile 领域逻辑
 - **包**：`profile`
 - **依赖**：1.11
 - **产出**：`ProfileStore` 接口（load / save / registerWorkspace / unregisterWorkspace / listWorkspaces / getConceptLinks / setConceptLinks / watch / sync 状态）；Profile 领域规则：Workspace id 全局唯一、注销 Workspace 时清理相关的概念链接；一个内存实现用于测试。接口的设计要能同时容纳 Git 和将来的云服务（同步状态、冲突、离线标记）。
@@ -610,11 +610,13 @@
 - （来自 1.9）JSON 文件用 `JSON.parse` 解析，重复的键不会报错（后面的覆盖前面的），和 YAML 的严格程度不一致。这些文件都由应用写出，风险小；需要时换成能报告重复键的解析。
 - （来自 1.9，第一个真正的迁移时处理）旧版本的可修改文件保存时写成当前版本的规范形式，注释不保留。有了真正的迁移以后，考虑在迁移后的文档上修改，保留注释。
 - （来自 1.10，3.x 决定）wikilink 的解析规则还没有正式定义。fixture 的测试按 Obsidian 的做法：按文件名（不含 `.md`）找 Concept 或笔记，`#标题` 要能找到对应的标题行，文件名不能重名。3.x 实现索引的 wikilink 时，要定下重名、大小写、找不到时怎么处理，并决定 `mastery validate` 是否检查 wikilink。
-- （来自 1.11，1.12 实现）`concept-links.yaml` 两端的 Workspace 必须都已在 `workspaces.yaml` 里注册：这是 Profile 的领域规则，由 1.12 检查，不在 schema 里。注销 Workspace 时清理相关链接（1.12 已列出）。
 - （来自 1.11，1.14 实现）`device.yaml` 的 schema 接受 `profile.store: cloud`，但在 9.7 实现之前，1.14 读取 device.yaml 时必须明确拒绝它，给出“暂不支持云端 Profile”的错误，不能当成 git 处理或静默忽略。
 - （来自 1.11，7.4 决定）学习目标暂时不放进 `profile.yaml`。7.4 / 8.4 需要时，倾向于每个目标一个文件（和长期记忆的设计一样），而不是共享文件里的一个列表，避免多台设备同时修改产生冲突。
 - （来自 1.11，8.1 / 9.1 处理）`workspaces.yaml` 的 `remote` 不接受本机路径。U 盘、挂载的 NAS 这类远程在每台设备上路径不同，需要在 `device.yaml` 里按 Workspace 覆盖远程地址。
 - （来自 1.11）密钥检查只是一道保险，不是安全边界：换个名字或换种写法就能绕过。以后 `device.yaml` 要记录钥匙串条目的名称时，字段名不能含有被拦截的词（比如用 `keychain_entry`）。找到密钥时只报密钥的错误，去掉之后才报其他问题。
+- （来自 1.12，8.1 处理）Profile 的同步冲突现在按文档整体处理：两台设备离线时各自注册了不同的 Workspace，同步后在 `workspaces.yaml` 上冲突，只能整体选本地或远程（契约测试里记录了这个现状）。8.1 应该自动合并不重叠的修改（比如两边各自新增的注册、各自新增的概念链接），只有真正冲突的地方才交给用户。
+- （来自 1.12，1.13 实现）`profile-store-git` 只实现 `ProfileBackend`（读写四个 YAML 文件、`watch`），规则全部由 `createProfileStore` 执行。`revision` 可以用四个文件内容的哈希；写入时比较 revision，被外部改过就返回 `modified`。用 `store` 包读写文件（严格 YAML、只改动变化的部分）。8.1 之前没有远程：`syncStatus().remote` 为 `none`，契约测试不传 `sync`。
+- （来自 1.12）选 `local` 或 `remote` 解决冲突之后，跨文档的规则可能不再满足（比如远程版本的 `workspaces.yaml` 没有本地链接用到的 Workspace）。现在的处理：`load()` 照常成功并在 `issues` 里列出，写入只要不让问题变多就允许。UI（6.x / 8.x）应该把这些 `issues` 显示出来，引导用户修复。
 - （来自 1.4，7.2 处理）验证证据和干预的关联：优先考虑在 Intervention 里记录验证证据的 id（Intervention 文件本来就可以修改），这样不用改 Evidence 的格式，关联关系也只存一处。
 - （来自 1.4，8.3 决定）引入跨 Workspace 的前置依赖后，Blindspot 的 `prerequisite_id` 可能需要支持 `GlobalConceptRef`。
 - （来自 1.1）`packages/schema/src/testing.ts` 的测试构造函数目前只在 schema 包内部使用。其他包的测试要用时，再决定放在哪里（比如 `testkit` 包），不从 schema 的公共 API 导出。
@@ -644,3 +646,5 @@
 | 2026-11-20 | 1.9 | `task/1.9-store` | 新建 `@mastery/store`（依赖 `yaml` 2.9，README 第 10 节补上）：按类型读写全部 10 种文件；YAML 用 1.2 core schema 严格解析（锚点、别名、`<<`、所有标签、重复键、非字符串键、多文档、指令一律报错，时间戳保持字符串）；保存可修改文件时比较读取时的 SHA-256，被外部改过就报 `store.modified_since_read`、不覆盖；只改动变化的部分（单行标量原地替换，其余字节不变；结构变化时保留注释和顺序），每次写出都重新解析验证；新文件和派生文件写成规范形式；Evidence 和评测会话只有 `append`；版本过新的文件只读；旧版本在内存迁移、保存时写成当前版本；路径和内容不一致报 `store.path_mismatch`；`docs/protocol/*.md` 的 YAML 示例由测试校验。Platform 新增 `createFile` / `createTextFile`（原子、独占地创建；Node 用临时文件 + `link`），契约测试新增 7 个，没有改已有的断言。依赖规则：测试文件可以 import `platform-memory`（README 第 6 节、dependency-cruiser，`tests/dependency-rules.test.ts` 在样例仓库上验证普通源文件仍被拒绝）。根目录加 `fast-check` 和 `tests/` 目录（vitest、tsconfig 的 include）。共 897 个测试（6 个按平台或实现跳过） | 写锁、Proposal 冲突检查、FAT 上的硬链接、JSON 重复键等见“待整理” |
 | 2026-11-20 | 1.10 | `task/1.10-example-workspace` | 新建 `fixtures/ws-transformers/`：10 个 Concept（前置依赖无环；`transformer` 是唯一的 `draft`，没有 Concept 依赖它）、3 份评测标准、1 个 Project、3 篇带 wikilink 的笔记（`[[slug]]`、`[[slug\|别名]]`、`[[slug#标题]]`，一篇在子目录）、`.gitignore`（`.mastery/`、`.mastery-tmp-*`）和说明为什么故意不放 `.gitattributes` 的 README。新建只给测试用的 `@mastery/testkit`：`loadFixture()` 每次返回新的、独立的 `MemoryFileSystem`（有测试），用 `import.meta.glob` 读入，不需要 `node:*`；dependency-cruiser 只允许 `*.test.ts` import 它（`tests/dependency-rules.test.ts` 加一个样例仓库验证，原有断言不变）。store 的验收测试：全部文件读取无错误、无警告，保存回去逐字节不变，引用都能找到；把 fixture 改坏的四种方式都会让它失败。`fixtures/` 不交给 Prettier。CLAUDE.md 的流程加上“开始任务时提醒人创建分支”。共 909 个测试（6 个按平台或实现跳过） | wikilink 的解析规则见“待整理” |
 | 2026-11-20 | 1.11 | `task/1.11-schema-profile-device` | schema 新增 `ProfileConfig`（`id`、`name`、`language`（BCP 47，只有一种大小写写法）、`weekly_minutes`；目标暂不放）、`WorkspaceRegistry`（id 不重复；`remote` 必须写出、可以是 `null`，不能是本机路径，`http(s)://` 不能带任何用户信息，`ssh://` 不能带密码）、`ConceptLinks`（`{ from, relation: requires, to }`，只接受跨 Workspace、不指向自己、不重复）、`ProfileDefaults`（`plugins` 同 workspace.yaml、`model`）、`DeviceConfig`（README 第 7 节的字段，所有段必填；`checkout` 必填，README 示例补上 `checkout: full`；本机路径必须是绝对路径；`store: cloud` 的格式已定）。密钥检查（`secrets.ts`）用在 device、defaults、workspaces 和 workspace.yaml：拆词后整词比较的字段名规则（`secret.field_not_allowed`，提示用钥匙串、无害的名字改名；`max_tokens` 不算）和常见 token 格式（`secret.value_not_allowed`，不在错误里重复值本身），文档写明只是保险、不是安全边界。5 种文件登记进 `FILE_KINDS`，生成 5 个 JSON Schema（已有的不变）和 5 页协议说明；store 的文档示例测试加上这 5 页和 README 第 7 节里的两个示例。**修改了 1.6 测试里 2 处断言**：`file-kinds.test.ts` 的登记表列表加上 5 种新文件、种类数量从 11 改为 16，都是登记新文件的直接结果，其他断言不变。共 1103 个测试（6 个按平台或实现跳过） | Profile 领域检查、云端 Profile 的拒绝、设备专属远程等见“待整理” |
+| 2026-11-20 | 1.12 | `task/1.12-profile-store-port` | 新建 `@mastery/profile`（只依赖 schema）：`ProfileBackend` 端口（只保存四个文档和同步）和 `ProfileStore` 接口；`createProfileStore(backend, { now, generateId, maxAttempts })` 执行全部规则（schema 校验、版本过新时只读、Workspace id 不重复、注销时清理链接并返回删掉的链接、链接两端已注册、Profile id 不变、冲突中的文档不能写、不让跨文档问题变多）；领域失败作为结果返回，I/O 错误抛出；乐观并发，单步操作每次重试都重新读取、重新执行、重新检查规则，次数固定且可测试；注入的 `now()`、`generateId()` 返回值不合格时抛出。内存实现：多台设备共用 `MemoryProfileRemote`，可以模拟离线和外部修改；同步只有一边改过时直接拉取或推送，两边都改过时按文档冲突，`resolveConflict` 选本地或远程。契约测试在 `@mastery/profile/contract`（基本部分 + 可选的同步部分，包括“两台离线设备各自注册不同 Workspace”现在会冲突的测试）。README 第 6 节和 Profile 一节写明两层的分工；`tests/dependency-rules.test.ts` 加样例确认 profile 不能依赖 store、git、`node:*`。没有改已有的断言。共 1143 个测试（6 个按平台或实现跳过） | 冲突的自动合并（8.1）、解决冲突后的跨文档问题见“待整理” |
+| 2026-11-20 | 1.8（修复） | `task/1.12-profile-store-port`（单独提交） | Windows CI 上 `NodeLock` 的契约测试“第二个持有者等第一个释放”偶尔失败：第一个持有者删除锁文件时，等待者正好在读它，Windows 把文件置为“删除挂起”，这期间独占创建报 EPERM，被当成权限错误抛出。修复：Windows 上创建、读取、改名锁文件遇到 EPERM / EACCES 时按“锁正忙”稍后重试；到期仍然如此时报 `platform.permission_denied`（而不是误导的 `lock_timeout`）；其他系统上照旧立即报权限错误。`NodeLock` 新增两个测试用钩子 `beforeCreate`、`beforeRead`，新增 4 个测试（3 个只在 Windows 上运行，1 个只在其他系统上运行；在 Linux 上把平台判断临时改成 Windows 验证过前 3 个）。没有改已有的断言 | 无 |

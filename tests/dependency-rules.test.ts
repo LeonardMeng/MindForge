@@ -47,4 +47,15 @@ describe('dependency rules', () => {
       },
     ]);
   });
+
+  it('keeps profile free of store, git and node:* (ROADMAP 1.12)', async () => {
+    const found = (await violations('dependency-rules-profile'))
+      .map((v) => `${v.rule.name} ${v.from} -> ${v.to}`)
+      .sort();
+    expect(found).toEqual([
+      'allowlist:profile packages/profile/src/uses-git.ts -> packages/git/src/index.ts',
+      'allowlist:profile packages/profile/src/uses-store.ts -> packages/store/src/index.ts',
+      'no-node-builtins packages/profile/src/uses-node.ts -> fs',
+    ]);
+  });
 });
