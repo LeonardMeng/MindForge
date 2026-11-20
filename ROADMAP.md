@@ -31,7 +31,7 @@
 ## 当前状态
 
 - **当前里程碑：** M1
-- **下一个任务：** 🏁 M1 检查点（人工试用），之后是 2.1
+- **下一个任务：** 2.2（🏁 M1 检查点和 M2 并行进行，见下面 M1 检查点的说明）
 - **阻塞项：** 无
 
 ---
@@ -184,6 +184,8 @@
 - **不做**：交互式向导。
 
 > **🏁 M1 检查点：** 人手动用这套格式写几天笔记和 Concept，确认格式顺手了再继续。发现问题就回头修改 schema，这时候改代价最小。
+>
+> **状态（2026-11-20）：** 还没做完。经人确认，和 M2 并行进行；发现的格式问题回头修改 schema。
 
 ---
 
@@ -191,7 +193,7 @@
 
 > 目标：只用命令行就能“记录证据 → 看到掌握度”。这是产品的灵魂。
 
-### [ ] 2.1 🔍 Core 端口和错误模型
+### [x] 2.1 🔍 Core 端口和错误模型
 - **包**：`core`
 - **依赖**：1.9
 - **产出**：`Ports` 接口（Repository、Clock、EventSink、RulesRegistry）；`Result<T, E>` 类型；领域错误类型（`ConceptNotFound`、`CriteriaVersionMismatch`、`EvidenceAlreadyExists`…）；领域事件类型。
@@ -201,7 +203,7 @@
 ### [ ] 2.2 🔍 提交证据
 - **包**：`core`
 - **依赖**：2.1
-- **产出**：`submitEvidence()`：校验 Concept 是否存在、criteria 版本是否匹配、会话是否存在；通过后追加写入并发出 `evidence/submitted` 事件。
+- **产出**：`submitEvidence()`：校验 Concept 是否存在、criteria 版本是否匹配、会话是否存在；通过后追加写入并发出 `evidence/submitted` 事件。新建 `@mastery/core-store`（`createStoreRepository(store)`，通过 2.1 的 Repository 契约测试），同时补上 README 第 6 节和 dependency-cruiser（2.1 时经人确认）。
 - **验收**：每一种拒绝情况都有测试；校验失败时内存文件系统里没有任何变化（不变量 9）。
 - **不做**：重新计算掌握度。
 
@@ -654,3 +656,4 @@
 | 2026-11-20 | 1.13 | `task/1.13-profile-store-git` | 新建 `@mastery/profile-store-git`（依赖 profile、platform、store；暂不依赖 git）：`createGitProfileBackend({ fs, lock })` 把四个文档存成 Profile 根目录下的 YAML 文件，用 store 的严格解析读、`patchYaml` 只改动变化的部分写（注释保留）；`profile.yaml` 是 Profile 存在的标志；revision 先分别算每个文件的 SHA-256，再对 `[文档名, 哈希或 missing]` 列表算 SHA-256（Web Crypto）；整个写入（重新读取、比较 revision、按顺序写入）在写锁 `profile-write` 里完成；`watch` 把自己写入的变化报成 `local`，别的程序的修改报成 `external`。1.12 的端口调整：`ProfileBackend.write` 接收**有序**的写入列表；`BackendSnapshot` 的每个文档是 `ok` / `missing` / `unreadable`（带解析问题）；`createProfileStore` 逐个检查所有写入顺序，选一个让每一步之后都不多出跨文档问题的顺序，没有时报 `profile.no_safe_write_order` 且什么都不写；创建时 `profile` 文档最后写；新增 `profile.document_missing`。store 导出 `patchYaml` 和 `fromRawIssue`。测试：1.12 的契约（基本部分）；三种多文件修改在每一步之后崩溃都留下合法的 Profile；创建到一半崩溃可以重新创建；没有安全顺序的修改被拒绝；把顺序检查临时去掉时这些测试会失败（验证过）。没有改已有的断言。共 1200 个测试（16 个按平台、实现或能力跳过） | 真实磁盘上的测试、Profile 的 `.gitignore`、同步持有同一把锁等见“待整理” |
 | 2026-11-20 | 1.14 | `task/1.14-device` | 新建 `@mastery/device`（README 第 6 节和 dependency-cruiser 改为 `device ← schema, platform, store`）：`loadDevice` / `saveDevice`（读取之后被改过时报 `device.modified_since_read`，只改动变化的部分）、`initDevice`（生成设备 ULID）、`regenerateDevice`（新的 id、不含 Workspace、返回需要确认路径的 Workspace）、`profile.store: cloud` 报 `device.cloud_profile_unsupported`；`workspaceStates` 只根据配置给出 `configured` / `not_configured` / `unregistered_local`（`sync: on-demand` 不参与判断，README 和 schema 注释里“on-demand 表示没有拉取到本机”的说法已改正）；`initDevice` 和 `regenerateDevice` 在设备目录创建只含 `*` 的 `.gitignore`（已有的不动）；`checkDeviceLocation` 检查设备目录是否落在 Profile 或 Workspace 里；`SecretStore` 端口和 `MemorySecretStore`，错误在任何渲染方式下都不含值（有测试）。store 新增通用的 `yamlFile(fs, path, kind)`：把 `createStore` 内部的读写逻辑抽成共用的一层，`createStore` 和 `yamlFile` 走同一条代码路径（store 原有的 118 个测试不变且全部通过）。“`init` 生成的 `.gitignore` 和 Profile 目录”的验收移到 1.15（经人确认）。没有改已有的断言。共 1241 个测试（16 个按平台、实现或能力跳过） | CLI 细分 configured、`~/.mastery` 在 Git 工作区里的警告、device.yaml 并发写入等见“待整理” |
 | 2026-11-20 | 1.15 | `task/1.15-cli` | 新建 `@mastery/cli`（README 第 6 节和 dependency-cruiser 补上 `cli` 的依赖；用 `node:util` 的 `parseArgs`，没有新依赖；消息英文）：`mastery profile init [dir]`（默认 `~/MasteryProfile`，Profile 的 `.gitignore` 含 `.mastery/` 和 `.mastery-tmp-*`；目录里已有 Profile 而 `device.yaml` 丢失时直接用它并重新生成 `device.yaml`；设备目录在 Git 工作区里时警告）、`mastery profile show [--json]`（`configured` 按目录是否存在细分为 pulled / missing）、`mastery init <dir>`（先检查全部前提，再写文件、注册、写 `device.yaml`；**可以重跑**：中途崩溃后再运行一次补上缺少的步骤，不覆盖已写的文件；其他非空目录拒绝）、`mastery validate <dir> [--json]`（store 读取全部文件 + 引用检查，依赖环报出路径，不需要 Profile）。设备目录默认 `~/.mastery`，可用 `MASTERY_HOME` 改；路径写成 `~/…`；还不创建 Git 仓库，成功后提示 `cd <dir> && git init`。`run()` 在同一个进程里运行，测试都在真实磁盘的临时目录里：完整流程、`init` 在每一步之后崩溃再重跑、用真实的 `git add` 证明 `device.yaml` 不会进入提交（包括整个 home 是 Git 仓库的情况）、真实文件系统上的 Profile 监听。构建出的 `mastery` 命令手动试过。没有改已有的断言。共 1277 个测试（16 个按平台、实现或能力跳过） | `--adopt`、通过 Git 端口建仓库见“待整理” |
+| 2026-11-20 | 2.1 | `task/2.1-core-ports` | 新建 `@mastery/core`（只依赖 schema 和 platform 的类型）：`Ports`（`Repository`、`Clock`、`EventSink`、`RulesRegistry`）、`Result<T, E>` 和 `ok()` / `err()`、领域错误（普通数据，消息只从消息表生成，类型名和 ROADMAP 一致）、领域事件（`evidence/submitted`、`mastery/changed`）。`Repository` 只有 2.2 和 2.5 需要的操作；`listEvidence` 返回 `{ items, tooNew, unreadable }`，不会悄悄丢掉用不了的证据。`EventSink` 约定：只在写入成功后发出；事件可能丢失，使用者要能根据文件对账；`publish()` 把监听者的错误交给 `reportError`，不影响操作结果。`@mastery/core/testing`（内存 Repository、事件记录器、规则表）和 `@mastery/core/contract`（Repository 契约测试，内存实现已通过，`createStoreRepository` 在 2.2 也要通过）。`tests/dependency-rules.test.ts` 加样例：core 不能 import cordis、`node:*`、store，也不能 import platform 的值。M1 检查点经人确认和 M2 并行。没有改已有的断言。共 1303 个测试（16 个按平台、实现或能力跳过） | 无 |

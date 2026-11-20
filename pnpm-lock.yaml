@@ -238,6 +238,18 @@ importers:
         specifier: workspace:*
         version: link:../store
 
+  packages/core:
+    dependencies:
+      '@mastery/platform':
+        specifier: workspace:*
+        version: link:../platform
+      '@mastery/schema':
+        specifier: workspace:*
+        version: link:../schema
+      vitest:
+        specifier: ^4.1.12
+        version: 4.1.12(@types/node@26.6.6)(vite@8.3.8(@types/node@26.6.6)(esbuild@0.27.7)(yaml@2.9.1))
+
   packages/device:
     dependencies:
       '@mastery/platform':

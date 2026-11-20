@@ -58,4 +58,17 @@ describe('dependency rules', () => {
       'no-node-builtins packages/profile/src/uses-node.ts -> fs',
     ]);
   });
+
+  it('keeps core pure: no cordis, node:*, store, or non-type imports of platform (ROADMAP 2.1)', async () => {
+    const found = (await violations('dependency-rules-core'))
+      .map((v) => `${v.rule.name} ${v.from} -> ${v.to}`)
+      .sort();
+    expect(found).toEqual([
+      'allowlist:core packages/core/src/uses-store.ts -> packages/store/src/index.ts',
+      'no-cordis-in-pure-packages packages/core/src/uses-cordis.ts -> cordis',
+      'no-node-builtins packages/core/src/uses-node.ts -> fs',
+      'no-unresolvable packages/core/src/uses-cordis.ts -> cordis',
+      'type-only:core->platform packages/core/src/uses-platform-value.ts -> packages/platform/src/index.ts',
+    ]);
+  });
 });
