@@ -28,7 +28,7 @@ if (read?.ok) {
 | `sessions` | `assessments/<slug>/sessions/<ULID>.json` | `list`、`read`、**只有 `append`** |
 | `evidence` | `evidence/<slug>/<ULID>.json` | `list`、`read`、**只有 `append`** |
 | `mastery` | `mastery/<slug>.yaml` | `list`、`read`、`write`（派生数据，直接覆盖） |
-| `history` | `mastery/history/<slug>.jsonl` | `read`、`append`（每次一行） |
+| `history` | `mastery/history/<slug>.jsonl` | `read`、`write`（派生数据，整个文件原子写出，内容没变时不写；2.5） |
 
 Notes 不经过 store（随意编辑的 Markdown，3.x 的索引直接通过 `FileSystem` 读）。Proposal 的存放位置在 4.2 决定。
 
@@ -76,7 +76,7 @@ schema 的错误码（`field.*`、`migration.*` 等）原样转发，字段路�
   - Concept 的正文原样保留；BOM 和换行符（LF / CRLF）沿用原文件。
 - **只能追加的文件**（Evidence、评测会话，不变量 2）：只有 `append`，没有修改和删除。用 Platform 的独占创建写入，ID 已存在时报 `store.already_exists`，两个进程同时写同一个 ID 时只有一个成功，不依赖写锁。
 - **掌握度投影**：`write` 写成规范形式，覆盖原来的内容；内容没变时不写；原文件版本过新时报 `store.version_too_new`。
-- **掌握度历史**：`append` 在末尾追加一行规范的 JSON，已有的字节保持不变（缺少末尾换行时补上）。已有的行有问题（包括版本过新）时拒绝。两个进程同时追加同一个文件需要写锁（4.1）。
+- **掌握度历史**：派生数据，由 Mastery Core 根据证据推导（2.5）。`write` 原子地写出整个文件，每行一个规范的紧凑 JSON；内容没变时不写，条目为空而文件不存在时不创建文件。已有的文件读不了时直接覆盖，有更新版本写的行时拒绝（`store.version_too_new`）。两个进程同时写同一个文件需要写锁（4.1）。
 
 ## 规范形式
 

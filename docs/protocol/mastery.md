@@ -26,24 +26,30 @@ confidence: 0.82
 rules_version: 1
 evidence_ids: [01JD3K8Q8Z6V7X2N4M5P9R0T1W, 01JD5M0A0A0A0A0A0A0A0A0A0A]
 explanation:
-  - { code: state.provisional_mastery, params: { independent_verifications: 1 } }
-  - { code: missing.transfer, params: {} }
+  - { code: state.provisional_mastery, params: {} }
+  - { code: met.independent_verifications, params: { count: 1 } }
+  - { code: missing.independent_verifications, params: { have: 1, need: 2 } }
 ```
 
 ## 历史：mastery/history/&lt;slug&gt;.jsonl
 
-只追加，一行一次掌握度变化，每一行都带 `schema_version`。JSON Schema（一行）：[schemas/mastery-history-entry.schema.json](schemas/mastery-history-entry.schema.json)。示例：[examples/mastery-history-entry.json](examples/mastery-history-entry.json)。
+**派生数据**，和投影一样只由 Mastery Core 写出：每次重算都根据全部证据、当前的 criteria 和规则重新推导，整个文件原子地写出，内容没变时不写（ROADMAP 2.5）。它**不是只追加的**：通常只是在末尾多出几行，但较早的证据晚到时（比如从另一台设备同步过来）、规则或 criteria 变了时，中间的行也会变。同样的证据、criteria 和规则得到逐字节相同的历史（不变量 3），所以合并冲突时 merge driver 可以重算它（3.7）。
+
+**历史描述的是证据所表明的路径，不是应用当时显示过什么；后者记录在 Git 的提交历史里。**
+
+一行一次掌握度变化，每一行都带 `schema_version`。规则的判定按 `(created_at, id)` 的顺序逐条处理证据：第一条证据一行，之后 `state`、`dimensions` 或 `confidence` 变了的每条证据一行。JSON Schema（一行）：[schemas/mastery-history-entry.schema.json](schemas/mastery-history-entry.schema.json)。示例：[examples/mastery-history-entry.json](examples/mastery-history-entry.json)。
 
 字段：`schema_version`、`at`、变化后的 `state`、`dimensions`、`confidence`、`rules_version`，以及变化的原因 `cause`：
 
 | `cause` | `at` 取什么 |
 |---|---|
 | `{ kind: evidence, evidence_id }` | 这条证据的 `created_at` |
-| `{ kind: time }` | 算出来的到期时刻（比如 `mastered` 到期变成 `needs_review`） |
-| `{ kind: rules }` | 规则升级后重算；`at` 怎么确定到 3.7 再决定 |
+| `{ kind: time }` | 算出来的到期时刻。schema 保留，现在不写（到期复习是否进入历史由 2.7 决定） |
+| `{ kind: rules }` | schema 保留，现在不写：规则升级后整个历史按新规则重新推导，每一行的 `rules_version` 都是当前版本 |
 
-`at` 由证据和规则推导，不取“发现变化的时间”。
+`at` 由证据推导，不取“发现变化的时间”。
 
 ## JSON Schema 检查不了的规则
 
 - `evidence_ids` 必须是升序。
+- 历史的行按 `(at, cause.evidence_id)` 的顺序（由推导保证）。

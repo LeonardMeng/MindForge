@@ -184,7 +184,7 @@ testkit       ← schema, platform, platform-memory（只给测试用：加载 f
 platform-node ← schema, platform（Node 实现，CLI 用；可以用 node:*）
 store         ← schema, platform
 core          ← schema, platform（只用端口类型）
-core-store    ← core, store, schema, platform（Core 的 Repository 端口基于 store 的实现）
+core-store    ← core, store, schema, platform（Core 的 Repository 端口基于 store 的实现；测试文件还可以用 rules-v1）
 rules-v1      ← schema, core（只用规则接口）
 index, git    ← schema, platform, store
 profile       ← schema（ProfileStore 和 ProfileBackend 两个端口；createProfileStore 执行全部领域规则；测试用的内存实现）
@@ -230,7 +230,7 @@ MyWorkspace/
 │   └── sessions/<ULID>.json
 ├── evidence/<concept-slug>/<ULID>.json
 ├── mastery/<concept-slug>.yaml          # 派生的投影，提交到 Git 方便阅读
-├── mastery/history/<concept-slug>.jsonl # 只追加的历史
+├── mastery/history/<concept-slug>.jsonl # 派生的历史：由 Core 根据证据推导、整个写出（不是只追加）
 ├── blindspots/<ULID>.yaml
 ├── interventions/<ULID>.yaml
 ├── resources/               # 原始文件；大文件可以用 Git LFS
@@ -422,7 +422,7 @@ models:
 
 1. **删除 `.mastery/` 不丢数据**：执行 `mastery reindex` 后，所有查询结果和删除前一致。
 2. **Evidence 只追加**：任何代码路径都不能修改或删除已有的 Evidence 文件。
-3. **掌握度是确定的**：同一组证据加同一版本的规则，算出的投影逐字节相同（不依赖文件读取顺序和当前时间，时间只通过 Clock 端口传入）。
+3. **掌握度是确定的**：同一组证据、同一份 criteria 加同一版本的规则，算出的投影**和历史**逐字节相同（不依赖文件读取顺序和当前时间，时间只通过 Clock 端口传入）。
 4. **Agent 不能直接写掌握度**：投影只能由 Mastery Core 写出。
 5. **未测试不等于 0**：维度值为 `null` 的情况，在计算、存储、展示时都和 0 区分开。
 6. **原子写**：写入中途崩溃，不会留下半截文件（先写临时文件，再 rename）。

@@ -357,45 +357,93 @@ export function describeRepositoryContract(
       });
     });
 
-    describe('mastery history', () => {
-      it('appends lines in order', async () => {
-        const second = { ...HISTORY, confidence: 0.6 } as MasteryHistoryEntry;
-        expect(await repository.appendHistory('softmax', HISTORY)).toEqual({
+    describe('mastery history: derived, replaced as a whole', () => {
+      const second = { ...HISTORY, confidence: 0.6 } as MasteryHistoryEntry;
+
+      it('writes, skips identical writes, and reads back', async () => {
+        expect(await repository.writeHistory('softmax', [HISTORY])).toEqual({
           ok: true,
+          written: true,
         });
-        expect(await repository.appendHistory('softmax', second)).toEqual({
+        expect(await repository.writeHistory('softmax', [HISTORY])).toEqual({
           ok: true,
+          written: false,
         });
+        expect(
+          await repository.writeHistory('softmax', [HISTORY, second]),
+        ).toEqual({ ok: true, written: true });
         expect(await repository.getHistory('softmax')).toEqual({
           kind: 'found',
           value: [HISTORY, second],
         });
       });
 
-      it('refuses to append to a history with a line from a newer version', async () => {
-        await seed.history('softmax', [HISTORY, TOO_NEW]);
-        expect(
-          await repository.appendHistory('softmax', HISTORY),
-        ).toMatchObject({
-          ok: false,
-          reason: 'too_new',
+      it('replaces earlier lines, not only appends', async () => {
+        await repository.writeHistory('softmax', [HISTORY, second]);
+        expect(await repository.writeHistory('softmax', [second])).toEqual({
+          ok: true,
+          written: true,
+        });
+        expect(await repository.getHistory('softmax')).toEqual({
+          kind: 'found',
+          value: [second],
         });
       });
 
-      it('refuses to append to a history with a broken line, and refuses an invalid entry', async () => {
-        await seed.history('softmax', [{ schema_version: 1 }]);
-        expect(
-          await repository.appendHistory('softmax', HISTORY),
-        ).toMatchObject({
-          ok: false,
-          reason: 'unreadable',
+      it('writes nothing for an empty history when there is no file', async () => {
+        expect(await repository.writeHistory('softmax', [])).toEqual({
+          ok: true,
+          written: false,
         });
+        expect(await repository.getHistory('softmax')).toEqual({
+          kind: 'missing',
+        });
+      });
+
+      it('empties an existing history', async () => {
+        await repository.writeHistory('softmax', [HISTORY]);
+        expect(await repository.writeHistory('softmax', [])).toEqual({
+          ok: true,
+          written: true,
+        });
+        expect(await repository.getHistory('softmax')).toEqual({
+          kind: 'found',
+          value: [],
+        });
+      });
+
+      it('overwrites a history with a broken line (it is derived)', async () => {
+        await seed.history('softmax', [{ schema_version: 1 }]);
+        expect(await repository.writeHistory('softmax', [HISTORY])).toEqual({
+          ok: true,
+          written: true,
+        });
+        expect(await repository.getHistory('softmax')).toEqual({
+          kind: 'found',
+          value: [HISTORY],
+        });
+      });
+
+      it('refuses to overwrite a history with a line from a newer version', async () => {
+        await seed.history('softmax', [HISTORY, TOO_NEW]);
         expect(
-          await repository.appendHistory('other', {
-            ...HISTORY,
-            confidence: 9,
-          }),
-        ).toMatchObject({ ok: false, reason: 'invalid' });
+          await repository.writeHistory('softmax', [HISTORY]),
+        ).toMatchObject({ ok: false, reason: 'too_new' });
+        expect(await repository.getHistory('softmax')).toMatchObject({
+          kind: 'unreadable',
+          tooNew: true,
+        });
+      });
+
+      it('refuses an invalid entry and writes nothing', async () => {
+        const result = await repository.writeHistory('softmax', [
+          HISTORY,
+          { ...HISTORY, confidence: 9 },
+        ]);
+        expect(result).toMatchObject({ ok: false, reason: 'invalid' });
+        expect(await repository.getHistory('softmax')).toEqual({
+          kind: 'missing',
+        });
       });
     });
   });

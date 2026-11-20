@@ -27,7 +27,7 @@ Mastery Core（ADR-0002）：纯领域逻辑。不依赖 Cordis，不做 I/O，�
 
 ### Repository
 
-只有 2.2 和 2.5 需要的操作，以后的任务需要时再加：`getConcept`、`getCriteria`、`getSession`、`listEvidence`、`appendEvidence`（只追加）、`getMastery`、`writeMastery`、`getHistory`、`appendHistory`。
+只有 2.2 和 2.5 需要的操作，以后的任务需要时再加：`getConcept`、`getCriteria`、`getSession`、`listEvidence`、`appendEvidence`（只追加）、`getMastery`、`writeMastery`、`getHistory`、`writeHistory`（历史是派生数据，整个写出，2.5）。
 
 - 读一个文件返回 `found` / `missing` / `unreadable`（`tooNew` 表示是更新版本写的）。
 - **`listEvidence` 不会悄悄丢掉用不了的文件**：返回 `{ items, tooNew, unreadable }`，能用的证据按 id 升序，版本过新的、读不了的单独列出。2.5 据此决定能不能重算（有版本过新的证据时不重算）。

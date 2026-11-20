@@ -14,7 +14,7 @@ Mastery OS 的数据都是普通文件。本目录说明每种文件的格式，
 | `assessments/<slug>/criteria.yaml` | [criteria.md](criteria.md) | 用户；agent 通过 Proposal | 可以编辑；改变含义时升 `version` |
 | `assessments/<slug>/sessions/<ULID>.json` | [assessment-session.md](assessment-session.md) | Mastery Core | **只追加**，完成时一次写入 |
 | `evidence/<slug>/<ULID>.json` | [evidence.md](evidence.md) | Mastery Core | **只追加**，不能修改或删除 |
-| `mastery/<slug>.yaml`、`mastery/history/<slug>.jsonl` | [mastery.md](mastery.md) | 只有 Mastery Core | **派生数据**；历史只追加 |
+| `mastery/<slug>.yaml`、`mastery/history/<slug>.jsonl` | [mastery.md](mastery.md) | 只有 Mastery Core | **派生数据**：投影和历史都由证据推导，整个写出 |
 | `blindspots/<ULID>.yaml` | [blindspot.md](blindspot.md) | Mastery Core（来自 Proposal）、用户 | 可以修改（状态会变化） |
 | `interventions/<ULID>.yaml` | [intervention.md](intervention.md) | Mastery Core（来自 Proposal）、用户 | 可以修改（状态会变化） |
 | Proposal（存放位置待定） | [proposal.md](proposal.md) | agent、用户 | 提交后不修改 |

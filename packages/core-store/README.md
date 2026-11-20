@@ -22,7 +22,7 @@ const result = await submitEvidence({ repository, clock, events, rules }, input)
 | `evidence.list` 的问题（不认识的文件名） | `listEvidence` 的 `unreadable`，`id` 为 `null`，按文件归在一起 |
 | `evidence.append` 报 `store.already_exists` | `exists`；其他问题是 `invalid` |
 | `mastery.write` 报 `store.version_too_new` | `too_new`；其他问题是 `invalid` |
-| `history.append` | 先校验新的一行（不合法是 `invalid`）；store 报 `store.version_too_new` 是 `too_new`，其他问题是 `unreadable` |
+| `history.write` | store 报 `store.version_too_new` 是 `too_new`，其他问题是 `invalid`（`writeHistory` 是写历史的唯一方式，2.5） |
 
 `listEvidence` 在列出之后被删掉的文件直接跳过（和没有列出来一样）。
 

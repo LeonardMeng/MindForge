@@ -27,6 +27,7 @@
   },
   "devDependencies": {
     "@mastery/platform-memory": "workspace:*",
+    "@mastery/rules-v1": "workspace:*",
     "@mastery/testkit": "workspace:*"
   }
 }

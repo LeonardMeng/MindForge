@@ -88,7 +88,8 @@ export const MasteryChangeCause = taggedUnion(
 export type MasteryChangeCause = z.infer<typeof MasteryChangeCause>;
 
 /**
- * `mastery/history/<concept-slug>.jsonl` 的一行：一次掌握度变化后的状态。只追加。
+ * `mastery/history/<concept-slug>.jsonl` 的一行：一次掌握度变化后的状态。历史是派生数据，由 Mastery Core
+ * 根据证据推导、整个写出（2.5），不是只追加的。
  *
  * 每一行都带 `schema_version`，单独一行也能读懂。`at` 由证据和规则推导，不取“发现变化的时间”。
  */

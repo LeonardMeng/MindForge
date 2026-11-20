@@ -69,13 +69,14 @@ export type WriteMasteryResult =
       readonly issues: readonly RepositoryIssue[];
     };
 
-/** 追加一条掌握度历史的结果。 */
-export type AppendHistoryResult =
-  | { readonly ok: true }
+/** 写掌握度历史的结果。 */
+export type WriteHistoryResult =
+  /** `written`：内容没变时为 false，文件不动。 */
+  | { readonly ok: true; readonly written: boolean }
+  /** 已有的文件里有更新版本写的行，拒绝覆盖；或者新的某一行不符合 schema。 */
   | {
       readonly ok: false;
-      /** `too_new`：已有的行是更新版本写的；`unreadable`：已有的行有问题；`invalid`：新的一行不符合 schema。 */
-      readonly reason: 'too_new' | 'unreadable' | 'invalid';
+      readonly reason: 'too_new' | 'invalid';
       readonly issues: readonly RepositoryIssue[];
     };
 
@@ -103,8 +104,13 @@ export interface Repository {
   getHistory(
     conceptId: string,
   ): Promise<RepositoryRead<readonly MasteryHistoryEntry[]>>;
-  appendHistory(
+  /**
+   * 写掌握度历史（派生数据，和投影一样整个文件替换；内容没变时不写）。历史由证据推导
+   * （2.5），这是写历史的唯一方式。`entries` 为空而文件不存在时什么都不写。
+   * 已有的文件读不了时直接覆盖，有更新版本写的行时拒绝。
+   */
+  writeHistory(
     conceptId: string,
-    entry: MasteryHistoryEntry,
-  ): Promise<AppendHistoryResult>;
+    entries: readonly MasteryHistoryEntry[],
+  ): Promise<WriteHistoryResult>;
 }

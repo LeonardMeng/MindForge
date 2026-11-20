@@ -142,14 +142,21 @@ export interface MasteryFiles {
   write(value: MasteryProjection): Promise<WriteResult>;
 }
 
-/** 掌握度历史：每个 Concept 一个 `.jsonl` 文件，只追加。 */
+/**
+ * 掌握度历史：每个 Concept 一个 `.jsonl` 文件。和投影一样是派生数据，只由 Mastery Core 根据证据推导、
+ * 整个写出（ROADMAP 2.5）。
+ */
 export interface HistoryFiles {
   read(conceptId: string): Promise<ReadResult<MasteryHistoryEntry[]> | null>;
   /**
-   * 在文件末尾追加一行，已有的字节保持不变。已有的行有问题（包括版本过新）时拒绝。
-   * 同时追加同一个文件需要写锁（4.1）。
+   * 原子地写出整个文件，每行一个紧凑的 JSON。内容没变时不写；`entries` 为空而文件不存在时也不写
+   * （`snapshot` 是空内容的）。已有的文件读不了时直接覆盖（派生数据），有更新版本写的行时拒绝
+   * （`store.version_too_new`）。同时写同一个文件需要写锁（4.1）。
    */
-  append(conceptId: string, entry: MasteryHistoryEntry): Promise<WriteResult>;
+  write(
+    conceptId: string,
+    entries: readonly MasteryHistoryEntry[],
+  ): Promise<WriteResult>;
 }
 
 /** Workspace 里所有文件的读写入口。 */
@@ -233,7 +240,6 @@ export function createStore(fs: FileSystem, options: StoreOptions = {}): Store {
     read,
     prepare,
     serializeNew,
-    create,
     save,
     append,
     list,
@@ -470,7 +476,7 @@ export function createStore(fs: FileSystem, options: StoreOptions = {}): Store {
           warnings: [],
         };
       },
-      append: async (conceptId, entry) => {
+      write: async (conceptId, entries) => {
         const file = historyPath(conceptId);
         if (!isSlug(conceptId)) {
           return {
@@ -484,32 +490,36 @@ export function createStore(fs: FileSystem, options: StoreOptions = {}): Store {
             ],
           };
         }
-        const result = validate(HISTORY_KIND, entry);
-        if (!result.success) {
+        const lines: string[] = [];
+        const invalid: StoreIssue[] = [];
+        entries.forEach((entry, index) => {
+          const result = validate(HISTORY_KIND, entry);
+          if (result.success) lines.push(`${JSON.stringify(result.data)}\n`);
+          else
+            invalid.push(
+              ...result.issues.map((issue) =>
+                fromSchemaIssue(file, issue, [index]),
+              ),
+            );
+        });
+        if (invalid.length > 0) return { ok: false, issues: invalid };
+        const text = lines.join('');
+        const current = await readText(file);
+        if (current !== null) {
+          const { newer } = parseHistory(file, current);
+          if (newer !== undefined) {
+            return { ok: false, issues: [versionTooNew(file, newer)] };
+          }
+        }
+        if (current === text || (current === null && text === '')) {
           return {
-            ok: false,
-            issues: result.issues.map((issue) => fromSchemaIssue(file, issue)),
+            ok: true,
+            written: false,
+            snapshot: await snapshot(file, text),
           };
         }
-        const line = `${JSON.stringify(result.data)}\n`;
-        const current = await readText(file);
-        if (current === null) {
-          const created = await create(file, line);
-          // 别人刚好也在创建这个文件：按“读取之后被改过”处理，调用者重试即可。
-          return created.ok
-            ? created
-            : {
-                ok: false,
-                issues: [storeIssue(file, 'store.modified_since_read')],
-              };
-        }
-        const { issues, newer } = parseHistory(file, current);
-        if (newer !== undefined) {
-          return { ok: false, issues: [versionTooNew(file, newer)] };
-        }
-        if (issues.length > 0) return { ok: false, issues };
-        const separator = current === '' || current.endsWith('\n') ? '' : '\n';
-        const text = current + separator + line;
+        if (current === null)
+          await fs.mkdir(parentPath(file), { recursive: true });
         await fs.writeTextFile(file, text);
         return {
           ok: true,

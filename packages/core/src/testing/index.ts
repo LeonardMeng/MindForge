@@ -240,26 +240,44 @@ export function createMemoryRepository(): MemoryRepository {
 
     getHistory: (slug) => Promise.resolve(readHistory(slug)),
 
-    appendHistory(slug, entry) {
+    writeHistory(slug, entries) {
       const file = historyFile(slug);
-      const result = validateFile('mastery-history-entry', entry);
-      if (!result.success) {
-        return Promise.resolve({
-          ok: false,
-          reason: 'invalid',
-          issues: result.issues.map((issue) => toIssue(file, issue)),
-        });
+      const validated: MasteryHistoryEntry[] = [];
+      const issues: RepositoryIssue[] = [];
+      entries.forEach((entry, index) => {
+        const result = validateFile('mastery-history-entry', entry);
+        if (result.success) validated.push(clone(result.data));
+        else
+          issues.push(
+            ...result.issues.map((issue) => ({
+              ...toIssue(file, issue),
+              path: [index, ...issue.path],
+            })),
+          );
+      });
+      if (issues.length > 0) {
+        return Promise.resolve({ ok: false, reason: 'invalid', issues });
       }
       const current = readHistory(slug);
-      if (current.kind === 'unreadable') {
+      if (current.kind === 'unreadable' && current.tooNew) {
         return Promise.resolve({
           ok: false,
-          reason: current.tooNew ? 'too_new' : 'unreadable',
+          reason: 'too_new',
           issues: current.issues,
         });
       }
-      history.set(slug, [...(history.get(slug) ?? []), clone(result.data)]);
-      return Promise.resolve({ ok: true });
+      const existing = history.get(slug);
+      if (existing === undefined && validated.length === 0) {
+        return Promise.resolve({ ok: true, written: false });
+      }
+      if (
+        existing !== undefined &&
+        JSON.stringify(existing) === JSON.stringify(validated)
+      ) {
+        return Promise.resolve({ ok: true, written: false });
+      }
+      history.set(slug, validated);
+      return Promise.resolve({ ok: true, written: true });
     },
   };
 

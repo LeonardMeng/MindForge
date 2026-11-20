@@ -268,6 +268,9 @@ importers:
       '@mastery/platform-memory':
         specifier: workspace:*
         version: link:../platform-memory
+      '@mastery/rules-v1':
+        specifier: workspace:*
+        version: link:../rules-v1
       '@mastery/testkit':
         specifier: workspace:*
         version: link:../testkit
