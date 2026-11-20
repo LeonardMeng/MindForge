@@ -21,6 +21,7 @@ const PROJECTION = {
   state: 'provisional_mastery',
   dimensions: DIMENSIONS,
   confidence: 0.82,
+  review_due_at: null,
   rules_version: 1,
   evidence_ids: ['01JD3K8Q8Z6V7X2N4M5P9R0T1W', '01JD5M0A0A0A0A0A0A0A0A0A0A'],
   explanation: [
@@ -76,6 +77,7 @@ describe('MasteryProjection', () => {
     'state',
     'dimensions',
     'confidence',
+    'review_due_at',
     'rules_version',
     'evidence_ids',
     'explanation',
@@ -85,6 +87,41 @@ describe('MasteryProjection', () => {
     expect(issuesOf(MasteryProjection, input)).toEqual([
       [field, 'field.required'],
     ]);
+  });
+
+  describe('review_due_at (2.7)', () => {
+    it('a mastered projection may have a review date', () => {
+      expect(
+        codesOf(MasteryProjection, {
+          ...PROJECTION,
+          state: 'mastered',
+          review_due_at: '2026-12-01T10:00:00Z',
+        }),
+      ).toEqual([]);
+    });
+
+    it.each(MASTERY_STATES.filter((state) => state !== 'mastered'))(
+      'a %s projection must not have one',
+      (state) => {
+        expect(
+          issuesOf(MasteryProjection, {
+            ...PROJECTION,
+            state,
+            review_due_at: '2026-12-01T10:00:00Z',
+          }),
+        ).toEqual([['review_due_at', 'mastery.review_due_not_mastered']]);
+      },
+    );
+
+    it('must be a UTC timestamp to the second', () => {
+      expect(
+        codesOf(MasteryProjection, {
+          ...PROJECTION,
+          state: 'mastered',
+          review_due_at: '2026-12-01',
+        }),
+      ).not.toEqual([]);
+    });
   });
 
   it('accepts no evidence and no explanation', () => {

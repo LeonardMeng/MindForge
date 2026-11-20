@@ -81,10 +81,14 @@ Mastery Core（ADR-0002）：纯领域逻辑。不依赖 Cordis，不做 I/O，�
 
 只读。沿前置依赖**传递地**按广度优先往下找，返回有风险的前置 Concept `{ conceptId, depth, via, reason }`，按 `(depth, conceptId)` 排序。每个 Concept 只报一次，用最短的路径（同样长时按 slug 的字典序取第一条）；`via` 是中间经过的 Concept。
 
-- **风险**（`reason`）：状态是 `not_assessed`、`diagnosed`、`learning`、`needs_review`（`RISKY_STATES`；没有投影算作 `not_assessed`）；`concept_missing`（引用的 Concept 不存在）；`concept_unreadable`（不知道它的前置依赖，不再往下找）；`mastery_unreadable`（`tooNew` 表示是更新版本写的）。
-- **剪枝**：`provisional_mastery` 和 `mastered` 的前置 Concept 不报，也不往下找。已经验证过的掌握说明它的基础是够的，不剪枝的话图越大噪音越多。它下面的 Concept 如果还能通过别的、没被剪掉的路径到达，照样会报。只在安全的状态剪枝：有风险的、投影读不了的节点照样往下找。
-- **新鲜度**：状态来自保存的投影，结果只和投影一样新；`recalculate` 和启动时的对账（3.x）负责让投影保持最新。到期复习（2.7）还没有考虑进来。
+- **风险**（`reason`）：状态是 `not_assessed`、`diagnosed`、`learning`、`needs_review`（`RISKY_STATES`；没有投影算作 `not_assessed`）；`review_due`（`mastered` 但按 `clock.now()` 已经到期复习，2.7，不剪枝）；`concept_missing`（引用的 Concept 不存在）；`concept_unreadable`（不知道它的前置依赖，不再往下找）；`mastery_unreadable`（`tooNew` 表示是更新版本写的）。
+- **剪枝**：`provisional_mastery` 和没到期的 `mastered` 的前置 Concept 不报，也不往下找。已经验证过的掌握说明它的基础是够的，不剪枝的话图越大噪音越多。它下面的 Concept 如果还能通过别的、没被剪掉的路径到达，照样会报。只在安全的状态剪枝：有风险的、投影读不了的节点照样往下找。
+- **新鲜度**：状态来自保存的投影，结果只和投影一样新；`recalculate` 和启动时的对账（3.x）负责让投影保持最新。是否到期在读取时按 `clock.now()` 判断。
 - 被查询的 Concept 本身不存在或读不了时返回 `core.concept_not_found` / `core.concept_unreadable`。有环时也会停下（`mastery validate` 会报环）。
+
+## 复习：`reviewStatus(projection, now)`
+
+纯函数（2.7）。投影的 `review_due_at` 由规则根据证据算出（只有 `mastered` 有）；“现在是否到期”只在读取时推导：返回 `{ dueAt, due, effectiveState }`，`now` 不早于 `dueAt` 时 `due` 为 true，`effectiveState` 是 `needs_review`。保存的投影不变，保存的 `needs_review` 只来自证据。status、UI、Supervisor 和 `prerequisiteRisks` 都用它。
 
 ## 领域事件
 

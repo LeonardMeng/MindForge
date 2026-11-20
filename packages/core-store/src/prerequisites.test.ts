@@ -8,7 +8,7 @@
  * softmax → probability
  */
 import { prerequisiteRisks } from '@mastery/core';
-import type { MasteryState } from '@mastery/schema';
+import type { IsoDateTime, MasteryState } from '@mastery/schema';
 import type { MemoryFileSystem } from '@mastery/platform-memory';
 import { createStore } from '@mastery/store';
 import { loadFixture } from '@mastery/testkit';
@@ -16,6 +16,9 @@ import { describe, expect, it } from 'vitest';
 
 import { createStoreRepository } from './index.js';
 import { fileSeed, put } from './test-helpers.js';
+
+/** 测试用的固定时钟（2.7 起 prerequisiteRisks 要用 clock）。 */
+const CLOCK = { now: () => '2026-12-01T00:00:00Z' as IsoDateTime };
 
 const NULLS = {
   recall: null,
@@ -36,6 +39,7 @@ async function workspace(
       state,
       dimensions: NULLS,
       confidence: 0,
+      review_due_at: null,
       rules_version: 1,
       evidence_ids: [],
       explanation: [{ code: `state.${state}`, params: {} }],
@@ -46,7 +50,7 @@ async function workspace(
 
 async function risks(fs: MemoryFileSystem, id: string) {
   const result = await prerequisiteRisks(
-    { repository: createStoreRepository(createStore(fs)) },
+    { repository: createStoreRepository(createStore(fs)), clock: CLOCK },
     id,
   );
   if (!result.ok) throw new Error(result.error.code);

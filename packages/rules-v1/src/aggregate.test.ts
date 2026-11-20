@@ -276,9 +276,12 @@ describe('rules v1: the Rules object and parameters (ADR-0007)', () => {
       decimals: 4,
       minIndependentVerifications: 2,
       minVerificationGapDays: 7,
+      reviewIntervalsDays: [7, 14, 30, 60, 120, 180],
+      reviewMinElapsedFraction: 0.5,
     });
     expect(Object.isFrozen(V1_PARAMETERS)).toBe(true);
     expect(Object.isFrozen(V1_PARAMETERS.typeWeights)).toBe(true);
+    expect(Object.isFrozen(V1_PARAMETERS.reviewIntervalsDays)).toBe(true);
   });
 
   it('does not modify its input', () => {

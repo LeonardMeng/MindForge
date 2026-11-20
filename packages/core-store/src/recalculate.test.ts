@@ -94,6 +94,7 @@ describe('recalculate with the store and rules v1', () => {
         application: 0.6585
         transfer: null
       confidence: 0.583
+      review_due_at: "2026-11-17T09:00:00Z"
       rules_version: 1
       evidence_ids: [01JD3K8Q8Z6V7X2N4M5P9R0000, 01JD3K8Q8Z6V7X2N4M5P9R0001, 01JD3K8Q8Z6V7X2N4M5P9R0002, 01JD3K8Q8Z6V7X2N4M5P9R0003]
       explanation:

@@ -132,6 +132,8 @@ const MESSAGES_EN = {
     'evidence without a session (session_id: null) needs a note saying where it comes from, ' +
       'for example "final exam: 92/100"',
   ),
+  'mastery.review_due_not_mastered': (p: { state: string }) =>
+    `only a mastered projection has a review date; the state is "${String(p.state)}", so write null`,
   'actor.invalid_model': (p: { value: string }) =>
     `"${p.value}" is not a model reference; expected "<provider>:<model>", for example "ollama:qwen3-14b"`,
   'explanation.invalid_code': (p: { value: string }) =>

@@ -19,7 +19,7 @@ result.explanation.map(formatExplanation); // 英文
 | `evaluateV1(evidence, criteria)` | 状态机（2.4） |
 | `conditionsOf(evidence, criteria)`、`isPassingVerification(e, criteria)` | 条件 P、M 和“通过的独立验证”，测试和 2.5 的诊断用 |
 | `formatExplanation(item)`、`EXPLANATION_CODES` | explanation 的英文消息表 |
-| `V1_PARAMETERS` | 冻结的参数：`halfWeightDays: 30`、`typeWeights`（1.0 / 0.6 / 0.3）、`decimals: 4`、`minIndependentVerifications: 2`、`minVerificationGapDays: 7` |
+| `V1_PARAMETERS` | 冻结的参数：`halfWeightDays: 30`、`typeWeights`（1.0 / 0.6 / 0.3）、`decimals: 4`、`minIndependentVerifications: 2`、`minVerificationGapDays: 7`、`reviewIntervalsDays`（7、14、30、60、120、180）、`reviewMinElapsedFraction: 0.5` |
 
 ## 维度聚合
 
@@ -40,7 +40,16 @@ result.explanation.map(formatExplanation); // 英文
 - **P**：考察的维度都达到阈值（没测过算没达到），至少 1 次通过的独立验证。
 - **M**：P，至少 2 次通过的独立验证，相隔至少 7 天，每个考察的维度都被某次通过的独立验证打过分。
 - 进入 `mastered` 总是要求这一步的证据本身是一次通过的独立验证。
-- 到期复习不在这里（2.7）。
+- 到期复习不在这里：`evaluate` 只算出 `reviewDueAt`，是否到期由 Core 的 `reviewStatus` 在读取时判断。
+
+## 复习间隔（2.7）
+
+`evaluate` 返回 `reviewDueAt`，只有 `mastered` 时不是 `null`（ADR-0007 的“复习间隔（2.7）”）：
+
+- 进入 `mastered` 的那次验证是起点，第 0 级；
+- 保持 `mastered` 时，距起点至少过了当前间隔一半的通过的独立验证算一次复习，升一级、成为新的起点；更早的不改变复习时刻；练习和自评也不改变；
+- 间隔 7、14、30、60、120、180 天，之后一直 180 天；
+- 离开 `mastered` 后再进入，从第 0 级开始。
 
 ## 测试
 

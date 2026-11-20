@@ -5,6 +5,7 @@ import {
   type Dimension,
   type Evidence,
   type ExplanationItem,
+  type IsoDateTime,
   type MasteryState,
 } from '@mastery/schema';
 
@@ -214,6 +215,52 @@ function explain(
   return items;
 }
 
+/** 一段连续的 `mastered`（2.7）。 */
+interface Streak {
+  /** 已经计数的复习次数：进入 `mastered` 时是 0。 */
+  readonly level: number;
+  /** 最近一次计数的验证（进入 `mastered` 的那一次，或者之后计数的复习）的时间（毫秒）。 */
+  readonly anchorMs: number;
+}
+
+const intervalMs = (level: number) => {
+  const intervals = V1_PARAMETERS.reviewIntervalsDays;
+  return (intervals[Math.min(level, intervals.length - 1)] as number) * DAY_MS;
+};
+
+const dueAt = (streak: Streak): IsoDateTime =>
+  new Date(streak.anchorMs + intervalMs(streak.level))
+    .toISOString()
+    .replace('.000Z', 'Z') as IsoDateTime;
+
+/**
+ * 复习的连续段怎么随一步变化（ADR-0007 第 2.7 节）：
+ * - 进入 `mastered`（这一步的证据一定是通过的独立验证）：从第 0 级开始，以这次验证为起点；
+ * - 保持 `mastered`，这一步是通过的独立验证，而且距起点至少过了当前间隔的
+ *   `reviewMinElapsedFraction`：升一级，以这次验证为新的起点；更早的验证不改变；
+ * - 离开 `mastered`：连续段结束（再次进入时从第 0 级开始）。
+ */
+function nextStreak(
+  streak: Streak | null,
+  from: MasteryState,
+  to: MasteryState,
+  e: Evidence,
+  criteria: Criteria,
+): Streak | null {
+  if (to !== 'mastered') return null;
+  const at = Date.parse(e.created_at);
+  if (from !== 'mastered' || streak === null) return { level: 0, anchorMs: at };
+  if (!isPassingVerification(e, criteria)) return streak;
+  const elapsed = at - streak.anchorMs;
+  if (
+    elapsed <
+    V1_PARAMETERS.reviewMinElapsedFraction * intervalMs(streak.level)
+  ) {
+    return streak;
+  }
+  return { level: streak.level + 1, anchorMs: at };
+}
+
 /**
  * 规则 v1 的状态机（ADR-0007 第 2.4 节）。按 `(created_at, id)` 的顺序逐条处理证据，从
  * `not_assessed` 开始，每一步根据到这条证据为止的条件 P、M 和这条证据本身决定下一个状态。
@@ -230,9 +277,11 @@ export function evaluateV1(
   const steps: EvaluationStep[] = [];
   let state: MasteryState = 'not_assessed';
   let conditions = conditionsOf([], criteria);
-  sorted.forEach((e, i) => {
+  let streak: Streak | null = null;
+  for (const [i, e] of sorted.entries()) {
     conditions = conditionsOf(sorted.slice(0, i + 1), criteria);
     const to = next(state, conditions, e, criteria);
+    streak = nextStreak(streak, state, to, e, criteria);
     steps.push({
       from: state,
       to,
@@ -242,11 +291,12 @@ export function evaluateV1(
       confidence: conditions.aggregate.confidence,
     });
     state = to;
-  });
+  }
   return {
     state,
     aggregate: conditions.aggregate,
     explanation: explain(state, conditions, criteria),
     steps,
+    reviewDueAt: state === 'mastered' && streak !== null ? dueAt(streak) : null,
   };
 }

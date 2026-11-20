@@ -120,6 +120,7 @@ const PROJECTION = {
     transfer: null,
   },
   confidence: 0.5,
+  review_due_at: null,
   rules_version: 1,
   evidence_ids: [E1],
   explanation: [{ code: 'state.learning', params: {} }],

@@ -198,6 +198,7 @@ export async function recalculate(
     state: evaluation.state,
     dimensions: evaluation.aggregate.dimensions,
     confidence: evaluation.aggregate.confidence,
+    review_due_at: evaluation.reviewDueAt,
     rules_version: rules.version,
     evidence_ids: evidence.items.map((e) => e.id).sort(),
     explanation: [...evaluation.explanation],

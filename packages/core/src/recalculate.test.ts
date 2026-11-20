@@ -108,6 +108,7 @@ function fakeRules(version: number): Rules {
         aggregate: aggregateOf(sorted),
         explanation: [{ code: `state.${state}`, params: {} }],
         steps,
+        reviewDueAt: null,
       };
     },
   };
@@ -163,6 +164,7 @@ const PROJECTION = {
   state: 'mastered',
   dimensions: { ...NULLS, recall: 0.9 },
   confidence: 0.8,
+  review_due_at: null,
   rules_version: 1,
   evidence_ids: [ulid(0)],
   explanation: [{ code: 'state.mastered', params: {} }],
@@ -322,6 +324,7 @@ describe('recalculate: writes only on change', () => {
         state: 'learning',
         dimensions: { ...NULLS, recall: 0.6 },
         confidence: 0.5,
+        review_due_at: null,
         rules_version: 1,
         evidence_ids: [ulid(0), ulid(1)],
         explanation: [{ code: 'state.learning', params: {} }],
@@ -478,6 +481,7 @@ describe('deriveHistory', () => {
     aggregate: { dimensions: NULLS, confidence: 0, perDimension: NULLS },
     explanation: [],
     steps,
+    reviewDueAt: null,
   });
 
   it('has one entry for the first step and one per change, none for unchanged steps', () => {

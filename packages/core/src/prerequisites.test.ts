@@ -1,4 +1,4 @@
-import type { MasteryState } from '@mastery/schema';
+import type { IsoDateTime, MasteryState } from '@mastery/schema';
 import { describe, expect, it } from 'vitest';
 
 import { prerequisiteRisks, RISKY_STATES } from './index.js';
@@ -6,6 +6,10 @@ import {
   createMemoryRepository,
   type MemoryRepository,
 } from './testing/index.js';
+
+/** 测试用的固定时钟（2.7 起 prerequisiteRisks 要用 clock）。 */
+const NOW = '2026-12-01T00:00:00Z';
+const CLOCK = { now: () => NOW as IsoDateTime };
 
 const NULLS = {
   recall: null,
@@ -33,6 +37,7 @@ const projection = (id: string, state: MasteryState) => ({
   state,
   dimensions: NULLS,
   confidence: 0,
+  review_due_at: null,
   rules_version: 1,
   evidence_ids: [],
   explanation: [{ code: `state.${state}`, params: {} }],
@@ -54,7 +59,10 @@ async function graph(
 }
 
 async function risks(memory: MemoryRepository, id: string) {
-  const result = await prerequisiteRisks({ repository: memory.repository }, id);
+  const result = await prerequisiteRisks(
+    { repository: memory.repository, clock: CLOCK },
+    id,
+  );
   if (!result.ok) throw new Error(result.error.code);
   return result.value.map((r) => ({
     id: r.conceptId,
@@ -123,7 +131,7 @@ describe('prerequisiteRisks', () => {
     const memory = await graph({ a: ['b'], b: [] });
     await memory.seed.mastery('b', { schema_version: 99, concept_id: 'b' });
     const result = await prerequisiteRisks(
-      { repository: memory.repository },
+      { repository: memory.repository, clock: CLOCK },
       'a',
     );
     expect(result.ok && result.value[0]?.reason).toEqual({
@@ -178,13 +186,48 @@ describe('prerequisiteRisks', () => {
     ]);
   });
 
+  it('a mastered prerequisite that is due for review is a risk and is not pruned (2.7)', async () => {
+    const memory = await graph({ a: ['b'], b: ['c'], c: [] });
+    await memory.seed.mastery('b', {
+      ...projection('b', 'mastered'),
+      review_due_at: NOW,
+    });
+    const result = await prerequisiteRisks(
+      { repository: memory.repository, clock: CLOCK },
+      'a',
+    );
+    expect(result.ok && result.value).toEqual([
+      {
+        conceptId: 'b',
+        depth: 1,
+        via: [],
+        reason: { kind: 'review_due', dueAt: NOW },
+      },
+      {
+        conceptId: 'c',
+        depth: 2,
+        via: ['b'],
+        reason: { kind: 'state', state: 'not_assessed' },
+      },
+    ]);
+  });
+
+  it('a mastered prerequisite not yet due is still pruned', async () => {
+    const memory = await graph({ a: ['b'], b: ['c'], c: [] });
+    await memory.seed.mastery('b', {
+      ...projection('b', 'mastered'),
+      review_due_at: '2026-12-01T00:00:01Z',
+    });
+    expect(await risks(memory, 'a')).toEqual([]);
+  });
+
   it('returns nothing for a concept without prerequisites', async () => {
     expect(await risks(await graph({ a: [] }), 'a')).toEqual([]);
   });
 
   it('the concept itself missing or unreadable is an error', async () => {
     const missing = await prerequisiteRisks(
-      { repository: createMemoryRepository().repository },
+      { repository: createMemoryRepository().repository, clock: CLOCK },
       'a',
     );
     expect(missing.ok ? null : missing.error.code).toBe(
@@ -193,7 +236,7 @@ describe('prerequisiteRisks', () => {
     const memory = createMemoryRepository();
     await memory.seed.concept('a', { ...concept('a'), name: '' });
     const unreadable = await prerequisiteRisks(
-      { repository: memory.repository },
+      { repository: memory.repository, clock: CLOCK },
       'a',
     );
     expect(unreadable.ok ? null : unreadable.error.code).toBe(
@@ -203,7 +246,10 @@ describe('prerequisiteRisks', () => {
 
   it('writes nothing', async () => {
     const memory = await graph({ a: ['b'], b: [] });
-    await prerequisiteRisks({ repository: memory.repository }, 'a');
+    await prerequisiteRisks(
+      { repository: memory.repository, clock: CLOCK },
+      'a',
+    );
     expect(await memory.repository.getMastery('b')).toEqual({
       kind: 'missing',
     });

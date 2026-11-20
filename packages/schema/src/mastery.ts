@@ -49,19 +49,34 @@ export type ExplanationItem = z.infer<typeof ExplanationItem>;
 /**
  * `mastery/<concept-slug>.yaml`：由 Mastery Core 根据证据和规则算出的掌握度投影。
  *
- * 派生数据，手工修改会被重算覆盖。不带计算时间：同一组证据加同一版本的规则，
- * 投影必须逐字节相同（不变量 3）。下次复习日期留到 2.7 再加。
+ * 派生数据，手工修改会被重算覆盖。不带计算时间：同一组证据、criteria 加同一版本的规则，
+ * 投影必须逐字节相同（不变量 3）。
+ *
+ * `review_due_at`（2.7）：下次复习的时刻，由规则根据证据算出（不取当前时间）；只有 `mastered` 有，
+ * 其他状态写 `null`。“现在是否到期”在读取时根据当前时间推导，不写进投影。
  */
-export const MasteryProjection = z.strictObject({
-  schema_version: schemaVersionOf('mastery-projection'),
-  concept_id: Slug,
-  state: MasteryState,
-  dimensions: DimensionScores,
-  confidence: UnitInterval,
-  rules_version: PositiveInteger,
-  evidence_ids: EvidenceIds,
-  explanation: listOf('explanation', ExplanationItem),
-});
+export const MasteryProjection = z
+  .strictObject({
+    schema_version: schemaVersionOf('mastery-projection'),
+    concept_id: Slug,
+    state: MasteryState,
+    dimensions: DimensionScores,
+    confidence: UnitInterval,
+    review_due_at: IsoDateTime.nullable(),
+    rules_version: PositiveInteger,
+    evidence_ids: EvidenceIds,
+    explanation: listOf('explanation', ExplanationItem),
+  })
+  .check((ctx) => {
+    if (ctx.value.review_due_at !== null && ctx.value.state !== 'mastered') {
+      pushIssue(
+        ctx,
+        'mastery.review_due_not_mastered',
+        { state: ctx.value.state },
+        ['review_due_at'],
+      );
+    }
+  });
 /** 掌握度投影。 */
 export type MasteryProjection = z.infer<typeof MasteryProjection>;
 
