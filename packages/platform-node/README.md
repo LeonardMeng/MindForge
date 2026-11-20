@@ -41,9 +41,10 @@ try {
 - **接管是原子的**：先把过期锁文件改名成唯一的名字（只有一个进程能成功），再用 `wx` 写入新锁；改名失败的一方按“锁被别人占用”处理。如果改名拿到的已经不是判定过期的那个锁，就把它还回去。
 - **留下记录**：每次清除过期锁都调用 `onStaleLock(info)`，默认发出一条 `MasteryStaleLock` 警告（`process.emitWarning`）。
 - **释放**：只在令牌还是自己的时才删除锁文件，不会删掉别人接管后的锁。
+- **Windows 的删除挂起**：锁文件被删除时如果另一个进程还开着它，Windows 会暂时拒绝创建、读取和改名（EPERM / EACCES）。Windows 上按“锁正忙”稍后重试，到期仍然如此时报 `platform.permission_denied`；其他系统上这两个错误立即报权限错误。
 - 超时报 `platform.lock_timeout`，参数里带上持有者的 `holder_pid` 和 `holder_hostname`。
 
 ## 只给测试用的钩子
 
 - `NodeFileSystem.open(root, { hooks: { beforeRename, beforeLink } })`：原子写改名之前、独占创建建立硬链接之前调用，抛出错误可以模拟崩溃。
-- `new NodeLock(dir, { hooks: { afterStaleCheck } })`：判定过期之后、接管之前调用，用来制造两个进程同时接管的竞争。
+- `new NodeLock(dir, { hooks: { afterStaleCheck, beforeCreate, beforeRead } })`：`afterStaleCheck` 在判定过期之后、接管之前调用，用来制造两个进程同时接管的竞争；`beforeCreate`、`beforeRead` 抛出带 `code` 的错误，用来模拟系统错误（比如 Windows 的 EPERM）。

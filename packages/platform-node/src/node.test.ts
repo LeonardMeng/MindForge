@@ -355,3 +355,94 @@ describe('createNodePlatform', () => {
     );
   });
 });
+
+describe('NodeLock and Windows "delete pending" errors', () => {
+  // Windows 上，锁文件被删除时如果另一个进程还开着它，创建、读取、改名都会暂时报 EPERM / EACCES。
+  // 用钩子模拟这些错误：Windows 上按“锁正忙”重试，其他系统上是真正的权限问题。
+  const IS_WINDOWS = process.platform === 'win32';
+  const eperm = () =>
+    Object.assign(new Error('EPERM: operation not permitted'), {
+      code: 'EPERM',
+    });
+
+  it.runIf(IS_WINDOWS)(
+    'retries when creating the lock file fails with EPERM for a while',
+    async () => {
+      let calls = 0;
+      const lock = new NodeLock(await tempDir(), {
+        pollIntervalMs: 5,
+        hooks: {
+          beforeCreate: () => {
+            calls += 1;
+            if (calls <= 2) throw eperm();
+          },
+        },
+      });
+      const handle = await lock.acquire('write', { timeoutMs: 2000 });
+      expect(calls).toBe(3);
+      await handle.release();
+    },
+  );
+
+  it.runIf(IS_WINDOWS)(
+    'retries when reading the held lock file fails with EPERM for a while',
+    async () => {
+      const dir = await tempDir();
+      const holder = await new NodeLock(dir).acquire('write');
+      let reads = 0;
+      const waiter = new NodeLock(dir, {
+        pollIntervalMs: 5,
+        hooks: {
+          beforeRead: () => {
+            reads += 1;
+            if (reads <= 2) throw eperm();
+          },
+        },
+      });
+      const acquiring = waiter.acquire('write', { timeoutMs: 2000 });
+      setTimeout(() => void holder.release(), 50);
+      const handle = await acquiring;
+      expect(reads).toBeGreaterThan(2);
+      await handle.release();
+    },
+  );
+
+  it.runIf(IS_WINDOWS)(
+    'reports platform.permission_denied, not a timeout, when the error never clears',
+    async () => {
+      const lock = new NodeLock(await tempDir(), {
+        pollIntervalMs: 5,
+        hooks: {
+          beforeCreate: () => {
+            throw eperm();
+          },
+        },
+      });
+      await expectPlatformError(
+        lock.acquire('write', { timeoutMs: 50 }),
+        'platform.permission_denied',
+      );
+    },
+  );
+
+  it.skipIf(IS_WINDOWS)(
+    'fails at once with platform.permission_denied on other systems',
+    async () => {
+      let calls = 0;
+      const lock = new NodeLock(await tempDir(), {
+        pollIntervalMs: 5,
+        hooks: {
+          beforeCreate: () => {
+            calls += 1;
+            throw eperm();
+          },
+        },
+      });
+      await expectPlatformError(
+        lock.acquire('write', { timeoutMs: 2000 }),
+        'platform.permission_denied',
+      );
+      expect(calls).toBe(1);
+    },
+  );
+});
