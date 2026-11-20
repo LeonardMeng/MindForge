@@ -62,6 +62,21 @@ Mastery Core（ADR-0002）：纯领域逻辑。不依赖 Cordis，不做 I/O，�
 - “会话已经用过”现在扫一遍 `listEvidence`，只看得到读得了的证据（3.x 改由索引回答）。
 - 写入成功后发出 `evidence/submitted`，`at` 是 `clock.now()`。
 
+## 重算：`recalculate(ports, conceptId)`
+
+读取 Concept（归档的也重算）、criteria 和全部证据，用 `rules.current()` 判定，写出投影 `mastery/<slug>.yaml` 和**由证据推导的历史** `mastery/history/<slug>.jsonl`（`deriveHistory`：第一步一条，之后 `state`、`dimensions` 或 `confidence` 变了的每一步一条）。返回 `{ projection, projectionWritten, changed, historyWritten }`。
+
+| 情况 | 结果 |
+|---|---|
+| 有更新版本写的证据 / 读不了的证据 | `core.evidence_version_too_new` / `core.evidence_unreadable`，什么都不写（绝不退回 `not_assessed`） |
+| 已有投影是更新的规则算的 | `core.rules_version_unknown`（不降级） |
+| 投影或历史文件是更新版本写的 | `core.mastery_version_too_new` |
+| 投影或历史读不了 | 直接覆盖（派生数据） |
+| 没有证据文件，也没有投影 | 什么都不写，`projection: null` |
+| 没有证据文件，但有投影 | 写成 `not_assessed` |
+
+投影按值比较：值变了才写、才发出 `mastery/changed`；只是格式不同时写回规范形式，不发事件。历史每次都和推导结果对齐，字节相同时不写，所以两次写之间崩溃后再算一次就能补齐。不读时钟；多个进程同时重算需要 4.1 的写锁。
+
 ## 领域事件
 
 `evidence/submitted`、`mastery/changed`，按 `type` 区分。
