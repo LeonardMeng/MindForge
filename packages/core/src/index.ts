@@ -1,7 +1,7 @@
 /**
  * @packageDocumentation
  * Mastery Core（ADR-0002）：纯领域逻辑，不依赖 Cordis，不做 I/O。端口、结果类型、领域错误、
- * 领域事件，以及领域操作（{@link submitEvidence}，2.2；{@link recalculate}，2.5）。
+ * 领域事件，以及领域操作（{@link submitEvidence}，2.2；{@link recalculate}，2.5；{@link prerequisiteRisks}，2.6）。
  *
  * 子路径：`@mastery/core/testing`（测试用的内存 Repository 和事件记录器），
  * `@mastery/core/contract`（Repository 的契约测试）。
@@ -45,6 +45,13 @@ export {
   type RecalculateError,
   type RecalculateResult,
 } from './recalculate.js';
+export {
+  prerequisiteRisks,
+  RISKY_STATES,
+  type PrerequisiteRisk,
+  type PrerequisiteRiskReason,
+  type PrerequisiteRisksError,
+} from './prerequisites.js';
 export {
   publish,
   type DomainEvent,
