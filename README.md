@@ -187,7 +187,7 @@ rules-v1      ← schema, core（只用规则接口）
 index, git    ← schema, platform, store
 profile       ← schema（ProfileStore 和 ProfileBackend 两个端口；createProfileStore 执行全部领域规则；测试用的内存实现）
 profile-store-git ← profile, schema, platform, store, git（实现 ProfileBackend，只保存文档和同步）
-device        ← schema, platform（读写 device.yaml，访问系统钥匙串）
+device        ← schema, platform, store（读写 device.yaml，用 store 的 yamlFile；SecretStore 端口访问系统钥匙串）
 plugin-core   ← core, store, index, git, runtime 类型, cordis      ← Core 和 Cordis 唯一的交汇点
 runtime       ← cordis, schema, platform
 agents/*      ← cordis, llm 类型, plugin-core 暴露的 knowledge 接口类型
@@ -364,7 +364,7 @@ workspaces:
     checkout: full                       # full | text-only（部分克隆，资源文件按需下载）
   math:
     path: ~/Mastery/math
-    sync: on-demand                      # 没有 clone 到本机；用到时再拉取
+    sync: on-demand                      # 按需同步：用到时才拉取更新（说的是什么时候同步，不表示在不在本机）
     checkout: text-only
 
 sync:
@@ -383,7 +383,7 @@ models:
 规则：
 
 - **密钥不写在 `device.yaml` 里。** API key、Git 凭据、云服务 token 都放在系统钥匙串（Keychain、Windows Credential Manager、Secret Service、Android Keystore），`device.yaml` 最多只记录钥匙串里条目的名称。
-- `workspaces.yaml` 里注册了、但 `device.yaml` 里没有的 Workspace，表示“这台设备还没拉取”，UI 里显示为可下载。
+- `workspaces.yaml` 里注册了、但 `device.yaml` 里没有的 Workspace，表示“这台设备还没配置它”，UI 里显示为可下载。`device.yaml` 里有位置的 Workspace 是否真的在磁盘上，由 CLI 检查目录是否存在（1.15）。
 - `device.yaml` 里有、但 Profile 里已经注销的 Workspace，启动时提示用户：保留本地副本，还是删除。
 - `device.yaml` 损坏或丢失时，可以根据 Profile 重新生成（路径需要用户重新确认），不会丢失学习数据。
 

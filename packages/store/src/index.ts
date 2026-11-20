@@ -6,6 +6,7 @@
  */
 export {
   createStore,
+  yamlFile,
   type AppendOnlyCollection,
   type Concept,
   type EditableCollection,

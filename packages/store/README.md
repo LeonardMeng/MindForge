@@ -95,4 +95,6 @@ schema 的错误码（`field.*`、`migration.*` 等）原样转发，字段路�
 
 ## 给其他包用的 YAML 工具
 
+`yamlFile(fs, path, kind)`：任意一种登记过的文件（比如 `device.yaml`）的 `read` / `save`，和 Workspace 的文件走**同一条代码路径**（`createStore` 内部也用它）：严格解析、迁移后校验、版本过新时只读、保存时检查读取之后有没有被改过、只改动变化的部分、原子写入、不带 `base` 时独占创建。`device` 包用它读写 `device.yaml`。
+
 `parseYaml`（严格解析）、`stringifyYaml`（规范形式）、`patchYaml`（在原文上只改动变化的部分）和 `fromRawIssue`（给解析问题加上文件路径和提示）也从本包导出。`profile-store-git` 用它们读写 Profile 的四个 YAML 文件，规则和 Workspace 的文件完全一样。
