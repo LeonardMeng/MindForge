@@ -31,7 +31,7 @@
 ## 当前状态
 
 - **当前里程碑：** M1
-- **下一个任务：** 2.6（🏁 M1 检查点和 M2 并行进行，见下面 M1 检查点的说明）
+- **下一个任务：** 2.7（🏁 M1 检查点和 M2 并行进行，见下面 M1 检查点的说明）
 - **阻塞项：** 无
 
 ---
@@ -228,7 +228,7 @@
 - **验收**：确定性测试：同样的输入算两次，输出逐字节相同（不变量 3）；没有变化时不写文件。
 - **不做**：跨 Concept 的传播。
 
-### [ ] 2.6 前置依赖风险
+### [x] 2.6 前置依赖风险
 - **包**：`core`
 - **依赖**：2.5
 - **产出**：`prerequisiteRisks(conceptId)`：找出前置 Concept 中状态为 `not_assessed`、`learning`、`needs_review` 的，作为风险返回。
@@ -642,6 +642,8 @@
 - （来自 2.5）`mastery/changed` 的 `cause` 只有 `evidence`、`time`、`rules` 三种。criteria 升级版本（规则版本不变）导致的变化，现在报成最后一条证据；没有证据文件但有投影、重写成 `not_assessed` 时，现在报成 `rules`。两者都不准确。要不要给 `MasteryChangeCause` 加 `criteria`（以及“证据消失”）一种，改 schema 时决定。
 - （来自 2.5）`recalculate` 先写历史、再写投影。两次写之间崩溃时，下一次重算会补齐（历史每次都和推导结果对齐），但中间这段时间历史比投影新。只有一个进程写时没有问题；多进程见 4.1 的锁。
 - （来自 2.5）README 第 9 节不变量 4 只写了“投影只能由 Mastery Core 写出”。历史现在也是派生数据、也只由 Core 写出，要不要把不变量 4 改成“投影和历史”，由人决定（2.5 没有改）。
+- （来自 2.6）`prerequisiteRisks` 在 `provisional_mastery` 和 `mastered` 处剪枝，不往下找。如果 UI 需要看完整的前置依赖树（包括安全节点下面的），可以加一个不剪枝的选项。
+- （来自 2.6，**2.7 处理**）`prerequisiteRisks` 只看保存的投影里的状态。按 2.4 那条的方向，“到期需要复习”在读取投影时推导，2.7 要把到期的 `mastered` 也算作风险（并且不在它那里剪枝）。
 
 
 ## 完成记录
@@ -677,3 +679,4 @@
 | 2026-11-20 | 2.3 | `task/2.3-rules-v1-aggregation` | `core` 的 `Rules` 接口加上 `aggregate(evidence) → Aggregate`（`dimensions`、`confidence`、`perDimension` 的 `{ score, confidence, evidenceCount }`），`@mastery/core/testing` 加 `stubRules(version)`。新建 `@mastery/rules-v1`（README 第 6 节和 dependency-cruiser 已有它的规则，没有改）：`aggregateV1`、`rulesV1`、冻结的 `V1_PARAMETERS`。每个维度只看给它打了分的证据；年龄从**这个维度**最新的证据算起（不用 `now`）；双曲衰减 `H / (H + ageDays)`，H = 30；类型权重 1.0 / 0.6 / 0.3；证据的 `confidence` 只影响置信度；维度置信度 = `C / (C + 1)` × (1 − 2 × 加权平均绝对偏差)；总置信度是有分数的维度的平均；所有 criteria 版本一起聚合；只用加减乘除和绝对值；按 id 排序后求和；输出 4 位小数，没有 `-0`。参数写进 ADR-0007（暂定，M5 检查点后复审）。测试：19 个表格场景（期望值用分数精确算出），另有 5 个测试（五个维度互不影响、空输入、版本号、参数冻结、不修改输入），6 个 fast-check 属性（只有 `null` 的维度仍是 `null`、0..1 且不是 `-0`、最多 4 位小数、打乱顺序不变、加不打分的证据不变、两次字节相同）；把参考时间临时改成全部证据里最新的时间，表格和属性测试各有一个失败（验证过）。**改了 `core.test.ts` 里 2 处断言**（经人确认）：`registry.get(1)` 和 `registry.current()` 从 `toEqual({ version: … })` 改为 `toBe(同一个规则对象)`，含义不变，因为规则对象现在带有 `aggregate` 函数；`core` 和 `core-store` 测试里的 `{ version: 1 }` 换成 `stubRules(1)`（只是测试准备）。共 1400 个测试（16 个按平台、实现或能力跳过） | 排序的测试覆盖、ADR-0007 在 2.4 怎么补、生产环境的 RulesRegistry 等见“待整理” |
 | 2026-11-20 | 2.4 | `task/2.4-rules-v1-state-machine` | `core` 的 `Rules` 加上 `evaluate(evidence, criteria) → Evaluation`（`state`、`aggregate`、`explanation`、`steps`：每条证据一步，记录前后状态、证据 id、`created_at`、到这一步的聚合，2.5 据此推导历史）；`stubRules` 补上 `evaluate`。`rules-v1`：`evaluateV1` 按 `(created_at, id)` 重放证据；通过的独立验证只算当前 criteria 版本；P = 考察的维度都达到阈值（没测过算没达到）且至少 1 次通过的独立验证；M = P、至少 2 次通过的独立验证、相隔至少 7 天、每个考察的维度都被通过的独立验证打过分（criteria 考察 transfer 时就包含 transfer，所以没有单独的 transfer 条件，经人确认）；迁移按 ADR-0007 的表，进入 `mastered` 总是要求这一步的证据是通过的独立验证（经人确认，堵住退步后靠练习直接回到 `mastered` 的漏洞）；explanation 的 code 和英文消息表 `formatExplanation`。`V1_PARAMETERS` 加上 `minIndependentVerifications: 2`、`minVerificationGapDays: 7`；ADR-0007 补上“状态机（2.4）”一节（暂定）。测试：每条迁移路径（包括跳过的、`mastered → needs_review → learning → provisional_mastery → mastered`、`learning → mastered`），条件的边界（间隔 7 天减 1 秒、覆盖、transfer、旧 criteria 版本、没通过的独立验证），8 个 explanation 内联快照（代码和英文），6 个 fast-check 属性；把“进入 `mastered` 要求通过的独立验证”或覆盖条件临时去掉时，对应的测试会失败（验证过）。**改了 `aggregate.test.ts` 里 1 处断言**（经人确认的第 7 点）：`V1_PARAMETERS` 的期望值加上两个新参数。共 1442 个测试（16 个按平台、实现或能力跳过） | 2.7 的到期复习不能写进投影、平方代价、第一次掌握的细节、criteria 升级的后果等见“待整理” |
 | 2026-11-20 | 2.5 | `task/2.5-recalculate` | `recalculate(ports, conceptId)`：读 Concept（归档的也重算）、criteria、全部证据，用 `rules.current()` 判定，写出投影和**由证据推导的历史**（`deriveHistory`：第一步一条，之后 `state`、`dimensions` 或 `confidence` 变了的每一步一条，`at` 是证据的 `created_at`，`cause` 是那条证据）。拒绝时什么都不写：有更新版本写的证据（`core.evidence_version_too_new`）或读不了的证据（新增 `core.evidence_unreadable`），已有投影是更新的规则算的（`core.rules_version_unknown`，不降级），投影或历史文件是更新版本写的（新增 `core.mastery_version_too_new`）；读不了的投影和历史直接覆盖。没有证据文件也没有投影时什么都不写；没有证据文件但有投影时写成 `not_assessed`；有证据但版本过新或读不了时报错，绝不退回 `not_assessed`。投影按值比较，值变了才写并发出 `mastery/changed`（`cause` 是最后一条证据，规则版本变了时是 `rules`），只是格式不同时写回规范形式、不发事件；历史每次都和推导结果对齐，字节相同时不写，所以两次写之间崩溃后再算一次就能补齐。**写历史的方式改为整个写出**（经人确认）：store 的 `history.write`、Repository 的 `writeHistory`（契约测试 7 个）；**删除了 `appendHistory`**（Repository 端口、契约、内存实现、store 的 `history.append`、core-store），连同它的测试：store 4 个、契约 3 个（两个实现各跑一次，共 6 次）。功能删除，不是为了让测试通过而改预期。README 第 7 节和不变量 3（投影**和历史**逐字节相同，并写明取决于 criteria）、协议说明页（历史是派生的；描述证据表明的路径，不是应用当时显示过什么，后者在 Git 历史里；示例的 explanation 换成 v1 的 code）、schema 的注释和 JSON Schema 描述同步更新。core-store 的测试用 rules-v1 做端到端检查：dependency-cruiser 只允许 core-store 的 `*.test.ts` import rules-v1，新样例证明普通源文件仍被拒绝。端到端测试（真实 store、fixture、规则 v1）：投影和历史的内联快照；再算一次什么都不写；两个 Workspace 按不同顺序写入同样的证据，投影和历史逐字节相同；一条条加证据和一次加完结果相同；晚到的证据重写历史的中间部分；`submitEvidence` 之后重算；每种拒绝前后全部文件不变，包括只有一条版本过新的证据时 `mastered` 投影不动。把“有版本过新的证据就拒绝”临时去掉时，4 个测试失败（验证过）。没有改已有测试的预期。共 1492 个测试（16 个按平台、实现或能力跳过） | `cause` 表达不了 criteria 变化、两次写之间的顺序、不变量 4 要不要包括历史等见“待整理” |
+| 2026-11-20 | 2.6 | `task/2.6-prerequisite-risks` | `prerequisiteRisks(ports, conceptId)`（只读）：沿前置依赖传递地按广度优先往下找，每个 Concept 只报一次，用最短的路径（同样长时按 slug 的字典序），结果按 `(depth, conceptId)` 排序，每项带 `depth`、`via` 和 `reason`。风险：`not_assessed`（包括没有投影）、`diagnosed`、`learning`、`needs_review`（`RISKY_STATES`），以及 `concept_missing`、`concept_unreadable`、`mastery_unreadable`（带 `tooNew`）。在 `provisional_mastery` 和 `mastered` 处剪枝（经人确认）：不报，也不往下找；它下面的 Concept 能通过别的没被剪掉的路径到达时照样报；有风险的、投影读不了的节点照样往下找。状态来自保存的投影，文档写明结果只和投影一样新。被查询的 Concept 本身不存在或读不了时返回错误；有环时停下。测试：core 的单元测试 13 个；core-store 用 ws-transformers 的依赖图 6 个（transformer 依赖的 9 个 Concept 和各自的最短路径；self-attention 是 `mastered` 时 softmax 消失、probability 通过较弱的 layer-normalization 仍在、matrix-multiplication 改走 positional-encoding > embedding；layer-normalization 也安全后 probability 消失；悬空的前置依赖和读不了的投影）。把剪枝临时去掉时 5 个测试失败（验证过）。没有改已有的断言。共 1511 个测试（16 个按平台、实现或能力跳过） | 不剪枝的选项、2.7 的到期复习见“待整理” |
