@@ -1,0 +1,44 @@
+{
+  "name": "@mastery/core",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Mastery Core：纯领域逻辑。端口（Repository、Clock、EventSink、RulesRegistry）、结果类型、领域错误和领域事件。",
+  "type": "module",
+  "exports": {
+    ".": {
+      "@mastery/source": "./src/index.ts",
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./testing": {
+      "@mastery/source": "./src/testing/index.ts",
+      "types": "./dist/testing.d.ts",
+      "default": "./dist/testing.js"
+    },
+    "./contract": {
+      "@mastery/source": "./src/contract/index.ts",
+      "types": "./dist/contract.d.ts",
+      "default": "./dist/contract.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsup --entry.index src/index.ts --entry.testing src/testing/index.ts --entry.contract src/contract/index.ts --format esm --dts --clean",
+    "test": "vitest run --config ../../vitest.config.ts --root .",
+    "typecheck": "tsc -p tsconfig.json"
+  },
+  "dependencies": {
+    "@mastery/platform": "workspace:*",
+    "@mastery/schema": "workspace:*"
+  },
+  "peerDependencies": {
+    "vitest": "^4.1.12"
+  },
+  "peerDependenciesMeta": {
+    "vitest": {
+      "optional": true
+    }
+  }
+}
