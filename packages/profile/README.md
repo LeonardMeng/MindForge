@@ -16,7 +16,7 @@ if (loaded.ok) {
 
 | | 是什么 | 谁实现 |
 |---|---|---|
-| `ProfileBackend` | 存储端口：读写四个文档（未校验的数据）、`watch`、`sync`、`resolveConflict`。**不检查任何规则** | `profile-store-git`（1.13）、将来的 `profile-store-cloud`、本包的内存后端 |
+| `ProfileBackend` | 存储端口：读写四个文档（每个文档是解析后的数据、`missing` 或带解析问题的 `unreadable`；`profile` 文档是 Profile 存在的标志）、**按给出的顺序**写入、`watch`、`sync`、`resolveConflict`。**不检查任何规则** | `profile-store-git`（1.13）、将来的 `profile-store-cloud`、本包的内存后端 |
 | `ProfileStore` | 上层代码用的接口（Supervisor、runtime、CLI、UI） | 只有 `createProfileStore(backend, options)` |
 
 `createProfileStore` 执行**全部**规则，后端实现不需要、也不能自己实现：
@@ -26,6 +26,8 @@ if (loaded.ok) {
 - 概念链接两端的 Workspace 都要已注册（`profile.link_workspace_not_registered`）。
 - Profile 的 id 不能变（`profile.id_changed`）。
 - 有未解决同步冲突的文档不能写（`profile.conflict_unresolved`）；读到本地版本，其他文档照常写。
+- **写入顺序**：一次写入涉及多个文档时，`createProfileStore` 逐个检查所有顺序（最多 24 种），选一个让**每写完一个文档**之后的 Profile 都不多出跨文档问题的顺序，交给后端按这个顺序写。这样即使后端只能逐个文件原子写入，中途崩溃也总是留下合法的 Profile。顺序不是写死的。最终结果合法、但没有任何安全顺序的修改（比如一次保存里把 `math` 换成 `physics`，同时把链接从 `math` 改到 `physics`）报 `profile.no_safe_write_order`，什么都不写，可以分两步做。创建时 `profile` 文档最后写。
+- 缺少的文档报 `profile.document_missing`；后端解析不了的文档带着它的错误码（比如 `yaml.syntax`）报 `profile.invalid`。
 - **不让问题变多**：外部修改或解决冲突之后，跨文档的规则可能已经不满足。`load()` 照常成功，在 `issues` 里列出；之后的写入只要不引入新的问题就允许（所以总能修复）。
 
 ## 结果和错误

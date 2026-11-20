@@ -7,7 +7,12 @@ import {
   DEFAULT_MAX_ATTEMPTS,
   MemoryProfileBackend,
   MemoryProfileRemote,
+  crossDocumentIssues,
+  type ConceptLink,
+  type LoadedProfile,
+  type Profile,
   type ProfileBackend,
+  type ProfileDocument,
   type ProfileResult,
   type RegisteredWorkspace,
 } from './index.js';
@@ -226,5 +231,150 @@ describe('MemoryProfileBackend', () => {
     const created = ok(await store.create(INIT));
     created.profile.workspaces.workspaces.push(ws('sneaky'));
     expect(ok(await store.listWorkspaces())).toEqual([]);
+  });
+});
+
+describe('createProfileStore: write order', () => {
+  const link = (from: string, to: string) =>
+    ({ from, relation: 'requires', to }) as ConceptLink;
+
+  async function setup() {
+    const { store, backend } = createMemoryProfileStore(options());
+    ok(await store.create(INIT));
+    ok(await store.registerWorkspace(ws('ai')));
+    ok(await store.registerWorkspace(ws('math')));
+    return { store, backend };
+  }
+
+  /** 按给出的顺序逐个应用写入，检查每一步之后都没有跨文档的问题。 */
+  function everyPrefixIsValid(
+    before: LoadedProfile,
+    order: readonly ProfileDocument[],
+    after: LoadedProfile,
+  ) {
+    const fields = {
+      profile: 'config',
+      workspaces: 'workspaces',
+      'concept-links': 'conceptLinks',
+      defaults: 'defaults',
+    } as const;
+    let state: Record<string, unknown> = { ...before.profile };
+    for (const document of order) {
+      state = { ...state, [fields[document]]: after.profile[fields[document]] };
+      expect(
+        crossDocumentIssues(state as unknown as Profile),
+        `after writing ${document}`,
+      ).toEqual([]);
+    }
+  }
+
+  it('writes the profile document last when creating, so a half-created profile does not exist', async () => {
+    const { backend } = createMemoryProfileStore(options());
+    const { store } = { store: createProfileStore(backend, options()) };
+    ok(await store.create(INIT));
+    expect(backend.writeLog).toEqual([
+      ['workspaces', 'concept-links', 'defaults', 'profile'],
+    ]);
+  });
+
+  it('removes links before the workspace when unregistering', async () => {
+    const { store, backend } = await setup();
+    ok(await store.setConceptLinks([link('ai:a', 'math:b')]));
+    const before = ok(await store.load());
+    ok(await store.unregisterWorkspace('math'));
+    const order = backend.writeLog.at(-1) ?? [];
+    expect(order).toEqual(['concept-links', 'workspaces']);
+    everyPrefixIsValid(before, order, ok(await store.load()));
+  });
+
+  it('registers the workspace before the links that use it', async () => {
+    const { store, backend } = await setup();
+    const before = ok(await store.load());
+    ok(
+      await store.save(
+        {
+          ...before.profile,
+          workspaces: {
+            ...before.profile.workspaces,
+            workspaces: [
+              ...before.profile.workspaces.workspaces,
+              ws('physics'),
+            ],
+          },
+          conceptLinks: {
+            ...before.profile.conceptLinks,
+            links: [link('ai:a', 'physics:b')],
+          },
+        },
+        { base: before.revision },
+      ),
+    );
+    const order = backend.writeLog.at(-1) ?? [];
+    expect(order.indexOf('workspaces')).toBeLessThan(
+      order.indexOf('concept-links'),
+    );
+    everyPrefixIsValid(before, order, ok(await store.load()));
+  });
+
+  it('finds a safe order for a save that changes all four documents', async () => {
+    const { store, backend } = await setup();
+    ok(await store.setConceptLinks([link('ai:a', 'math:b')]));
+    const before = ok(await store.load());
+    ok(
+      await store.save(
+        {
+          config: { ...before.profile.config, name: 'Parker Z' },
+          workspaces: {
+            ...before.profile.workspaces,
+            workspaces: [ws('ai'), ws('math'), ws('physics')],
+          },
+          conceptLinks: {
+            ...before.profile.conceptLinks,
+            links: [link('ai:a', 'math:b'), link('ai:c', 'physics:d')],
+          },
+          defaults: { ...before.profile.defaults, model: 'ollama:qwen3-14b' },
+        },
+        { base: before.revision },
+      ),
+    );
+    const order = backend.writeLog.at(-1) ?? [];
+    expect([...order].sort()).toEqual([
+      'concept-links',
+      'defaults',
+      'profile',
+      'workspaces',
+    ]);
+    everyPrefixIsValid(before, order, ok(await store.load()));
+  });
+
+  it('refuses a change that has no safe order, writing nothing', async () => {
+    const { store, backend } = await setup();
+    ok(await store.setConceptLinks([link('ai:a', 'math:b')]));
+    const before = ok(await store.load());
+    const writes = backend.writeLog.length;
+    // 把 math 换成 physics，同时把链接从 math 改到 physics：先写哪个文件，中间状态都有一条链接指向未注册的 Workspace。
+    const result = await store.save(
+      {
+        ...before.profile,
+        workspaces: {
+          ...before.profile.workspaces,
+          workspaces: [ws('ai'), ws('physics')],
+        },
+        conceptLinks: {
+          ...before.profile.conceptLinks,
+          links: [link('ai:a', 'physics:b')],
+        },
+      },
+      { base: before.revision },
+    );
+    expect(result.ok ? '' : result.error.code).toBe(
+      'profile.no_safe_write_order',
+    );
+    expect(backend.writeLog).toHaveLength(writes);
+    expect(ok(await store.load()).revision).toBe(before.revision);
+    // 分两步就可以：先注册 physics 并改链接，再注销 math。
+    ok(await store.registerWorkspace(ws('physics')));
+    ok(await store.setConceptLinks([link('ai:a', 'physics:b')]));
+    ok(await store.unregisterWorkspace('math'));
   });
 });

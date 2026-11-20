@@ -22,6 +22,12 @@ const MESSAGES_EN = {
     `workspace "${text(p.id)}" is not registered`,
   'profile.link_workspace_not_registered': (p: Params) =>
     `"${text(p.ref)}" is in workspace "${text(p.workspace)}", which is not registered in workspaces.yaml`,
+  'profile.document_missing': (p: Params) =>
+    `${text(p.document)} is missing; the profile is incomplete`,
+  'profile.no_safe_write_order': (p: Params) =>
+    `this change to ${text(p.documents)} cannot be written safely: every order of writing the files would ` +
+    `pass through a state that breaks a rule (for example a concept link to a workspace that is not registered); ` +
+    `make the change in smaller steps`,
   'profile.modified_since_load': () =>
     'the profile changed since it was loaded; load it again and reapply the change',
   'profile.conflict_unresolved': (p: Params) =>
@@ -42,7 +48,8 @@ export const PROFILE_ERROR_CODES = Object.keys(
 export interface ProfileIssue {
   /** 出问题的文档；跨文档的问题记在被检查的那个文档上。 */
   readonly document: ProfileDocument;
-  readonly code: ProfileErrorCode | SchemaIssue['code'];
+  /** Profile 的错误码、schema 的错误码，或后端解析时的错误码（比如 `yaml.syntax`）。 */
+  readonly code: string;
   /** 文档里的字段路径。 */
   readonly path: readonly (string | number)[];
   readonly params: Readonly<Record<string, unknown>>;
@@ -75,6 +82,19 @@ export function profileIssue(
   path: readonly (string | number)[],
 ): ProfileIssue {
   return { document, code, path, params, message: MESSAGES_EN[code](params) };
+}
+
+/** 后端的解析问题加上文档名。 */
+export function fromBackendIssue(
+  document: ProfileDocument,
+  issue: {
+    readonly code: string;
+    readonly path: readonly (string | number)[];
+    readonly params: Readonly<Record<string, unknown>>;
+    readonly message: string;
+  },
+): ProfileIssue {
+  return { document, ...issue };
 }
 
 /** schema 的问题加上文档名。 */

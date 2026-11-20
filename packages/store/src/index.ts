@@ -22,8 +22,16 @@ export {
 } from './store.js';
 export {
   formatStoreIssue,
+  fromRawIssue,
   STORE_ERROR_CODES,
   type StoreErrorCode,
+  type RawIssue,
   type StoreIssue,
 } from './errors.js';
-export { parseYaml, stringifyYaml, type YamlParseResult } from './yaml.js';
+export {
+  parseYaml,
+  patchYaml,
+  stringifyYaml,
+  type YamlParsed,
+  type YamlParseResult,
+} from './yaml.js';

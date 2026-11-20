@@ -10,7 +10,10 @@
  * 只依赖 `schema`：不依赖 platform、store、git，也不用 `node:*`。
  */
 export type {
+  BackendDocument,
+  BackendIssue,
   BackendSnapshot,
+  BackendWrite,
   BackendWriteResult,
   ProfileBackend,
 } from './backend.js';
