@@ -1,0 +1,5 @@
+schema_version: 1
+id: transformers
+name: Transformers
+description: 从矩阵乘法到 Transformer 的示例 Workspace，所有测试共用。
+plugins: {}

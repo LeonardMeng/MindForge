@@ -28,6 +28,8 @@ pnpm --filter @mastery/<包> test
 
 ## 流程
 
+开始一个任务时，先提醒人从最新的 `main` 创建分支 `task/<编号>-<简短名字>`（分支由人创建）。
+
 先用 plan mode 出方案 → 人确认 → 先写测试 → 实现 → `pnpm check` → 在 ROADMAP 里勾选任务并填写完成记录。
 范围外的发现记到 ROADMAP 的“待整理”一节。
 

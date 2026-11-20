@@ -265,6 +265,18 @@ importers:
       '@mastery/platform-memory':
         specifier: workspace:*
         version: link:../platform-memory
+      '@mastery/testkit':
+        specifier: workspace:*
+        version: link:../testkit
+
+  packages/testkit:
+    dependencies:
+      '@mastery/platform':
+        specifier: workspace:*
+        version: link:../platform
+      '@mastery/platform-memory':
+        specifier: workspace:*
+        version: link:../platform-memory
 
 packages:
 

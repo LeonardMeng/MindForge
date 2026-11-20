@@ -1,0 +1,11 @@
+schema_version: 1
+concept_id: softmax
+version: 1
+dimensions:
+  recall: { focus: [写出 softmax 的公式], threshold: 0.8 }
+  understanding: { focus: [解释输出为什么是一个概率分布], threshold: 0.7 }
+  reasoning: null
+  application:
+    focus: [手算三个数的 softmax, 用减去最大值的方法避免溢出]
+    threshold: 0.6
+  transfer: null

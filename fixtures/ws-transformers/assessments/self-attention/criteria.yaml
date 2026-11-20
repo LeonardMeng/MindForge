@@ -1,0 +1,11 @@
+schema_version: 1
+concept_id: self-attention
+version: 2
+dimensions:
+  recall: { focus: [写出注意力公式], threshold: 0.8 }
+  understanding:
+    focus: [解释 Q、K、V 的作用, 解释为什么要除以 √d]
+    threshold: 0.7
+  reasoning: { focus: [推断所有 Key 都相同时输出是什么], threshold: 0.7 }
+  application: { focus: [手算一个 2×2 的例子], threshold: 0.6 }
+  transfer: null

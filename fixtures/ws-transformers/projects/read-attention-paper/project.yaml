@@ -1,0 +1,6 @@
+schema_version: 1
+id: read-attention-paper
+name: 读懂 Attention Is All You Need
+description: 读懂原始 Transformer 论文，能独立推导每一个模块。
+status: active
+concepts: [self-attention, multi-head-attention, positional-encoding, transformer]
