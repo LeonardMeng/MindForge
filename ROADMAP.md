@@ -31,7 +31,7 @@
 ## 当前状态
 
 - **当前里程碑：** M1
-- **下一个任务：** 1.15
+- **下一个任务：** 🏁 M1 检查点（人工试用），之后是 2.1
 - **阻塞项：** 无
 
 ---
@@ -172,7 +172,7 @@
 - **验收**：三种状态各有测试；device.yaml 丢失后能根据 Profile 重新生成；设备目录有只含 `*` 的 `.gitignore`，设备目录落在 Profile 或 Workspace 里时能检查出来。（“`init` 生成的 `.gitignore` 和 Profile 目录”的测试移到 1.15，经人确认。）
 - **不做**：真实的系统钥匙串实现（M6 在 Tauri 里实现，CLI 端用 keytar 或同等方案）。
 
-### [ ] 1.15 CLI：profile、init 和 validate
+### [x] 1.15 CLI：profile、init 和 validate
 - **包**：`cli`
 - **依赖**：1.8、1.9、1.13、1.14
 - **产出**：
@@ -600,7 +600,6 @@
 - （来自 1.5）一致性测试：把 schema 现有的合法和非法样例，同时用 zod 和一个 JSON Schema 校验器（比如 ajv，只作为 devDependency，不违反 ADR-0013）各跑一遍，结果应该一致；因为跨字段规则而只被 zod 拒绝的样例，单独列出来并注明原因。
 - （来自 1.5，M6 之前不做）让 VS Code 这类编辑器在用户编辑 `workspace.yaml`、Concept 的 frontmatter 时，直接用 `docs/protocol/schemas/` 里的 JSON Schema 做自动补全和实时校验。
 - （来自 1.6，2.5 实现）如果某个 Concept 有任何证据是 `version_too_new`，就不重算这个 Concept 的掌握度，也不写投影，并提示用户升级 Mastery OS。否则会因为漏算证据而写出错误的投影，再通过 Git 同步到其他设备。
-- （来自 1.7，1.15 处理）`mastery init` 和 `mastery profile init` 生成的 `.gitignore` 要包含 `.mastery-tmp-*`，防止崩溃留下的临时文件被提交。
 - （来自 1.7，4.1 实现）同一个 Workspace 目录，同一时间只能有一个进程做写操作，用 1.7 的 Lock 端口实现（比如 `.mastery/runtime/write.lock`）。只读的 CLI 命令（validate、status、search）不需要拿锁。1.9 之后还要注意：store 的 `save(value, { base })` 是“先比较哈希再写入”，history 的 `append` 是“读出整个文件再原子写回”，两者在两个进程同时写时都需要这把锁才正确；Evidence 和评测会话的 `append` 用独占创建，不依赖锁。
 - （来自 1.8）Linux 上别的工具（比如从 macOS 拷来的压缩包）创建的 NFD 文件名：`list` 会把它报成 NFC，但用 NFC 名字读不到（Linux 不做规范化）。目前不处理；遇到时再考虑在打开文件时按 NFD 名字重试，或者由 `mastery doctor` 提示改名。
 - （来自 1.8）`list` 会跳过不是合法路径段的名字（Windows 保留名、`<>:"|?*`、控制字符、以点或空格结尾等），这些文件对 Mastery 不可见。以后 `mastery doctor` 应该列出它们，提示用户改名，而不是让它们悄悄消失。
@@ -615,14 +614,12 @@
 - （来自 1.11）密钥检查只是一道保险，不是安全边界：换个名字或换种写法就能绕过。以后 `device.yaml` 要记录钥匙串条目的名称时，字段名不能含有被拦截的词（比如用 `keychain_entry`）。找到密钥时只报密钥的错误，去掉之后才报其他问题。
 - （来自 1.12，8.1 处理）Profile 的同步冲突现在按文档整体处理：两台设备离线时各自注册了不同的 Workspace，同步后在 `workspaces.yaml` 上冲突，只能整体选本地或远程（契约测试里记录了这个现状）。8.1 应该自动合并不重叠的修改（比如两边各自新增的注册、各自新增的概念链接），只有真正冲突的地方才交给用户。
 - （来自 1.12）选 `local` 或 `remote` 解决冲突之后，跨文档的规则可能不再满足（比如远程版本的 `workspaces.yaml` 没有本地链接用到的 Workspace）。现在的处理：`load()` 照常成功并在 `issues` 里列出，写入只要不让问题变多就允许。UI（6.x / 8.x）应该把这些 `issues` 显示出来，引导用户修复。
-- （来自 1.13，1.15 处理）`mastery profile init` 生成的 Profile 目录里要有 `.gitignore`，包含 `.mastery/`（写锁 `profile-write` 的锁文件在 `.mastery/runtime/locks/`）和 `.mastery-tmp-*`（崩溃留下的临时文件）。
 - （来自 1.13，8.1 实现）Profile 的 Git 同步（pull、merge、push）必须持有和写入相同的锁 `PROFILE_WRITE_LOCK`（`profile-write`），否则同步和写入会交错，破坏“重新读取、比较 revision、按顺序写入”的保证。
-- （来自 1.13，1.15 处理）`profile-store-git` 的测试只在内存文件系统上运行（依赖规则不允许它的测试 import `platform-node`）。1.15 的 CLI 测试要在真实磁盘的临时目录里跑一遍 Profile 的创建、注册和外部修改，覆盖 Node 的文件监听和锁。
 - （来自 1.13，3.6 处理）`profile-store-git` 现在不依赖 `git`（README 第 6 节允许，但没用到）。3.6 接入 Git 提交时再加上依赖。
-- （来自 1.14，1.15 实现）`workspaceStates` 只根据配置给出 `configured`；CLI 要检查 `device.yaml` 里的目录是否存在，把 `configured` 细分为“已拉取”和“缺失”（目录不在了）。
-- （来自 1.14，1.15 实现）CLI 启动时如果 `~/.mastery` 在任何 Git 工作区里（比如 dotfiles 仓库），给出警告。设备目录的 `.gitignore`（`*`）已经保证不会提交，但用户应该知道。
 - （来自 1.14）`device.yaml` 的写入没有锁：两个程序（CLI 和桌面应用）同时写时，后写的那个收到 `device.modified_since_read`，需要重新读取再写。如果实际中经常遇到，再考虑加锁或自动重试。
 - （来自 1.14）考虑把 `profile-store-git` 也改成用 store 的 `yamlFile` 读写，让所有用户可以编辑的 YAML 都走同一条代码路径（现在它直接用 `parseYaml` / `patchYaml`，规则相同但代码是两份）。
+- （来自 1.15，3.6 实现）`mastery init` 和 `mastery profile init` 现在不创建 Git 仓库，只提示 `cd <dir> && git init`。3.6 接入后通过 Git 端口创建仓库（并在 3.7 注册 merge driver）。
+- （来自 1.15，M6 之前处理）`mastery init --adopt <dir>`：接管已有的目录（比如一个 Obsidian 仓库），符合“普通文件也能用”的原则。从不覆盖已有的文件；已有的 `.gitignore` 不动，报告缺少哪几行；已有的 Markdown 怎么变成 Concept 或笔记要另外设计。
 - （来自 1.4，7.2 处理）验证证据和干预的关联：优先考虑在 Intervention 里记录验证证据的 id（Intervention 文件本来就可以修改），这样不用改 Evidence 的格式，关联关系也只存一处。
 - （来自 1.4，8.3 决定）引入跨 Workspace 的前置依赖后，Blindspot 的 `prerequisite_id` 可能需要支持 `GlobalConceptRef`。
 - （来自 1.1）`packages/schema/src/testing.ts` 的测试构造函数目前只在 schema 包内部使用。其他包的测试要用时，再决定放在哪里（比如 `testkit` 包），不从 schema 的公共 API 导出。
@@ -656,3 +653,4 @@
 | 2026-11-20 | 1.8（修复） | `task/1.12-profile-store-port`（单独提交） | Windows CI 上 `NodeLock` 的契约测试“第二个持有者等第一个释放”偶尔失败：第一个持有者删除锁文件时，等待者正好在读它，Windows 把文件置为“删除挂起”，这期间独占创建报 EPERM，被当成权限错误抛出。修复：Windows 上创建、读取、改名锁文件遇到 EPERM / EACCES 时按“锁正忙”稍后重试；到期仍然如此时报 `platform.permission_denied`（而不是误导的 `lock_timeout`）；其他系统上照旧立即报权限错误。`NodeLock` 新增两个测试用钩子 `beforeCreate`、`beforeRead`，新增 4 个测试（3 个只在 Windows 上运行，1 个只在其他系统上运行；在 Linux 上把平台判断临时改成 Windows 验证过前 3 个）。没有改已有的断言 | 无 |
 | 2026-11-20 | 1.13 | `task/1.13-profile-store-git` | 新建 `@mastery/profile-store-git`（依赖 profile、platform、store；暂不依赖 git）：`createGitProfileBackend({ fs, lock })` 把四个文档存成 Profile 根目录下的 YAML 文件，用 store 的严格解析读、`patchYaml` 只改动变化的部分写（注释保留）；`profile.yaml` 是 Profile 存在的标志；revision 先分别算每个文件的 SHA-256，再对 `[文档名, 哈希或 missing]` 列表算 SHA-256（Web Crypto）；整个写入（重新读取、比较 revision、按顺序写入）在写锁 `profile-write` 里完成；`watch` 把自己写入的变化报成 `local`，别的程序的修改报成 `external`。1.12 的端口调整：`ProfileBackend.write` 接收**有序**的写入列表；`BackendSnapshot` 的每个文档是 `ok` / `missing` / `unreadable`（带解析问题）；`createProfileStore` 逐个检查所有写入顺序，选一个让每一步之后都不多出跨文档问题的顺序，没有时报 `profile.no_safe_write_order` 且什么都不写；创建时 `profile` 文档最后写；新增 `profile.document_missing`。store 导出 `patchYaml` 和 `fromRawIssue`。测试：1.12 的契约（基本部分）；三种多文件修改在每一步之后崩溃都留下合法的 Profile；创建到一半崩溃可以重新创建；没有安全顺序的修改被拒绝；把顺序检查临时去掉时这些测试会失败（验证过）。没有改已有的断言。共 1200 个测试（16 个按平台、实现或能力跳过） | 真实磁盘上的测试、Profile 的 `.gitignore`、同步持有同一把锁等见“待整理” |
 | 2026-11-20 | 1.14 | `task/1.14-device` | 新建 `@mastery/device`（README 第 6 节和 dependency-cruiser 改为 `device ← schema, platform, store`）：`loadDevice` / `saveDevice`（读取之后被改过时报 `device.modified_since_read`，只改动变化的部分）、`initDevice`（生成设备 ULID）、`regenerateDevice`（新的 id、不含 Workspace、返回需要确认路径的 Workspace）、`profile.store: cloud` 报 `device.cloud_profile_unsupported`；`workspaceStates` 只根据配置给出 `configured` / `not_configured` / `unregistered_local`（`sync: on-demand` 不参与判断，README 和 schema 注释里“on-demand 表示没有拉取到本机”的说法已改正）；`initDevice` 和 `regenerateDevice` 在设备目录创建只含 `*` 的 `.gitignore`（已有的不动）；`checkDeviceLocation` 检查设备目录是否落在 Profile 或 Workspace 里；`SecretStore` 端口和 `MemorySecretStore`，错误在任何渲染方式下都不含值（有测试）。store 新增通用的 `yamlFile(fs, path, kind)`：把 `createStore` 内部的读写逻辑抽成共用的一层，`createStore` 和 `yamlFile` 走同一条代码路径（store 原有的 118 个测试不变且全部通过）。“`init` 生成的 `.gitignore` 和 Profile 目录”的验收移到 1.15（经人确认）。没有改已有的断言。共 1241 个测试（16 个按平台、实现或能力跳过） | CLI 细分 configured、`~/.mastery` 在 Git 工作区里的警告、device.yaml 并发写入等见“待整理” |
+| 2026-11-20 | 1.15 | `task/1.15-cli` | 新建 `@mastery/cli`（README 第 6 节和 dependency-cruiser 补上 `cli` 的依赖；用 `node:util` 的 `parseArgs`，没有新依赖；消息英文）：`mastery profile init [dir]`（默认 `~/MasteryProfile`，Profile 的 `.gitignore` 含 `.mastery/` 和 `.mastery-tmp-*`；目录里已有 Profile 而 `device.yaml` 丢失时直接用它并重新生成 `device.yaml`；设备目录在 Git 工作区里时警告）、`mastery profile show [--json]`（`configured` 按目录是否存在细分为 pulled / missing）、`mastery init <dir>`（先检查全部前提，再写文件、注册、写 `device.yaml`；**可以重跑**：中途崩溃后再运行一次补上缺少的步骤，不覆盖已写的文件；其他非空目录拒绝）、`mastery validate <dir> [--json]`（store 读取全部文件 + 引用检查，依赖环报出路径，不需要 Profile）。设备目录默认 `~/.mastery`，可用 `MASTERY_HOME` 改；路径写成 `~/…`；还不创建 Git 仓库，成功后提示 `cd <dir> && git init`。`run()` 在同一个进程里运行，测试都在真实磁盘的临时目录里：完整流程、`init` 在每一步之后崩溃再重跑、用真实的 `git add` 证明 `device.yaml` 不会进入提交（包括整个 home 是 Git 仓库的情况）、真实文件系统上的 Profile 监听。构建出的 `mastery` 命令手动试过。没有改已有的断言。共 1277 个测试（16 个按平台、实现或能力跳过） | `--adopt`、通过 Git 端口建仓库见“待整理” |
