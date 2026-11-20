@@ -21,7 +21,9 @@ Mastery Core（ADR-0002）：纯领域逻辑。不依赖 Cordis，不做 I/O，�
 - `confidence`：总的置信度，没有证据时为 0；
 - `perDimension`：每个维度的 `{ score, confidence, evidenceCount }`，没有分数时为 `null`（2.4 写 explanation 用）。
 
-`aggregate` 必须是纯函数：不读时钟，证据的顺序不影响结果，同样的输入逐字节相同（不变量 3）。2.4 再加状态机。
+`evaluate(evidence, criteria)` 返回 `Evaluation`：`state`、`aggregate`（全部证据的聚合）、`explanation`（`[{ code, params }]`，code 由规则包定义）和 `steps`（按 `(created_at, id)` 顺序每条证据一步：`from`、`to`、`evidenceId`、`at`、到这一步的 `dimensions` 和 `confidence`，2.5 据此推导历史）。
+
+两个方法都必须是纯函数：不读时钟，证据的顺序不影响结果，同样的输入逐字节相同（不变量 3）。`evaluate` 的阈值来自当前的 criteria。
 
 ### Repository
 
@@ -70,5 +72,5 @@ Mastery Core（ADR-0002）：纯领域逻辑。不依赖 Cordis，不做 I/O，�
 
 ## 测试工具和契约测试
 
-- `@mastery/core/testing`：`createMemoryRepository()`（内存 Repository，store 的规则在这里同样成立：校验、路径和内容一致、只追加、版本过新只读）、`createEventRecorder()`、`createRulesRegistry()`、`stubRules(version)`（`aggregate` 总是返回“没有分数”，给不关心聚合的测试用）。
+- `@mastery/core/testing`：`createMemoryRepository()`（内存 Repository，store 的规则在这里同样成立：校验、路径和内容一致、只追加、版本过新只读）、`createEventRecorder()`、`createRulesRegistry()`、`stubRules(version)`（`aggregate` 总是返回“没有分数”，`evaluate` 总是 `not_assessed`，给不关心规则结果的测试用）。
 - `@mastery/core/contract`：`describeRepositoryContract(name, () => ({ repository, seed }))`。内存实现和 `createStoreRepository` 都要通过，测试用的假实现不会和真实的实现走样。依赖 vitest（可选的 peerDependency）。

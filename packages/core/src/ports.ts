@@ -1,5 +1,14 @@
 import type { Clock } from '@mastery/platform';
-import type { Dimension, DimensionScores, Evidence } from '@mastery/schema';
+import type {
+  Criteria,
+  Dimension,
+  DimensionScores,
+  Evidence,
+  ExplanationItem,
+  IsoDateTime,
+  MasteryState,
+  Ulid,
+} from '@mastery/schema';
 
 import type { EventSink } from './events.js';
 import type { Repository } from './repository.js';
@@ -25,8 +34,33 @@ export interface Aggregate {
 }
 
 /**
+ * 状态机按顺序处理一条证据的一步。每条证据一步，状态没变的也算（`from === to`）。
+ * 2.5 根据它推导掌握度历史：`at` 是这条证据的 `created_at`。
+ */
+export interface EvaluationStep {
+  readonly from: MasteryState;
+  readonly to: MasteryState;
+  readonly evidenceId: Ulid;
+  readonly at: IsoDateTime;
+  /** 到这条证据为止的聚合分数。 */
+  readonly dimensions: DimensionScores;
+  /** 到这条证据为止的总置信度。 */
+  readonly confidence: number;
+}
+
+/** 一组证据的判定结果。 */
+export interface Evaluation {
+  readonly state: MasteryState;
+  /** 全部证据的聚合，和 `aggregate(evidence)` 相同。 */
+  readonly aggregate: Aggregate;
+  /** 为什么是这个状态、还差什么（code 由规则包定义）。 */
+  readonly explanation: readonly ExplanationItem[];
+  /** 按 `(created_at, id)` 顺序的每一步。 */
+  readonly steps: readonly EvaluationStep[];
+}
+
+/**
  * 掌握度规则（规则包实现，比如 `rules-v1`）。每个投影都记录算它用的 `rules_version`。
- * 2.4 再加状态机。
  */
 export interface Rules {
   readonly version: number;
@@ -37,6 +71,14 @@ export interface Rules {
    * @param evidence - 一个 Concept 的证据（任意顺序）
    */
   aggregate(evidence: readonly Evidence[]): Aggregate;
+  /**
+   * 判定掌握状态。和 `aggregate` 一样是纯函数：不读时钟，证据的顺序不影响结果。
+   * 阈值来自当前的评测标准，所以结果也取决于 `criteria`。
+   *
+   * @param evidence - 一个 Concept 的证据（任意顺序）
+   * @param criteria - 这个 Concept 当前的评测标准
+   */
+  evaluate(evidence: readonly Evidence[], criteria: Criteria): Evaluation;
 }
 
 /** 可用的规则版本。 */

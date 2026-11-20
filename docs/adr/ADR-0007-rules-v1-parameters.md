@@ -1,6 +1,6 @@
-# ADR-0007 规则 v1 的聚合参数：按维度的参考时间、双曲衰减、只用精确运算
+# ADR-0007 规则 v1 的参数：维度聚合（按维度的参考时间、双曲衰减、只用精确运算）和状态机
 
-- **状态**：已定（**参数暂定**：M5 检查点后根据实际使用复审；状态机的阈值在 2.4 补进本 ADR）
+- **状态**：已定（**参数暂定**：M5 检查点后根据实际使用复审）。2.3 定了维度聚合，2.4 补上状态机（按 ROADMAP 的计划，本 ADR 分两次写成）
 - **日期**：2026-11-20
 
 ## 背景
@@ -22,6 +22,25 @@
 - **criteria 版本**：所有版本的证据一起聚合；对版本的要求属于状态机（2.4）。
 - **输出**：先按证据 id 排序再求和；每个数四舍五入到 4 位小数，`-0` 写成 0。
 
+### 状态机（2.4）
+
+- **重放**：按 `(created_at, id)` 的顺序逐条处理证据，从 `not_assessed` 开始，每条证据一步。每一步看到这条证据为止的聚合和这条证据本身。结果包含每一步（前后状态、证据 id、`created_at`、到这一步的聚合），2.5 据此推导掌握度历史。
+- **考察的维度**：当前 criteria 里不是 `null` 的维度。阈值来自当前 criteria，所以投影也取决于 `criteria.yaml`。
+- **通过的独立验证**：类型是独立验证、用的是**当前** criteria 版本、至少给一个考察的维度打了分，而且给考察的维度打的分都达到阈值。旧版本的证据仍然参与分数。
+- **P（`provisional_mastery`）**：每个考察的维度的聚合分数都达到阈值（没测过的维度算没达到），并且至少有 1 次通过的独立验证。
+- **M（`mastered`）**：P，并且至少 2 次通过的独立验证（`minIndependentVerifications`），最早和最晚的相隔至少 7 天（`minVerificationGapDays`），而且每个考察的维度都被某次通过的独立验证打过分。criteria 考察 transfer 时，这就要求 transfer 也被独立验证过；不考察时没有这个要求。
+- **迁移**（`e` 是这一步的证据）：
+
+| 从 | 到 |
+|---|---|
+| `not_assessed`、`diagnosed`、`learning`、`provisional_mastery` | M 且 `e` 是通过的独立验证 → `mastered`；否则 P → `provisional_mastery`；否则 `not_assessed` → `diagnosed`，其余 → `learning` |
+| `mastered` | P → 不变；否则 → `needs_review` |
+| `needs_review` | M 且 `e` 是通过的独立验证 → `mastered`；否则 P → 不变（等待重新验证）；否则 `e` 是独立验证 → `learning`；否则不变 |
+
+- **进入 `mastered` 总是要求 `e` 本身是一次通过的独立验证**。M 的次数、间隔、覆盖条件只会随证据增加而满足，所以没有这一条时，退步之后靠练习或自评恢复 P 就能直接回到 `mastered`，跳过重新验证。
+- **explanation**：第一项是 `state.<状态>`，然后是已满足的（`met.independent_verifications`），再是还差的：P 不满足时列 `missing.untested`、`missing.below_threshold`、`missing.independent_verifications`；M 不满足时列 `missing.independent_verifications`、`missing.spacing`（天数向下取整）、`missing.verification_coverage`；条件都满足但还没进入 `mastered` 时列 `missing.reverification`。维度按 README 的顺序。英文消息在 `rules-v1` 的消息表里。
+- **到期复习不在状态机里**（2.7）：`mastered` 因为时间变成 `needs_review` 取决于今天的日期，不能写进投影。
+
 ## 理由
 
 - **按维度的参考时间**：用 `now` 时，没有新证据投影也会每天变化，违反不变量 3，merge driver 也没法重算。用全部证据里最新的时间，只测了 recall 的一条新证据会让其他维度的证据“变旧”、置信度下降。按维度算，加一条不给某维度打分的证据，不会改变那个维度（有属性测试）。按真实日期过期是复习调度的事（2.7：到期的 `mastered` 转为 `needs_review`）。
@@ -30,6 +49,10 @@
 - **4 位小数**：YAML 易读、稳定；4 位已经比评分本身的精度高。
 - **证据的 `confidence` 不进分数权重**：否则一个维度的证据 `confidence` 全是 0 时，分数没有定义。
 
+- **重放而不是对全部证据一次分类**：`needs_review` 只能从 `mastered` 来，没有经过的路径就区分不了 `needs_review` 和 `learning`。按 `(created_at, id)` 排序，所以和读取顺序无关。
+- **只算当前 criteria 版本的独立验证**：标准变了，掌握要按新的标准重新验证。
+- **覆盖条件**：否则两次只测 recall 的独立验证就能让 Concept 变成 `mastered`，理解、推理、应用从没被独立验证过。
+
 ## 考虑过的其他方案
 
 - **从 `clock.now()` 算年龄**：投影随日期变化，见上。
@@ -37,10 +60,15 @@
 - **指数衰减 `2^(−age/H)`、标准差**：需要 `pow`、`sqrt`，跨平台不保证逐位相同。
 - **不舍入**：任何一点运算差异都会改变文件字节，YAML 也难读。
 
+- **对全部证据一次分类（不重放）**：表达不了退步。
+- **单独的 transfer 条件**：被覆盖条件包含了，会产生重复的 explanation。
+
 ## 后果
 
 - 改任何参数都要发布新的规则版本（`rules_version`），旧投影按旧版本可以复现；M5 检查点后复审时也是这样。
 - 规则代码不能用近似的数学函数；新增参数先写进本 ADR。
+- criteria 升级版本后，旧版本的独立验证不再算通过，重放的结果可能从 `mastered` 变成 `learning`，直到按新标准重新验证。
+- 每一步都重新聚合前面的全部证据，代价随证据数量平方增长；现在的数量下没有问题。
 - 舍入边界附近，排序是唯一保证结果不受读取顺序影响的手段；排序不能去掉。
 
 ## 相关

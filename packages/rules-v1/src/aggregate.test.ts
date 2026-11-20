@@ -274,6 +274,8 @@ describe('rules v1: the Rules object and parameters (ADR-0007)', () => {
         self_assessment: 0.3,
       },
       decimals: 4,
+      minIndependentVerifications: 2,
+      minVerificationGapDays: 7,
     });
     expect(Object.isFrozen(V1_PARAMETERS)).toBe(true);
     expect(Object.isFrozen(V1_PARAMETERS.typeWeights)).toBe(true);

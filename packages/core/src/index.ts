@@ -56,6 +56,8 @@ export type {
 export type {
   Aggregate,
   DimensionAggregate,
+  Evaluation,
+  EvaluationStep,
   Ports,
   Rules,
   RulesRegistry,

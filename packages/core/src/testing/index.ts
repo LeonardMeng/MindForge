@@ -12,7 +12,7 @@ import {
 
 import type { RepositoryIssue } from '../errors.js';
 import type { DomainEvent, EventSink } from '../events.js';
-import type { Rules, RulesRegistry } from '../ports.js';
+import type { Aggregate, Rules, RulesRegistry } from '../ports.js';
 import type {
   EvidenceList,
   Repository,
@@ -310,15 +310,40 @@ export function createEventRecorder(
   };
 }
 
+const EMPTY_AGGREGATE: Aggregate = {
+  dimensions: {
+    recall: null,
+    understanding: null,
+    reasoning: null,
+    application: null,
+    transfer: null,
+  },
+  confidence: 0,
+  perDimension: {
+    recall: null,
+    understanding: null,
+    reasoning: null,
+    application: null,
+    transfer: null,
+  },
+};
+
 /**
- * 测试用的规则：`aggregate` 总是返回“没有分数”（所有维度 `null`、置信度 0）。
- * 不关心聚合结果的测试用它；要测聚合本身，用规则包（比如 `rules-v1`）。
+ * 测试用的规则：`aggregate` 总是返回“没有分数”（所有维度 `null`、置信度 0），
+ * `evaluate` 总是 `not_assessed`、没有步骤。不关心规则结果的测试用它；要测规则本身，
+ * 用规则包（比如 `rules-v1`）。
  *
  * @param version - 规则版本
  */
 export function stubRules(version: number): Rules {
   return {
     version,
+    evaluate: () => ({
+      state: 'not_assessed',
+      aggregate: EMPTY_AGGREGATE,
+      explanation: [{ code: 'state.not_assessed', params: {} }],
+      steps: [],
+    }),
     aggregate: () => ({
       dimensions: {
         recall: null,
