@@ -214,6 +214,30 @@ importers:
 
   packages/_template: {}
 
+  packages/cli:
+    dependencies:
+      '@mastery/device':
+        specifier: workspace:*
+        version: link:../device
+      '@mastery/platform':
+        specifier: workspace:*
+        version: link:../platform
+      '@mastery/platform-node':
+        specifier: workspace:*
+        version: link:../platform-node
+      '@mastery/profile':
+        specifier: workspace:*
+        version: link:../profile
+      '@mastery/profile-store-git':
+        specifier: workspace:*
+        version: link:../profile-store-git
+      '@mastery/schema':
+        specifier: workspace:*
+        version: link:../schema
+      '@mastery/store':
+        specifier: workspace:*
+        version: link:../store
+
   packages/device:
     dependencies:
       '@mastery/platform':

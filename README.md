@@ -192,6 +192,7 @@ plugin-core   ← core, store, index, git, runtime 类型, cordis      ← Core 
 runtime       ← cordis, schema, platform
 agents/*      ← cordis, llm 类型, plugin-core 暴露的 knowledge 接口类型
 ui-*          ← schema, rpc, ui-kit（永远不 import runtime、core、platform）
+cli           ← schema, platform, platform-node, store, profile, profile-store-git, device（可以用 node:*；以后加入 core、index、git 等时在对应任务里补上）
 ```
 
 **所有包都可以依赖 `schema`**，包括 `ui-*`（6.6 的编辑器要在保存前直接调用 schema 的校验函数）。上图中其他包的依赖列表里没有逐一写出 schema。
