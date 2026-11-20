@@ -1,0 +1,38 @@
+{
+  "name": "@mastery/profile",
+  "version": "0.0.0",
+  "private": true,
+  "description": "ProfileStore 端口、ProfileBackend 端口和 Profile 的领域规则；内存实现和契约测试。",
+  "type": "module",
+  "exports": {
+    ".": {
+      "@mastery/source": "./src/index.ts",
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./contract": {
+      "@mastery/source": "./src/contract/index.ts",
+      "types": "./dist/contract.d.ts",
+      "default": "./dist/contract.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsup --entry.index src/index.ts --entry.contract src/contract/index.ts --format esm --dts --clean",
+    "test": "vitest run --config ../../vitest.config.ts --root .",
+    "typecheck": "tsc -p tsconfig.json"
+  },
+  "dependencies": {
+    "@mastery/schema": "workspace:*"
+  },
+  "peerDependencies": {
+    "vitest": "^4.1.12"
+  },
+  "peerDependenciesMeta": {
+    "vitest": {
+      "optional": true
+    }
+  }
+}
