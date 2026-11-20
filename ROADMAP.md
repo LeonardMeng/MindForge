@@ -31,7 +31,7 @@
 ## 当前状态
 
 - **当前里程碑：** M1
-- **下一个任务：** 1.11
+- **下一个任务：** 1.12
 - **阻塞项：** 无
 
 ---
@@ -144,7 +144,7 @@
 - **验收**：用 store 读取全部文件，没有校验错误。
 - **不做**：Evidence（M2 再加）。
 
-### [ ] 1.11 🔍 Schema：Profile 和 Device
+### [x] 1.11 🔍 Schema：Profile 和 Device
 - **包**：`schema`
 - **依赖**：1.1
 - **产出**：`ProfileConfig`（profile.yaml）、`WorkspaceRegistry`（workspaces.yaml）、`ConceptLinks`、`ProfileDefaults`、`DeviceConfig`（device.yaml，字段见 README 第 7 节）。`DeviceConfig` 的校验要拒绝任何看起来像密钥的字段（`api_key`、`token`、`password`、`secret`）。
@@ -600,7 +600,6 @@
 - （来自 1.5）一致性测试：把 schema 现有的合法和非法样例，同时用 zod 和一个 JSON Schema 校验器（比如 ajv，只作为 devDependency，不违反 ADR-0013）各跑一遍，结果应该一致；因为跨字段规则而只被 zod 拒绝的样例，单独列出来并注明原因。
 - （来自 1.5，M6 之前不做）让 VS Code 这类编辑器在用户编辑 `workspace.yaml`、Concept 的 frontmatter 时，直接用 `docs/protocol/schemas/` 里的 JSON Schema 做自动补全和实时校验。
 - （来自 1.6，2.5 实现）如果某个 Concept 有任何证据是 `version_too_new`，就不重算这个 Concept 的掌握度，也不写投影，并提示用户升级 Mastery OS。否则会因为漏算证据而写出错误的投影，再通过 Git 同步到其他设备。
-- （来自 1.6，1.11 处理）Profile 和 Device 的几种文件也要登记进 `packages/schema/src/file-kinds.ts` 和 `versions.ts`。
 - （来自 1.7，1.15 处理）`mastery init` 和 `mastery profile init` 生成的 `.gitignore` 要包含 `.mastery-tmp-*`，防止崩溃留下的临时文件被提交。
 - （来自 1.7，4.1 实现）同一个 Workspace 目录，同一时间只能有一个进程做写操作，用 1.7 的 Lock 端口实现（比如 `.mastery/runtime/write.lock`）。只读的 CLI 命令（validate、status、search）不需要拿锁。1.9 之后还要注意：store 的 `save(value, { base })` 是“先比较哈希再写入”，history 的 `append` 是“读出整个文件再原子写回”，两者在两个进程同时写时都需要这把锁才正确；Evidence 和评测会话的 `append` 用独占创建，不依赖锁。
 - （来自 1.8）Linux 上别的工具（比如从 macOS 拷来的压缩包）创建的 NFD 文件名：`list` 会把它报成 NFC，但用 NFC 名字读不到（Linux 不做规范化）。目前不处理；遇到时再考虑在打开文件时按 NFD 名字重试，或者由 `mastery doctor` 提示改名。
@@ -611,6 +610,11 @@
 - （来自 1.9）JSON 文件用 `JSON.parse` 解析，重复的键不会报错（后面的覆盖前面的），和 YAML 的严格程度不一致。这些文件都由应用写出，风险小；需要时换成能报告重复键的解析。
 - （来自 1.9，第一个真正的迁移时处理）旧版本的可修改文件保存时写成当前版本的规范形式，注释不保留。有了真正的迁移以后，考虑在迁移后的文档上修改，保留注释。
 - （来自 1.10，3.x 决定）wikilink 的解析规则还没有正式定义。fixture 的测试按 Obsidian 的做法：按文件名（不含 `.md`）找 Concept 或笔记，`#标题` 要能找到对应的标题行，文件名不能重名。3.x 实现索引的 wikilink 时，要定下重名、大小写、找不到时怎么处理，并决定 `mastery validate` 是否检查 wikilink。
+- （来自 1.11，1.12 实现）`concept-links.yaml` 两端的 Workspace 必须都已在 `workspaces.yaml` 里注册：这是 Profile 的领域规则，由 1.12 检查，不在 schema 里。注销 Workspace 时清理相关链接（1.12 已列出）。
+- （来自 1.11，1.14 实现）`device.yaml` 的 schema 接受 `profile.store: cloud`，但在 9.7 实现之前，1.14 读取 device.yaml 时必须明确拒绝它，给出“暂不支持云端 Profile”的错误，不能当成 git 处理或静默忽略。
+- （来自 1.11，7.4 决定）学习目标暂时不放进 `profile.yaml`。7.4 / 8.4 需要时，倾向于每个目标一个文件（和长期记忆的设计一样），而不是共享文件里的一个列表，避免多台设备同时修改产生冲突。
+- （来自 1.11，8.1 / 9.1 处理）`workspaces.yaml` 的 `remote` 不接受本机路径。U 盘、挂载的 NAS 这类远程在每台设备上路径不同，需要在 `device.yaml` 里按 Workspace 覆盖远程地址。
+- （来自 1.11）密钥检查只是一道保险，不是安全边界：换个名字或换种写法就能绕过。以后 `device.yaml` 要记录钥匙串条目的名称时，字段名不能含有被拦截的词（比如用 `keychain_entry`）。找到密钥时只报密钥的错误，去掉之后才报其他问题。
 - （来自 1.4，7.2 处理）验证证据和干预的关联：优先考虑在 Intervention 里记录验证证据的 id（Intervention 文件本来就可以修改），这样不用改 Evidence 的格式，关联关系也只存一处。
 - （来自 1.4，8.3 决定）引入跨 Workspace 的前置依赖后，Blindspot 的 `prerequisite_id` 可能需要支持 `GlobalConceptRef`。
 - （来自 1.1）`packages/schema/src/testing.ts` 的测试构造函数目前只在 schema 包内部使用。其他包的测试要用时，再决定放在哪里（比如 `testkit` 包），不从 schema 的公共 API 导出。
@@ -639,3 +643,4 @@
 | 2026-11-20 | 1.8 | `task/1.8-platform-node` | 新建 `@mastery/platform-node`：`NodeFileSystem`（原子写：临时文件 + fsync + rename + 目录 fsync，Windows 上 rename 短暂占用时重试；跟随符号链接，真实路径在根目录外报 `platform.outside_root`；`list` 跳过断开的链接、特殊文件和不合法的名字，名字转 NFC）、`SystemClock`、`NodeIdGenerator`、`NodeLock`（锁文件带令牌、进程号、主机名，修改时间作心跳；心跳超过 2 分钟或同主机进程已不在视为过期；接管时先 rename 成唯一名字再 `wx` 创建，竞争有测试；清除过期锁通过 `onStaleLock` 留下记录）、`createNodePlatform`。契约新增 `platform.outside_root` 错误码和符号链接测试组（`{ symlinks: true }` 时运行，Tauri 实现也要通过）。**修改了 1.7 契约测试里 1 处断言**（经人确认）：watch 测试改写已有文件后，原来要求事件是 `modified`，现在 `modified` 或 `created` 都算通过。原因：Linux 的 inotify 和 macOS 的 FSEvents 在原子写（临时文件 rename 覆盖目标）时报的是改名，Node 无法区分“覆盖”和“新建”；接口文档同时写明 watch 事件只是提示，可能合并、重复或丢失，使用者必须通过重新扫描对账（3.3 和启动对账就是这样设计的）。README 第 6 节和 dependency-cruiser 补上 platform-node 的白名单；共 776 个测试（5 个按平台或实现跳过） | Linux 的 NFD 文件名、被跳过的不合法名字、过期锁记录接入日志，见“待整理” |
 | 2026-11-20 | 1.9 | `task/1.9-store` | 新建 `@mastery/store`（依赖 `yaml` 2.9，README 第 10 节补上）：按类型读写全部 10 种文件；YAML 用 1.2 core schema 严格解析（锚点、别名、`<<`、所有标签、重复键、非字符串键、多文档、指令一律报错，时间戳保持字符串）；保存可修改文件时比较读取时的 SHA-256，被外部改过就报 `store.modified_since_read`、不覆盖；只改动变化的部分（单行标量原地替换，其余字节不变；结构变化时保留注释和顺序），每次写出都重新解析验证；新文件和派生文件写成规范形式；Evidence 和评测会话只有 `append`；版本过新的文件只读；旧版本在内存迁移、保存时写成当前版本；路径和内容不一致报 `store.path_mismatch`；`docs/protocol/*.md` 的 YAML 示例由测试校验。Platform 新增 `createFile` / `createTextFile`（原子、独占地创建；Node 用临时文件 + `link`），契约测试新增 7 个，没有改已有的断言。依赖规则：测试文件可以 import `platform-memory`（README 第 6 节、dependency-cruiser，`tests/dependency-rules.test.ts` 在样例仓库上验证普通源文件仍被拒绝）。根目录加 `fast-check` 和 `tests/` 目录（vitest、tsconfig 的 include）。共 897 个测试（6 个按平台或实现跳过） | 写锁、Proposal 冲突检查、FAT 上的硬链接、JSON 重复键等见“待整理” |
 | 2026-11-20 | 1.10 | `task/1.10-example-workspace` | 新建 `fixtures/ws-transformers/`：10 个 Concept（前置依赖无环；`transformer` 是唯一的 `draft`，没有 Concept 依赖它）、3 份评测标准、1 个 Project、3 篇带 wikilink 的笔记（`[[slug]]`、`[[slug\|别名]]`、`[[slug#标题]]`，一篇在子目录）、`.gitignore`（`.mastery/`、`.mastery-tmp-*`）和说明为什么故意不放 `.gitattributes` 的 README。新建只给测试用的 `@mastery/testkit`：`loadFixture()` 每次返回新的、独立的 `MemoryFileSystem`（有测试），用 `import.meta.glob` 读入，不需要 `node:*`；dependency-cruiser 只允许 `*.test.ts` import 它（`tests/dependency-rules.test.ts` 加一个样例仓库验证，原有断言不变）。store 的验收测试：全部文件读取无错误、无警告，保存回去逐字节不变，引用都能找到；把 fixture 改坏的四种方式都会让它失败。`fixtures/` 不交给 Prettier。CLAUDE.md 的流程加上“开始任务时提醒人创建分支”。共 909 个测试（6 个按平台或实现跳过） | wikilink 的解析规则见“待整理” |
+| 2026-11-20 | 1.11 | `task/1.11-schema-profile-device` | schema 新增 `ProfileConfig`（`id`、`name`、`language`（BCP 47，只有一种大小写写法）、`weekly_minutes`；目标暂不放）、`WorkspaceRegistry`（id 不重复；`remote` 必须写出、可以是 `null`，不能是本机路径，`http(s)://` 不能带任何用户信息，`ssh://` 不能带密码）、`ConceptLinks`（`{ from, relation: requires, to }`，只接受跨 Workspace、不指向自己、不重复）、`ProfileDefaults`（`plugins` 同 workspace.yaml、`model`）、`DeviceConfig`（README 第 7 节的字段，所有段必填；`checkout` 必填，README 示例补上 `checkout: full`；本机路径必须是绝对路径；`store: cloud` 的格式已定）。密钥检查（`secrets.ts`）用在 device、defaults、workspaces 和 workspace.yaml：拆词后整词比较的字段名规则（`secret.field_not_allowed`，提示用钥匙串、无害的名字改名；`max_tokens` 不算）和常见 token 格式（`secret.value_not_allowed`，不在错误里重复值本身），文档写明只是保险、不是安全边界。5 种文件登记进 `FILE_KINDS`，生成 5 个 JSON Schema（已有的不变）和 5 页协议说明；store 的文档示例测试加上这 5 页和 README 第 7 节里的两个示例。**修改了 1.6 测试里 2 处断言**：`file-kinds.test.ts` 的登记表列表加上 5 种新文件、种类数量从 11 改为 16，都是登记新文件的直接结果，其他断言不变。共 1103 个测试（6 个按平台或实现跳过） | Profile 领域检查、云端 Profile 的拒绝、设备专属远程等见“待整理” |

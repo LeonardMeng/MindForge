@@ -36,7 +36,7 @@ if (!result.success) {
 
 | 名称 | 文件 | 要点 |
 |---|---|---|
-| `WorkspaceConfig` | `workspace.yaml` | `schema_version`、`id`、`name`、`plugins` 必填，`description` 可选。插件名是 Slug，前面可加 `~` 表示禁用；配置必须是对象（没有配置写 `{}`），内容由插件自己校验；同一插件不能同时以 `x` 和 `~x` 出现。SuperAgent 也是普通插件，没有单独的字段 |
+| `WorkspaceConfig` | `workspace.yaml` | `schema_version`、`id`、`name`、`plugins` 必填，`description` 可选。插件名是 Slug，前面可加 `~` 表示禁用；配置必须是对象（没有配置写 `{}`），内容由插件自己校验；同一插件不能同时以 `x` 和 `~x` 出现。SuperAgent 也是普通插件，没有单独的字段；插件配置里不能有密钥（1.11） |
 | `ProjectConfig` | `projects/<slug>/project.yaml` | `schema_version`、`id`、`name`、`status`（`active` / `paused` / `completed` / `archived`）、`concepts`（可以是 `[]`，不能重复）必填，`description` 可选 |
 | `ConceptFrontmatter` | `concepts/<slug>.md` 的 frontmatter | `schema_version`、`id`、`name`、`prerequisites`（只能是本 Workspace 的 slug，可以是 `[]`，不能重复，不能包含自己）、`status`（`draft` / `active` / `archived`）必填；`tags`、`aliases` 可选，只接受列表 |
 | `Criteria` | `assessments/<slug>/criteria.yaml` | `schema_version`、`concept_id`、`version`（≥1）、`dimensions` 必填；五个维度写全，每个维度是 `{ focus: [考察要点], threshold: 0..1 }` 或 `null`（不考察）；`focus` 不能为空列表；至少考察一个维度 |
@@ -47,6 +47,11 @@ if (!result.success) {
 | `Blindspot` | `blindspots/<ULID>.yaml` | `type`（knowledge / reasoning / application / prerequisite / retention）、`status`（suspected / confirmed / resolved / merged；`resolved` 表示缺口已补上，`merged` 表示并入了另一个盲区）、`merged_into`（必须写出来：`merged` 时是并入的盲区，不能是自己，其他状态为 `null`）、`description`、`prerequisite_id`（必须写出来：`type` 为 prerequisite 时是缺失的前置 Concept，其他类型为 `null`）、`evidence_ids`（升序、不重复，可以是 `[]`）、`source` |
 | `Intervention` | `interventions/<ULID>.yaml` | `blindspot_id`、`method`（explanation / socratic / practice / counterexample）、`content`、`status`（planned / completed / abandoned）、`closed_at`（planned 时为 `null`，否则为结束时间）、`source`；不写 `concept_id` |
 | `Proposal` | 存放位置待定（4.2 / 6.8） | agent 或用户提交的一组变更操作（`PROPOSAL_OPERATIONS`），更新类操作给出完整的新内容；**没有删除操作**，只能通过状态归档；`requires_approval` 只是提交者的请求，Core 只能把它从 `false` 升级为 `true` |
+| `ProfileConfig` | Profile 的 `profile.yaml` | `id`（ULID）、`name`、`language`（BCP 47，只有一种大小写写法，比如 `zh-CN`）、`weekly_minutes`（0–10080，或 `null`）。目标暂不在这里（7.4） |
+| `WorkspaceRegistry` | Profile 的 `workspaces.yaml` | `workspaces: [{ id, name, remote }]`，id 不重复；`remote` 必须写出（可以是 `null`），不能是本机路径，`http(s)://` 不能带任何用户信息，`ssh://` 不能带密码 |
+| `ConceptLinks` | Profile 的 `concept-links.yaml` | `links: [{ from, relation: requires, to }]`，两端是 `GlobalConceptRef`，必须在不同的 Workspace，不能指向自己，不能重复 |
+| `ProfileDefaults` | Profile 的 `defaults.yaml` | `plugins`（规则同 `workspace.yaml`）、`model`（`ModelRef` 或 `null`）；不能有密钥 |
+| `DeviceConfig` | `~/.mastery/device.yaml` | 字段见 README 第 7 节，所有段都必须写出；`workspaces.<id>.checkout` 必须写出；本机路径必须是绝对路径；`models` 的两项同时有值或同时为 `null`；**不能有密钥** |
 | `parseConceptBody()` | `concepts/<slug>.md` 的正文 | 解析 `## Description` 和 `## Learning Objectives`（只认这两个英文二级标题）；识别 ``` 和 ~~~ 代码块；缺少或重复的章节给警告 |
 
 ### 约定
@@ -59,6 +64,16 @@ if (!result.success) {
 - **来源 `Actor`**：`{ kind: agent, id, model: "<provider>:<model>" }` 或 `{ kind: human }`，用于 Evidence 的 `evaluator` 和其他实体的 `source`。
 - **按某个字段区分的对象**（`Actor` 的 `kind`、历史的 `cause`、Proposal 操作的 `op`）：区分字段缺失报 `field.required`，取值不对报 `field.invalid_option`，分支里的错误照常报。
 - **跨字段检查在字段本身没有错误时才运行**：比如“`prerequisites` 不能包含自己”，要等列表里没有格式错误和重复项以后才会检查。
+
+## 密钥检查（`secrets.ts`）
+
+`DeviceConfig`、`ProfileDefaults`、`WorkspaceRegistry` 和 `WorkspaceConfig` 在校验之前先找密钥（任意深度）：
+
+- 字段名拆词后含有 `token`、`secret`、`password`、`passwd`、`apikey`、`credential`，或者 `api` + `key`、`private` + `key`：`secret.field_not_allowed`（提示用钥匙串，无害的名字改个名）。整词比较，所以 `max_tokens` 不算。
+- 值像常见的 token（GitHub `ghp_` 等、`github_pat_`、`sk-` / `sk-ant-`、`AKIA…`、`-----BEGIN … PRIVATE KEY-----`）：`secret.value_not_allowed`，参数里不带值本身。
+- 找到密钥时只报密钥的错误。导出的 JSON Schema 不受影响。
+
+**这只是一道保险，不是安全边界**：真正的规则是密钥只放在系统钥匙串里。Concept 的 frontmatter 不检查。
 
 ## 结构化错误
 

@@ -1,0 +1,195 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Mastery OS: ~/.mastery/device.yaml",
+  "description": "Settings that belong to one device. Never committed or synced; no secrets.",
+  "type": "object",
+  "properties": {
+    "schema_version": {
+      "type": "number",
+      "const": 1
+    },
+    "device": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[0-7][0-9A-HJKMNP-TV-Z]{25}$"
+        },
+        "name": {
+          "type": "string",
+          "pattern": "\\S"
+        },
+        "platform": {
+          "type": "string",
+          "enum": [
+            "macos",
+            "windows",
+            "linux",
+            "ios",
+            "android"
+          ]
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "platform"
+      ],
+      "additionalProperties": false
+    },
+    "profile": {
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "store": {
+              "type": "string",
+              "const": "git"
+            },
+            "path": {
+              "type": "string",
+              "pattern": "^(?:\\/|~(?:\\/|$)|[A-Za-z]:[\\\\/]|\\\\\\\\[^\\\\])"
+            }
+          },
+          "required": [
+            "store",
+            "path"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "store": {
+              "type": "string",
+              "const": "cloud"
+            },
+            "endpoint": {
+              "type": "string"
+            },
+            "cache_path": {
+              "type": "string",
+              "pattern": "^(?:\\/|~(?:\\/|$)|[A-Za-z]:[\\\\/]|\\\\\\\\[^\\\\])"
+            }
+          },
+          "required": [
+            "store",
+            "endpoint",
+            "cache_path"
+          ],
+          "additionalProperties": false
+        }
+      ]
+    },
+    "workspaces": {
+      "type": "object",
+      "propertyNames": {
+        "type": "string"
+      },
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "path": {
+            "type": "string",
+            "pattern": "^(?:\\/|~(?:\\/|$)|[A-Za-z]:[\\\\/]|\\\\\\\\[^\\\\])"
+          },
+          "sync": {
+            "type": "string",
+            "enum": [
+              "auto",
+              "manual",
+              "on-demand"
+            ]
+          },
+          "checkout": {
+            "type": "string",
+            "enum": [
+              "full",
+              "text-only"
+            ]
+          }
+        },
+        "required": [
+          "path",
+          "sync",
+          "checkout"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "sync": {
+      "type": "object",
+      "properties": {
+        "on_metered_network": {
+          "type": "boolean"
+        },
+        "interval_minutes": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 1440
+        }
+      },
+      "required": [
+        "on_metered_network",
+        "interval_minutes"
+      ],
+      "additionalProperties": false
+    },
+    "storage": {
+      "type": "object",
+      "properties": {
+        "resources_dir": {
+          "type": "string",
+          "pattern": "^(?:\\/|~(?:\\/|$)|[A-Za-z]:[\\\\/]|\\\\\\\\[^\\\\])"
+        },
+        "max_cache_mb": {
+          "type": "integer",
+          "minimum": 0
+        }
+      },
+      "required": [
+        "resources_dir",
+        "max_cache_mb"
+      ],
+      "additionalProperties": false
+    },
+    "models": {
+      "type": "object",
+      "properties": {
+        "local_runtime": {
+          "anyOf": [
+            {
+              "type": "string",
+              "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+              "maxLength": 64
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "local_endpoint": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "local_runtime",
+        "local_endpoint"
+      ],
+      "additionalProperties": false
+    }
+  },
+  "required": [
+    "schema_version",
+    "device",
+    "profile",
+    "workspaces",
+    "sync",
+    "storage",
+    "models"
+  ],
+  "additionalProperties": false
+}

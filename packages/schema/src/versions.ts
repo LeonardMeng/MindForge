@@ -16,6 +16,11 @@ export const CURRENT_SCHEMA_VERSIONS = {
   blindspot: 1,
   intervention: 1,
   proposal: 1,
+  profile: 1,
+  'workspace-registry': 1,
+  'concept-links': 1,
+  'profile-defaults': 1,
+  device: 1,
 } as const;
 
 /** 文件协议里的一种文件。 */

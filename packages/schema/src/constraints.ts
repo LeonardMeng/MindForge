@@ -51,6 +51,28 @@ export const UNIT_INTERVAL = { min: 0, max: 1 } as const;
 /** 正整数的下限：schema_version、criteria 版本、规则版本。 */
 export const POSITIVE_INTEGER_MIN = 1;
 
+/** 本机的绝对路径（device.yaml）：`/…`、`~`、`~/…`、`C:\…`、`C:/…`、`\\server\…`。 */
+export const LOCAL_PATH_PATTERN = /^(?:\/|~(?:\/|$)|[A-Za-z]:[\\/]|\\\\[^\\])/;
+
+/**
+ * BCP 47 语言标签的常见形式，只有一种大小写写法：语言（小写 2–3 个字母）、可选的文字（首字母大写的
+ * 4 个字母）、可选的地区（大写 2 个字母或 3 位数字）。例如 `zh-CN`、`zh-Hans-CN`、`en`、`es-419`。
+ */
+export const LANGUAGE_TAG_PATTERN =
+  /^[a-z]{2,3}(?:-[A-Z][a-z]{3})?(?:-(?:[A-Z]{2}|\d{3}))?$/;
+
+/** 每周学习时间预算（分钟）：0 到一整周。 */
+export const WEEKLY_MINUTES_RANGE = { min: 0, max: 7 * 24 * 60 } as const;
+
+/** 自动同步的间隔（分钟）：1 分钟到 1 天。 */
+export const INTERVAL_MINUTES_RANGE = { min: 1, max: 24 * 60 } as const;
+
+/** 缓存上限（MB）：不能是负数。 */
+export const MAX_CACHE_MB_RANGE = {
+  min: 0,
+  max: Number.MAX_SAFE_INTEGER,
+} as const;
+
 /** 写进 JSON Schema 的 pattern（ECMAScript 正则，和 JSON Schema 的方言一致）。 */
 export function patternMeta(pattern: RegExp): { pattern: string } {
   return { pattern: pattern.source };

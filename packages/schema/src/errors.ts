@@ -170,6 +170,41 @@ const MESSAGES_EN = {
     'a blindspot cannot be merged into itself',
   ),
 
+  // ── 1.11：Profile、Device 和密钥检查 ──
+  'field.not_integer': (p: { value: unknown }) =>
+    `must be a whole number, got ${String(p.value)}`,
+  'profile.invalid_language': (p: { value: string }) =>
+    `"${p.value}" is not a language tag in canonical form, for example zh-CN, en or zh-Hans-CN`,
+  'workspace_registry.duplicate_id': (p: { id: string }) =>
+    `workspace "${p.id}" is registered more than once`,
+  'concept_link.self': (p: { value: string }) =>
+    `a concept cannot be linked to itself ("${p.value}")`,
+  'concept_link.same_workspace': (p: { workspace: string }) =>
+    `both ends are in workspace "${p.workspace}"; prerequisites inside one workspace belong in the concept's frontmatter`,
+  'concept_link.duplicate': (p: { value: string }) =>
+    `the link "${p.value}" appears more than once`,
+  'remote.local_path': (p: { value: string }) =>
+    `"${p.value}" is a local path; workspaces.yaml is shared by all devices, so a remote must be a network address`,
+  'remote.invalid': (p: { value: string }) =>
+    `"${p.value}" is not a Git remote; use git@host:path, ssh://, git:// or https://`,
+  'endpoint.invalid': (p: { value: string }) =>
+    `"${p.value}" is not an http(s) address, for example http://127.0.0.1:11434`,
+  'local_path.not_absolute': (p: { value: string }) =>
+    `"${p.value}" is not an absolute path; use /…, ~/…, C:\\… or \\\\server\\share`,
+  'device.models_incomplete': fixed(
+    'local_runtime and local_endpoint must both be set, or both be null',
+  ),
+  'secret.field_not_allowed': (p: { key: string }) =>
+    `"${p.key}" looks like a secret. Secrets belong in the system keychain, never in files that may be ` +
+    `committed or synced. If it is not a secret (for example token_limit), rename the key`,
+  'secret.value_not_allowed': (p: { kind: string }) =>
+    `this value looks like a ${p.kind}. Secrets belong in the system keychain, never in files that may be ` +
+    `committed or synced; remove it, and revoke it if it was ever committed`,
+  'secret.credentials_in_url': fixed(
+    'URLs must not contain a user name or password (tokens often end up there); ' +
+      'use SSH keys, the system keychain or a Git credential helper instead',
+  ),
+
   // ── 1.6：迁移 ──
   'migration.missing_version': fixed(
     'the file has no schema_version; every structured file must have one',

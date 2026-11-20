@@ -19,7 +19,15 @@ Mastery OS 的数据都是普通文件。本目录说明每种文件的格式，
 | `interventions/<ULID>.yaml` | [intervention.md](intervention.md) | Mastery Core（来自 Proposal）、用户 | 可以修改（状态会变化） |
 | Proposal（存放位置待定） | [proposal.md](proposal.md) | agent、用户 | 提交后不修改 |
 
-Profile 和 Device 的格式在任务 1.11 加入。
+Profile 里的文件（只能通过 `ProfileStore` 读写，Git 实现里在 `MasteryProfile/` 下），以及每台设备一份的 `device.yaml`：
+
+| 文件 | 说明页 | 谁来写 | 能否修改 |
+|---|---|---|---|
+| `profile.yaml` | [profile.md](profile.md) | 用户 | 可以编辑 |
+| `workspaces.yaml` | [workspaces.md](workspaces.md) | `mastery init` 等命令、用户 | 可以编辑；不写本地路径 |
+| `concept-links.yaml` | [concept-links.md](concept-links.md) | 用户；agent 通过 Proposal | 可以编辑 |
+| `defaults.yaml` | [defaults.md](defaults.md) | 用户 | 可以编辑；不能有密钥 |
+| `~/.mastery/device.yaml` | [device.md](device.md) | 应用（首次启动时生成）、用户 | 可以编辑；**不提交、不同步，不能有密钥** |
 
 ## 所有文件共同的规则
 
