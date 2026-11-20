@@ -361,6 +361,7 @@ export function stubRules(version: number): Rules {
       aggregate: EMPTY_AGGREGATE,
       explanation: [{ code: 'state.not_assessed', params: {} }],
       steps: [],
+      reviewDueAt: null,
     }),
     aggregate: () => ({
       dimensions: {

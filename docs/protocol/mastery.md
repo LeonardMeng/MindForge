@@ -13,6 +13,7 @@
 | `state` | `not_assessed` / `diagnosed` / `learning` / `provisional_mastery` / `mastered` / `needs_review` |
 | `dimensions` | 五个维度的掌握度，`0..1` 或 `null` |
 | `confidence` | 置信度，`0..1` |
+| `review_due_at` | 下次复习的时刻（UTC，精确到秒），由规则根据证据算出；只有 `mastered` 有，其他状态写 `null`。“现在是否到期”在读取时根据当前时间推导，不写进投影（2.7） |
 | `rules_version` | 计算用的规则版本 |
 | `evidence_ids` | 参与计算的证据，**升序**、不重复 |
 | `explanation` | 为什么是这个状态、还差什么：`[{ code, params }]`，code 由规则包定义 |
@@ -23,6 +24,7 @@ concept_id: self-attention
 state: provisional_mastery
 dimensions: { recall: 0.9, understanding: 0.85, reasoning: 0.8, application: 0.7, transfer: null }
 confidence: 0.82
+review_due_at: null
 rules_version: 1
 evidence_ids: [01JD3K8Q8Z6V7X2N4M5P9R0T1W, 01JD5M0A0A0A0A0A0A0A0A0A0A]
 explanation:
@@ -52,4 +54,5 @@ explanation:
 ## JSON Schema 检查不了的规则
 
 - `evidence_ids` 必须是升序。
+- `review_due_at` 只有在 `state` 是 `mastered` 时才能不是 `null`。
 - 历史的行按 `(at, cause.evidence_id)` 的顺序（由推导保证）。

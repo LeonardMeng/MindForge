@@ -57,6 +57,11 @@ export interface Evaluation {
   readonly explanation: readonly ExplanationItem[];
   /** 按 `(created_at, id)` 顺序的每一步。 */
   readonly steps: readonly EvaluationStep[];
+  /**
+   * 下次复习的时刻（2.7），由规则根据证据算出，不取当前时间；只有 `state` 是 `mastered` 时不是 null。
+   * “现在是否到期”由 Core 的 `reviewStatus` 在读取时推导。
+   */
+  readonly reviewDueAt: IsoDateTime | null;
 }
 
 /**

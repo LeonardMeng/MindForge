@@ -1,6 +1,6 @@
 # ADR-0007 规则 v1 的参数：维度聚合（按维度的参考时间、双曲衰减、只用精确运算）和状态机
 
-- **状态**：已定（**参数暂定**：M5 检查点后根据实际使用复审）。2.3 定了维度聚合，2.4 补上状态机（按 ROADMAP 的计划，本 ADR 分两次写成）
+- **状态**：已定（**参数暂定**：M5 检查点后根据实际使用复审）。2.3 定了维度聚合，2.4 补上状态机，2.7 补上复习间隔（按 ROADMAP 的计划，本 ADR 分几次写成）
 - **日期**：2026-11-20
 
 ## 背景
@@ -41,6 +41,13 @@
 - **explanation**：第一项是 `state.<状态>`，然后是已满足的（`met.independent_verifications`），再是还差的：P 不满足时列 `missing.untested`、`missing.below_threshold`、`missing.independent_verifications`；M 不满足时列 `missing.independent_verifications`、`missing.spacing`（天数向下取整）、`missing.verification_coverage`；条件都满足但还没进入 `mastered` 时列 `missing.reverification`。维度按 README 的顺序。英文消息在 `rules-v1` 的消息表里。
 - **到期复习不在状态机里**（2.7）：`mastered` 因为时间变成 `needs_review` 取决于今天的日期，不能写进投影。
 
+### 复习间隔（2.7）
+
+- **只有 `mastered` 有复习时刻**：投影的 `review_due_at`，其他状态是 `null`。它由证据算出，不取当前时间，所以不变量 3 和 merge driver 的重算仍然成立。
+- **连续段**：进入 `mastered` 的那一步（一定是通过的独立验证）开始一段，第 0 级，以这次验证为起点。保持 `mastered` 时，一次通过的独立验证**距起点至少过了当前间隔的一半**（`reviewMinElapsedFraction: 0.5`），才算一次复习：升一级，以它为新的起点；更早的验证参与分数，但不改变级别和 `review_due_at`。练习和自评不改变复习时刻。离开 `mastered` 时这一段结束，再次进入时从第 0 级开始（要重新学过）。
+- **间隔**（`reviewIntervalsDays`）：7、14、30、60、120、180 天，之后一直是 180 天。`review_due_at` = 起点 + 当前级别的间隔。
+- **到期只在读取时推导**：Core 的 `reviewStatus(projection, now)`；到期的 `mastered` 读作 `needs_review`，保存的状态不变，历史里也不写 `cause: time`。保存的 `needs_review` 只来自证据。
+
 ## 理由
 
 - **按维度的参考时间**：用 `now` 时，没有新证据投影也会每天变化，违反不变量 3，merge driver 也没法重算。用全部证据里最新的时间，只测了 recall 的一条新证据会让其他维度的证据“变旧”、置信度下降。按维度算，加一条不给某维度打分的证据，不会改变那个维度（有属性测试）。按真实日期过期是复习调度的事（2.7：到期的 `mastered` 转为 `needs_review`）。
@@ -52,6 +59,9 @@
 - **重放而不是对全部证据一次分类**：`needs_review` 只能从 `mastered` 来，没有经过的路径就区分不了 `needs_review` 和 `learning`。按 `(created_at, id)` 排序，所以和读取顺序无关。
 - **只算当前 criteria 版本的独立验证**：标准变了，掌握要按新的标准重新验证。
 - **覆盖条件**：否则两次只测 recall 的独立验证就能让 Concept 变成 `mastered`，理解、推理、应用从没被独立验证过。
+
+- **复习要过半个间隔才算**：否则同一天连续做几次验证，下一次复习就被推到 180 天以后，失去间隔复习的意义。
+- **到期不写进投影**：它取决于今天的日期，写进去会破坏不变量 3，merge driver 也没法重算。
 
 ## 考虑过的其他方案
 

@@ -407,6 +407,102 @@ describe('rules v1 state machine: conditions', () => {
   });
 });
 
+describe('rules v1 review dates (2.7)', () => {
+  /** 2026-11-01 之后第 `day` 天的时刻。 */
+  const at = (day: number) => iso(T0 + Math.round(day * DAY_MS));
+  const SECOND = 1 / 86_400;
+
+  it('only mastered has a review date', () => {
+    expect(run([]).reviewDueAt).toBeNull();
+    expect(run([{ day: 0, scores: { recall: 0.5 } }]).reviewDueAt).toBeNull();
+    expect(run([PASS(0)]).reviewDueAt).toBeNull();
+    expect(
+      run([
+        PASS(0),
+        PASS(7),
+        { day: 8, type: PRACTICE, scores: { recall: 0.2 } },
+      ]).state,
+    ).toBe('needs_review');
+    expect(
+      run([
+        PASS(0),
+        PASS(7),
+        { day: 8, type: PRACTICE, scores: { recall: 0.2 } },
+      ]).reviewDueAt,
+    ).toBeNull();
+  });
+
+  it('entering mastered schedules the first review 7 days after that verification', () => {
+    expect(run([PASS(0), PASS(7)]).reviewDueAt).toBe(at(14));
+  });
+
+  it('each counted review moves one interval up: 7, 14, 30, 60, 120, then 180 days', () => {
+    const specs: Spec[] = [PASS(0), PASS(7)];
+    const dues: string[] = [];
+    let day = 7;
+    for (const interval of [7, 14, 30, 60, 120, 180, 180]) {
+      dues.push(evaluateV1(evidence(specs), criteria()).reviewDueAt ?? 'null');
+      day += interval;
+      specs.push(PASS(day));
+    }
+    expect(dues).toEqual([
+      at(14),
+      at(28),
+      at(58),
+      at(118),
+      at(238),
+      at(418),
+      at(598),
+    ]);
+  });
+
+  it('a verification just before half the interval does not count as a review', () => {
+    const result = run([PASS(0), PASS(7), PASS(7 + 3.5 - SECOND)]);
+    expect(result.state).toBe('mastered');
+    expect(result.reviewDueAt).toBe(at(14));
+  });
+
+  it('a verification at or after half the interval counts as a review', () => {
+    expect(run([PASS(0), PASS(7), PASS(7 + 3.5)]).reviewDueAt).toBe(
+      at(7 + 3.5 + 14),
+    );
+    expect(run([PASS(0), PASS(7), PASS(7 + 3.5 + SECOND)]).reviewDueAt).toBe(
+      at(7 + 3.5 + SECOND + 14),
+    );
+  });
+
+  it('repeated same-day verifications do not push the review out', () => {
+    expect(
+      run([PASS(0), PASS(7), PASS(7), PASS(7.1), PASS(7.2)]).reviewDueAt,
+    ).toBe(at(14));
+  });
+
+  it('practice and self-assessment do not move the review date', () => {
+    expect(
+      run([
+        PASS(0),
+        PASS(7),
+        { day: 12, type: PRACTICE, scores: { recall: 0.95 } },
+        { day: 13, type: SELF, scores: { recall: 0.95 } },
+      ]).reviewDueAt,
+    ).toBe(at(14));
+  });
+
+  it('a regression ends the streak; mastering again starts at 7 days', () => {
+    const result = run([
+      PASS(0),
+      PASS(7),
+      PASS(14),
+      { day: 20, type: PRACTICE, scores: { recall: 0.2 } },
+      { day: 20.5, type: PRACTICE, scores: { recall: 1 } },
+      { day: 20.75, type: PRACTICE, scores: { recall: 1 } },
+      PASS(21),
+    ]);
+    expect(path(result).slice(-1)).toEqual(['mastered']);
+    expect(result.reviewDueAt).toBe(at(28));
+  });
+});
+
 describe('rules v1 state machine: steps', () => {
   it('records one step per evidence, in (created_at, id) order, with the running aggregate', () => {
     const list = evidence([PASS(7), { day: 0, scores: { recall: 0.5 } }]);
@@ -873,6 +969,24 @@ describe('rules v1 state machine (properties)', () => {
             expect(['mastered', 'needs_review']).toContain(step.from);
           }
         });
+      }),
+    );
+  });
+
+  it('reviewDueAt is set exactly when the state is mastered, at least 7 days after entering it', () => {
+    fc.assert(
+      fc.property(evidenceArb, criteriaArb, (list, c) => {
+        const result = evaluateV1(list, c);
+        expect(result.reviewDueAt !== null).toBe(result.state === 'mastered');
+        if (result.reviewDueAt === null) return;
+        // 最后一次进入 mastered 的那一步。
+        const entered = [...result.steps]
+          .reverse()
+          .find((s) => s.to === 'mastered' && s.from !== 'mastered');
+        expect(entered).toBeDefined();
+        expect(
+          Date.parse(result.reviewDueAt) - Date.parse(entered?.at ?? ''),
+        ).toBeGreaterThanOrEqual(7 * DAY_MS);
       }),
     );
   });

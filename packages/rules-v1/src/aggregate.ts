@@ -22,6 +22,15 @@ export const V1_PARAMETERS = Object.freeze({
   minIndependentVerifications: 2,
   /** 通过的独立验证中，最早和最晚的至少相隔几天。 */
   minVerificationGapDays: 7,
+  /**
+   * 复习间隔（天，2.7）：进入 `mastered` 后第 n 次计数的复习用第 n 项，之后一直用最后一项。
+   */
+  reviewIntervalsDays: Object.freeze([7, 14, 30, 60, 120, 180] as const),
+  /**
+   * 一次通过的独立验证要算作一次复习（让间隔升一级），距上一次计数的验证至少要过当前间隔的这个比例。
+   * 早于这个时刻的验证仍然参与分数，但不改变间隔和 `review_due_at`。
+   */
+  reviewMinElapsedFraction: 0.5,
 });
 
 const SCALE = 10 ** V1_PARAMETERS.decimals;
