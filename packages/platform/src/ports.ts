@@ -28,6 +28,16 @@ export interface FileSystem {
   writeFile(path: string, data: Uint8Array): Promise<void>;
   /** 原子地写入 UTF-8 文本，规则同 {@link FileSystem.writeFile}。 */
   writeTextFile(path: string, text: string): Promise<void>;
+  /**
+   * **原子、独占地**创建文件：目标已经存在（文件、目录或链接）时报 `platform.already_exists`，
+   * 不改动它；两个调用同时创建同一个文件时，只有一个成功。写入中途崩溃时目标不会出现，
+   * 也不会是半截。父目录必须已经存在。
+   *
+   * 只能追加的文件（Evidence、评测会话，不变量 2）用它写入：不依赖调用者持有写锁。
+   */
+  createFile(path: string, data: Uint8Array): Promise<void>;
+  /** 原子、独占地创建 UTF-8 文本文件，规则同 {@link FileSystem.createFile}。 */
+  createTextFile(path: string, text: string): Promise<void>;
   /** 原子地改名或移动文件、目录。目标是已存在的文件时覆盖它。 */
   rename(from: string, to: string): Promise<void>;
   /**

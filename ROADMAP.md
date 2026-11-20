@@ -31,7 +31,7 @@
 ## 当前状态
 
 - **当前里程碑：** M1
-- **下一个任务：** 1.9
+- **下一个任务：** 1.10
 - **阻塞项：** 无
 
 ---
@@ -130,7 +130,7 @@
 - **验收**：通过 1.7 的契约测试；三个平台的 CI 都通过。
 - **不做**：文件监听的防抖优化。
 
-### [ ] 1.9 🔍 Store
+### [x] 1.9 🔍 Store
 - **包**：`store`
 - **依赖**：1.2、1.3、1.4、1.7
 - **产出**：按类型读写所有实体（frontmatter 解析、YAML、JSON）；读的时候做校验和迁移；写的时候做原子写，并保持 YAML 的字段顺序稳定（减少 diff 噪音）；Evidence 只提供 `append`，没有 `update`。
@@ -598,18 +598,19 @@
 - （来自 1.4，4.2 处理）并发冲突：提案生成后、批准前文件已被改动时怎么办。可能需要在更新类操作里带上“提案时文件内容的哈希”。Proposal 不是长期保存的数据，到时再加字段代价很小。
 - （来自 1.4）4.2：实现 `blindspot.merge`，检查 `merged_into` 指向的盲区存在，并且不形成链或循环。
 - （来自 1.5）一致性测试：把 schema 现有的合法和非法样例，同时用 zod 和一个 JSON Schema 校验器（比如 ajv，只作为 devDependency，不违反 ADR-0013）各跑一遍，结果应该一致；因为跨字段规则而只被 zod 拒绝的样例，单独列出来并注明原因。
-- （来自 1.5，1.9 之后）协议文档里的 YAML 示例还没有自动校验。1.9 选定 YAML 库以后，加一个测试校验 `docs/protocol/*.md` 里的 YAML 示例。
-- （来自 1.5，1.9 选 YAML 库时注意）很多 YAML 库（比如 js-yaml 的默认模式）会把不加引号的 `2026-11-20T08:00:00Z` 转成 Date 对象。store 读写 YAML 时必须把时间保留为字符串，否则 `IsoDateTime` 校验不过，读后再写也无法逐字节不变。
 - （来自 1.5，M6 之前不做）让 VS Code 这类编辑器在用户编辑 `workspace.yaml`、Concept 的 frontmatter 时，直接用 `docs/protocol/schemas/` 里的 JSON Schema 做自动补全和实时校验。
-- （来自 1.6，1.9 实现）读到 `migration.version_too_new` 的文件时，这个文件只读，store 绝对不能修改或覆盖它。多台设备上的应用版本可能不同，旧版本的应用不能把新版本写的文件降级或写坏。
-- （来自 1.6，1.9 实现）修改一个旧版本的可修改文件（比如 Blindspot）时，写回的是当前版本。这是正常保存，不违反 ADR-0005 的“只有 `mastery migrate` 才改写磁盘”，那条说的是不要在读的时候顺手改写。Evidence 这类只能追加的文件不会被修改，所以会一直保持原来的版本，直到用户运行 `mastery migrate`。
 - （来自 1.6，2.5 实现）如果某个 Concept 有任何证据是 `version_too_new`，就不重算这个 Concept 的掌握度，也不写投影，并提示用户升级 Mastery OS。否则会因为漏算证据而写出错误的投影，再通过 Git 同步到其他设备。
 - （来自 1.6，1.11 处理）Profile 和 Device 的几种文件也要登记进 `packages/schema/src/file-kinds.ts` 和 `versions.ts`。
 - （来自 1.7，1.15 处理）`mastery init` 和 `mastery profile init` 生成的 `.gitignore` 要包含 `.mastery-tmp-*`，防止崩溃留下的临时文件被提交。
-- （来自 1.7，4.1 实现）同一个 Workspace 目录，同一时间只能有一个进程做写操作，用 1.7 的 Lock 端口实现（比如 `.mastery/runtime/write.lock`）。只读的 CLI 命令（validate、status、search）不需要拿锁。
+- （来自 1.7，4.1 实现）同一个 Workspace 目录，同一时间只能有一个进程做写操作，用 1.7 的 Lock 端口实现（比如 `.mastery/runtime/write.lock`）。只读的 CLI 命令（validate、status、search）不需要拿锁。1.9 之后还要注意：store 的 `save(value, { base })` 是“先比较哈希再写入”，history 的 `append` 是“读出整个文件再原子写回”，两者在两个进程同时写时都需要这把锁才正确；Evidence 和评测会话的 `append` 用独占创建，不依赖锁。
 - （来自 1.8）Linux 上别的工具（比如从 macOS 拷来的压缩包）创建的 NFD 文件名：`list` 会把它报成 NFC，但用 NFC 名字读不到（Linux 不做规范化）。目前不处理；遇到时再考虑在打开文件时按 NFD 名字重试，或者由 `mastery doctor` 提示改名。
 - （来自 1.8）`list` 会跳过不是合法路径段的名字（Windows 保留名、`<>:"|?*`、控制字符、以点或空格结尾等），这些文件对 Mastery 不可见。以后 `mastery doctor` 应该列出它们，提示用户改名，而不是让它们悄悄消失。
 - （来自 1.8，4.1 使用）`NodeLock` 清除过期锁时默认用 `process.emitWarning` 留下记录。4.1 接入 CLI 时，应该把 `onStaleLock` 接到正式的日志或事件上。
+- （来自 1.9，4.2 使用）Proposal 的并发冲突检查（上面“提案时文件的哈希”的想法）直接复用 store 的 `Snapshot`：提案里记下目标文件的 `sha256`，批准时用 `save(value, { base })` 写入，文件被改过就会得到 `store.modified_since_read`。
+- （来自 1.9）`createFile` 在 Node 上用硬链接实现，FAT、exFAT 这类不支持硬链接的文件系统（比如一些 U 盘）上会失败。如果要支持把 Workspace 放在这样的磁盘上，需要另想办法（并保证仍然是独占的）。
+- （来自 1.9）JSON 文件用 `JSON.parse` 解析，重复的键不会报错（后面的覆盖前面的），和 YAML 的严格程度不一致。这些文件都由应用写出，风险小；需要时换成能报告重复键的解析。
+- （来自 1.9，第一个真正的迁移时处理）旧版本的可修改文件保存时写成当前版本的规范形式，注释不保留。有了真正的迁移以后，考虑在迁移后的文档上修改，保留注释。
+- （来自 1.9，testkit 参考）store 的测试用 Vite 的 `import.meta.glob(..., { query: '?raw' })` 读取 `docs/protocol/*.md`，不需要 `node:*`。以后测试要读 fixture 时，可以先考虑这种做法，再决定是否需要 `testkit` 包。
 - （来自 1.4，7.2 处理）验证证据和干预的关联：优先考虑在 Intervention 里记录验证证据的 id（Intervention 文件本来就可以修改），这样不用改 Evidence 的格式，关联关系也只存一处。
 - （来自 1.4，8.3 决定）引入跨 Workspace 的前置依赖后，Blindspot 的 `prerequisite_id` 可能需要支持 `GlobalConceptRef`。
 - （来自 1.1）`packages/schema/src/testing.ts` 的测试构造函数目前只在 schema 包内部使用。其他包的测试要用时，再决定放在哪里（比如 `testkit` 包），不从 schema 的公共 API 导出。
@@ -636,3 +637,4 @@
 | 2026-11-20 | 1.6 | `task/1.6-schema-migrations` | `createMigrator()` 迁移框架（逐级升级、版本过新 / 无路径 / 步骤失败都有错误码，不修改输入）；`FILE_KINDS` 登记表和 `versions.ts`，文件 schema 和 JSON Schema 生成脚本都从这里读取（生成结果不变）；`migrate()`、`validateFile()`；`docs/adding-a-migration.md`（旧版本样例永久保留）；ROADMAP 1.6 的“v0 → v1”改为测试专用的 v1 → v2 → v3；共 545 个测试 | store、重算对版本过新文件的处理见“待整理” |
 | 2026-11-20 | 1.7 | `task/1.7-platform-ports` | 新建 `@mastery/platform`（`FileSystem`、`Clock`、`IdGenerator`、`Lock` 接口；`PlatformError` 和 `platform.*` 错误码；路径规则：`/` 分隔、NFC、Windows 不允许的名字；契约测试从 `/contract` 子路径导出，vitest 是可选的 peerDependency）和 `@mastery/platform-memory`（通过全部契约测试，可以模拟写入中途崩溃）；README 第 5、6 节和 dependency-cruiser 补上两个包的白名单；共 694 个测试 | `.gitignore` 的临时文件、Workspace 写锁见“待整理” |
 | 2026-11-20 | 1.8 | `task/1.8-platform-node` | 新建 `@mastery/platform-node`：`NodeFileSystem`（原子写：临时文件 + fsync + rename + 目录 fsync，Windows 上 rename 短暂占用时重试；跟随符号链接，真实路径在根目录外报 `platform.outside_root`；`list` 跳过断开的链接、特殊文件和不合法的名字，名字转 NFC）、`SystemClock`、`NodeIdGenerator`、`NodeLock`（锁文件带令牌、进程号、主机名，修改时间作心跳；心跳超过 2 分钟或同主机进程已不在视为过期；接管时先 rename 成唯一名字再 `wx` 创建，竞争有测试；清除过期锁通过 `onStaleLock` 留下记录）、`createNodePlatform`。契约新增 `platform.outside_root` 错误码和符号链接测试组（`{ symlinks: true }` 时运行，Tauri 实现也要通过）。**修改了 1.7 契约测试里 1 处断言**（经人确认）：watch 测试改写已有文件后，原来要求事件是 `modified`，现在 `modified` 或 `created` 都算通过。原因：Linux 的 inotify 和 macOS 的 FSEvents 在原子写（临时文件 rename 覆盖目标）时报的是改名，Node 无法区分“覆盖”和“新建”；接口文档同时写明 watch 事件只是提示，可能合并、重复或丢失，使用者必须通过重新扫描对账（3.3 和启动对账就是这样设计的）。README 第 6 节和 dependency-cruiser 补上 platform-node 的白名单；共 776 个测试（5 个按平台或实现跳过） | Linux 的 NFD 文件名、被跳过的不合法名字、过期锁记录接入日志，见“待整理” |
+| 2026-11-20 | 1.9 | `task/1.9-store` | 新建 `@mastery/store`（依赖 `yaml` 2.9，README 第 10 节补上）：按类型读写全部 10 种文件；YAML 用 1.2 core schema 严格解析（锚点、别名、`<<`、所有标签、重复键、非字符串键、多文档、指令一律报错，时间戳保持字符串）；保存可修改文件时比较读取时的 SHA-256，被外部改过就报 `store.modified_since_read`、不覆盖；只改动变化的部分（单行标量原地替换，其余字节不变；结构变化时保留注释和顺序），每次写出都重新解析验证；新文件和派生文件写成规范形式；Evidence 和评测会话只有 `append`；版本过新的文件只读；旧版本在内存迁移、保存时写成当前版本；路径和内容不一致报 `store.path_mismatch`；`docs/protocol/*.md` 的 YAML 示例由测试校验。Platform 新增 `createFile` / `createTextFile`（原子、独占地创建；Node 用临时文件 + `link`），契约测试新增 7 个，没有改已有的断言。依赖规则：测试文件可以 import `platform-memory`（README 第 6 节、dependency-cruiser，`tests/dependency-rules.test.ts` 在样例仓库上验证普通源文件仍被拒绝）。根目录加 `fast-check` 和 `tests/` 目录（vitest、tsconfig 的 include）。共 897 个测试（6 个按平台或实现跳过） | 写锁、Proposal 冲突检查、FAT 上的硬链接、JSON 重复键等见“待整理” |

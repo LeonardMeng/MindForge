@@ -25,6 +25,7 @@ try {
 ## 文件系统
 
 - **原子写**：同一目录里写临时文件 `.mastery-tmp-<ULID>`，fsync 后改名为目标文件，再尽量对目录 fsync（Windows 跳过）。Windows 上改名遇到短暂占用（`EPERM`、`EACCES`、`EBUSY`）时重试，最多约 1 秒。失败时删除临时文件。
+- **独占创建**：同样先写临时文件并 fsync，再用 `link(临时文件, 目标)` 建立硬链接（目标已存在时失败，NTFS 也一样），最后删掉临时文件的名字。原子且独占，不依赖写锁。不支持硬链接的文件系统（FAT、exFAT）上会失败。
 - **符号链接**：跟随；断开的链接和特殊文件在 `list` 里跳过；真实路径在根目录外面时报 `platform.outside_root`。
 - **文件名**：`list` 把名字转成 NFC（macOS 可能以 NFD 存储）；不是合法路径段的名字（比如别的工具创建的 `a?.md`）跳过。
 - 容易因系统而异的情况先用 `stat` 检查，保证各系统报出相同的错误码。
@@ -44,5 +45,5 @@ try {
 
 ## 只给测试用的钩子
 
-- `NodeFileSystem.open(root, { hooks: { beforeRename } })`：原子写改名之前调用，抛出错误可以模拟崩溃。
+- `NodeFileSystem.open(root, { hooks: { beforeRename, beforeLink } })`：原子写改名之前、独占创建建立硬链接之前调用，抛出错误可以模拟崩溃。
 - `new NodeLock(dir, { hooks: { afterStaleCheck } })`：判定过期之后、接管之前调用，用来制造两个进程同时接管的竞争。

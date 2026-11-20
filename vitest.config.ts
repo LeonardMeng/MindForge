@@ -14,7 +14,8 @@ export default defineConfig({
     resolve: { conditions: [SOURCE_CONDITION, ...defaultServerConditions] },
   },
   test: {
-    include: ['**/src/**/*.test.ts'],
-    exclude: ['**/node_modules/**', '**/dist/**'],
+    // tests/ 是仓库级的测试（比如依赖规则本身）；tests/fixtures/ 只是测试用的样例文件。
+    include: ['**/src/**/*.test.ts', 'tests/*.test.ts'],
+    exclude: ['**/node_modules/**', '**/dist/**', 'tests/fixtures/**'],
   },
 });

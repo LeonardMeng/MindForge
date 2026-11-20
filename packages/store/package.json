@@ -1,0 +1,30 @@
+{
+  "name": "@mastery/store",
+  "version": "0.0.0",
+  "private": true,
+  "description": "按类型读写 Workspace 里的所有文件：解析、校验、迁移，原子写，Evidence 只追加。",
+  "type": "module",
+  "exports": {
+    ".": {
+      "@mastery/source": "./src/index.ts",
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsup src/index.ts --format esm --dts --clean",
+    "test": "vitest run --config ../../vitest.config.ts --root .",
+    "typecheck": "tsc -p tsconfig.json"
+  },
+  "dependencies": {
+    "@mastery/platform": "workspace:*",
+    "@mastery/schema": "workspace:*",
+    "yaml": "^2.9.1"
+  },
+  "devDependencies": {
+    "@mastery/platform-memory": "workspace:*"
+  }
+}

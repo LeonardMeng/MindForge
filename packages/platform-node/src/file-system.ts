@@ -7,6 +7,7 @@ import {
   watch as watchFs,
 } from 'node:fs';
 import {
+  link,
   open,
   readdir,
   realpath,
@@ -54,6 +55,8 @@ export interface NodeFileSystemOptions {
   readonly hooks?: {
     /** 原子写入时，临时文件写完、改名之前调用；抛出错误可以模拟崩溃。 */
     readonly beforeRename?: (target: string) => void;
+    /** 独占创建时，临时文件写完、建立硬链接之前调用；抛出错误可以模拟崩溃。 */
+    readonly beforeLink?: (target: string) => void;
   };
 }
 
@@ -141,6 +144,14 @@ export class NodeFileSystem implements FileSystem {
 
   async writeTextFile(path: string, text: string): Promise<void> {
     await this.#write(normalizePath(path), new TextEncoder().encode(text));
+  }
+
+  async createFile(path: string, data: Uint8Array): Promise<void> {
+    await this.#create(normalizePath(path), data);
+  }
+
+  async createTextFile(path: string, text: string): Promise<void> {
+    await this.#create(normalizePath(path), new TextEncoder().encode(text));
   }
 
   // ── 改名、删除、建目录 ───────────────────────────────────────────────────
@@ -503,6 +514,41 @@ export class NodeFileSystem implements FileSystem {
       await rm(temp, { force: true }).catch(() => undefined);
       throw toPlatformError(error, relative);
     }
+    await syncDirectory(directory);
+  }
+
+  /**
+   * 独占创建：先写临时文件并 fsync，再用 `link(临时文件, 目标)` 建立硬链接。
+   * `link` 在目标已存在时失败（包括 NTFS），所以既是原子的也是独占的；最后删掉临时文件的名字。
+   */
+  async #create(relative: string, data: Uint8Array): Promise<void> {
+    if (relative === '') {
+      throw new PlatformError('platform.already_exists', { path: relative });
+    }
+    const local = await this.#inside(relative);
+    await this.#requireParentDirectory(relative);
+    const existing = await lstat(local).catch(() => null);
+    if (existing !== null) {
+      throw new PlatformError('platform.already_exists', { path: relative });
+    }
+    const directory = dirname(local);
+    const temp = join(directory, `${TEMP_FILE_PREFIX}${ulid()}`);
+    try {
+      const handle = await open(temp, 'wx');
+      try {
+        await handle.writeFile(data);
+        await handle.sync();
+      } finally {
+        await handle.close();
+      }
+      this.#hooks?.beforeLink?.(local);
+      await link(temp, local);
+    } catch (error) {
+      await rm(temp, { force: true }).catch(() => undefined);
+      throw toPlatformError(error, relative);
+    }
+    // 目标已经建好；临时文件的名字删不掉也不影响结果，以后由 cleanupTempFiles 清理。
+    await unlink(temp).catch(() => undefined);
     await syncDirectory(directory);
   }
 

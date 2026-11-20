@@ -148,6 +148,27 @@ describe('NodeFileSystem', () => {
     ).toEqual([]);
   });
 
+  it('creates exclusively through a temp file and a hard link: a failure leaves nothing behind', async () => {
+    const root = await tempDir();
+    let fail = false;
+    const fs = await NodeFileSystem.open(root, {
+      hooks: {
+        beforeLink: () => {
+          if (fail) throw new Error('simulated crash before link');
+        },
+      },
+    });
+    fail = true;
+    await expect(fs.createTextFile('a.md', 'new')).rejects.toThrow(
+      'simulated crash',
+    );
+    expect(await readdir(root)).toEqual([]);
+    fail = false;
+    await fs.createTextFile('a.md', 'new');
+    expect(await readdir(root)).toEqual(['a.md']);
+    expect(await readFile(join(root, 'a.md'), 'utf8')).toBe('new');
+  });
+
   it('skips names that are not valid paths, like "a?.md" created by another tool', async () => {
     if (process.platform === 'win32') return; // Windows 本身就不允许这个名字。
     const root = await tempDir();

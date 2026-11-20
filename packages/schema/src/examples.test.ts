@@ -1,5 +1,5 @@
 // docs/protocol/examples/ 里的 JSON 示例必须能通过校验，说明页里引用的就是这些文件。
-// YAML 示例等 1.9 选定 YAML 库以后再加（见 ROADMAP“待整理”）。
+// YAML 示例由 store 包的 docs-examples.test.ts 校验（schema 只依赖 zod，没有 YAML 解析器）。
 import { describe, expect, it } from 'vitest';
 
 import assessmentSession from '../../../docs/protocol/examples/assessment-session.json' with { type: 'json' };
