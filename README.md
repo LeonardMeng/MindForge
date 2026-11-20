@@ -150,7 +150,7 @@ mastery-os/
 │   ├── store/                Markdown/YAML/JSON 读写、frontmatter、原子写、锁
 │   ├── core/                 Mastery Core（纯领域逻辑）
 │   ├── core-store/           Core 的 Repository 端口基于 store 的实现
-│   ├── rules-v1/             掌握度规则 v1
+│   ├── rules-v1/             掌握度规则 v1（参数见 ADR-0007）
 │   ├── index/                SQLite 索引、FTS、wikilink、重建
 │   ├── git/                  事务提交、同步、merge driver
 │   ├── runtime/              Cordis 宿主、Workspace fork、Loader

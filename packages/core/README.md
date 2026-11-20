@@ -11,7 +11,17 @@ Mastery Core（ADR-0002）：纯领域逻辑。不依赖 Cordis，不做 I/O，�
 | `repository: Repository` | Core 看到的 Workspace 数据。实现：`@mastery/core-store` 的 `createStoreRepository`（2.2）、测试用的 `@mastery/core/testing` |
 | `clock: Clock` | `@mastery/platform` 的 Clock（只用类型）；时间只从这里来（不变量 3） |
 | `events: EventSink` | 领域事件的出口 |
-| `rules: RulesRegistry` | `get(version)` 和 `current()`；`Rules` 在 2.3 补全，现在只有 `version` |
+| `rules: RulesRegistry` | `get(version)` 和 `current()`；`Rules` 见下 |
+
+### Rules
+
+规则包（比如 `@mastery/rules-v1`）实现的接口：`version`，以及 `aggregate(evidence)`，返回 `Aggregate`：
+
+- `dimensions`：五个维度的分数，没有证据给某个维度打分时为 `null`；
+- `confidence`：总的置信度，没有证据时为 0；
+- `perDimension`：每个维度的 `{ score, confidence, evidenceCount }`，没有分数时为 `null`（2.4 写 explanation 用）。
+
+`aggregate` 必须是纯函数：不读时钟，证据的顺序不影响结果，同样的输入逐字节相同（不变量 3）。2.4 再加状态机。
 
 ### Repository
 
@@ -60,5 +70,5 @@ Mastery Core（ADR-0002）：纯领域逻辑。不依赖 Cordis，不做 I/O，�
 
 ## 测试工具和契约测试
 
-- `@mastery/core/testing`：`createMemoryRepository()`（内存 Repository，store 的规则在这里同样成立：校验、路径和内容一致、只追加、版本过新只读）、`createEventRecorder()`、`createRulesRegistry()`。
+- `@mastery/core/testing`：`createMemoryRepository()`（内存 Repository，store 的规则在这里同样成立：校验、路径和内容一致、只追加、版本过新只读）、`createEventRecorder()`、`createRulesRegistry()`、`stubRules(version)`（`aggregate` 总是返回“没有分数”，给不关心聚合的测试用）。
 - `@mastery/core/contract`：`describeRepositoryContract(name, () => ({ repository, seed }))`。内存实现和 `createStoreRepository` 都要通过，测试用的假实现不会和真实的实现走样。依赖 vitest（可选的 peerDependency）。

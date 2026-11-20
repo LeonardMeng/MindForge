@@ -14,6 +14,7 @@ import {
   createEventRecorder,
   createMemoryRepository,
   createRulesRegistry,
+  stubRules,
 } from './testing/index.js';
 
 describeRepositoryContract('memory (core/testing)', () =>
@@ -100,9 +101,11 @@ describe('Result', () => {
 
 describe('createRulesRegistry', () => {
   it('returns rules by version, and the newest as current', () => {
-    const registry = createRulesRegistry([{ version: 1 }, { version: 2 }]);
-    expect(registry.get(1)).toEqual({ version: 1 });
+    const v1 = stubRules(1);
+    const v2 = stubRules(2);
+    const registry = createRulesRegistry([v1, v2]);
+    expect(registry.get(1)).toBe(v1);
     expect(registry.get(3)).toBeNull();
-    expect(registry.current()).toEqual({ version: 2 });
+    expect(registry.current()).toBe(v2);
   });
 });

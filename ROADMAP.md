@@ -31,7 +31,7 @@
 ## 当前状态
 
 - **当前里程碑：** M1
-- **下一个任务：** 2.3（🏁 M1 检查点和 M2 并行进行，见下面 M1 检查点的说明）
+- **下一个任务：** 2.4（🏁 M1 检查点和 M2 并行进行，见下面 M1 检查点的说明）
 - **阻塞项：** 无
 
 ---
@@ -207,7 +207,7 @@
 - **验收**：每一种拒绝情况都有测试；校验失败时内存文件系统里没有任何变化（不变量 9）。
 - **不做**：重新计算掌握度。
 
-### [ ] 2.3 🔍 规则接口和规则 v1：维度聚合
+### [x] 2.3 🔍 规则接口和规则 v1：维度聚合
 - **包**：`core`（接口）、`rules-v1`（实现）
 - **依赖**：2.1
 - **产出**：`Rules` 接口；v1 的维度聚合：按时间衰减加权、按评测类型加权（独立验证 > 练习 > 自评）、`null` 不参与平均、置信度随证据数量和一致性变化。
@@ -572,7 +572,7 @@
 | [ADR-0004](docs/adr/ADR-0004-workspace-repo-profile-device.md) | 一个 Workspace 对应一个 Git 仓库；**Profile 必需**，通过 `ProfileStore` 端口访问，现在用 Git 实现，将来可以换成云服务（必须保留本地完整副本）；设备配置放在不同步的 `device.yaml` | 已定 |
 | [ADR-0005](docs/adr/ADR-0005-ids-and-schema-version.md) | Concept 用 slug + 全局前缀；其他实体用 ULID；每个文件都有 `schema_version` | 已定 |
 | [ADR-0006](docs/adr/ADR-0006-mastery-projection-merge-driver.md) | 掌握度投影提交到 Git，冲突由 merge driver 重算解决 | 已定 |
-| ADR-0007 | 规则 v1 的具体阈值和衰减参数 | 在 2.3、2.4 中决定，M5 检查点后复审 |
+| [ADR-0007](docs/adr/ADR-0007-rules-v1-parameters.md) | 规则 v1 的聚合参数：年龄从该维度最新的证据算起、双曲衰减 H = 30 天、类型权重 1.0 / 0.6 / 0.3、置信度 = 数量 × 一致性、4 位小数、不用近似的数学函数；状态机阈值在 2.4 补上 | 已定（参数暂定，M5 检查点后复审） |
 | ADR-0008 | Node 端的 Git 实现：继续调用系统 git，还是改用嵌入式实现 | 在 6.3 之后决定 |
 | ADR-0009 | 首批支持的本地模型和硬件配置 | 在 4.4 中决定 |
 | ADR-0010 | 移动端的最小可用功能 | 在 9.4 之前决定 |
@@ -631,6 +631,10 @@
 - （来自 2.2，`mastery validate` 处理）没有任何证据指向的评测会话（比如会话写入之后证据被拒绝）应该报**警告**，不是错误：会话是只追加的记录，这种情况是正常的。
 - （来自 2.2，4.2 决定）`plugin-core` 的白名单（README 第 6 节）还没有 `core-store`；4.2 用 `createStoreRepository` 接上 Core 时要补上（或者改由 CLI / runtime 注入 Repository）。另外，README 第 6 节硬性禁止第 1 条（不能 import cordis）的包列表里没有 `core-store`，它的白名单也不允许 cordis 以外的内部包，但 cordis 是第三方包，白名单挡不住；要不要把 `core-store` 加进第 1 条，由人决定。
 - （来自 2.2）`createStoreRepository` 的 `appendHistory`：store 报的“读取之后被改过”（两个进程同时创建 history 文件）和非法的 Concept slug 都归为 `unreadable`。2.5 如果需要区分（比如重试），再给 `AppendHistoryResult` 加原因。
+- （来自 2.3）“打乱证据顺序结果不变”的属性测试，在去掉排序后仍然通过（验证过）：输出舍入到 4 位小数，求和顺序带来的最后一位差异几乎总被舍入抹掉。排序保证的是恰好落在舍入边界上的情况，没有测试能稳定地覆盖到。可以考虑导出一个不舍入的内部函数专门测它，由人决定。
+- （来自 2.3，2.4 处理）ADR 模板规定“已定的 ADR 不改写内容”，但 ROADMAP 计划 ADR-0007 在 2.3 和 2.4 两次决定。2.4 的状态机阈值是追加进 ADR-0007，还是另写一份 ADR，到 2.4 再定。
+- （来自 2.3，2.4 处理）总置信度只平均**有分数**的维度。criteria 考察、但还没有任何证据的维度要不要拉低置信度或影响状态，属于 2.4（aggregate 不读 criteria）。
+- （来自 2.3，2.5 / 2.8 处理）生产环境的 RulesRegistry（注册 `rulesV1`）由谁组装：CLI（2.8，README 第 6 节 `cli` 的依赖要加上 `core`、`core-store`、`rules-v1`）还是 `plugin-core`（4.2）。
 
 
 ## 完成记录
@@ -663,3 +667,4 @@
 | 2026-11-20 | 1.15 | `task/1.15-cli` | 新建 `@mastery/cli`（README 第 6 节和 dependency-cruiser 补上 `cli` 的依赖；用 `node:util` 的 `parseArgs`，没有新依赖；消息英文）：`mastery profile init [dir]`（默认 `~/MasteryProfile`，Profile 的 `.gitignore` 含 `.mastery/` 和 `.mastery-tmp-*`；目录里已有 Profile 而 `device.yaml` 丢失时直接用它并重新生成 `device.yaml`；设备目录在 Git 工作区里时警告）、`mastery profile show [--json]`（`configured` 按目录是否存在细分为 pulled / missing）、`mastery init <dir>`（先检查全部前提，再写文件、注册、写 `device.yaml`；**可以重跑**：中途崩溃后再运行一次补上缺少的步骤，不覆盖已写的文件；其他非空目录拒绝）、`mastery validate <dir> [--json]`（store 读取全部文件 + 引用检查，依赖环报出路径，不需要 Profile）。设备目录默认 `~/.mastery`，可用 `MASTERY_HOME` 改；路径写成 `~/…`；还不创建 Git 仓库，成功后提示 `cd <dir> && git init`。`run()` 在同一个进程里运行，测试都在真实磁盘的临时目录里：完整流程、`init` 在每一步之后崩溃再重跑、用真实的 `git add` 证明 `device.yaml` 不会进入提交（包括整个 home 是 Git 仓库的情况）、真实文件系统上的 Profile 监听。构建出的 `mastery` 命令手动试过。没有改已有的断言。共 1277 个测试（16 个按平台、实现或能力跳过） | `--adopt`、通过 Git 端口建仓库见“待整理” |
 | 2026-11-20 | 2.1 | `task/2.1-core-ports` | 新建 `@mastery/core`（只依赖 schema 和 platform 的类型）：`Ports`（`Repository`、`Clock`、`EventSink`、`RulesRegistry`）、`Result<T, E>` 和 `ok()` / `err()`、领域错误（普通数据，消息只从消息表生成，类型名和 ROADMAP 一致）、领域事件（`evidence/submitted`、`mastery/changed`）。`Repository` 只有 2.2 和 2.5 需要的操作；`listEvidence` 返回 `{ items, tooNew, unreadable }`，不会悄悄丢掉用不了的证据。`EventSink` 约定：只在写入成功后发出；事件可能丢失，使用者要能根据文件对账；`publish()` 把监听者的错误交给 `reportError`，不影响操作结果。`@mastery/core/testing`（内存 Repository、事件记录器、规则表）和 `@mastery/core/contract`（Repository 契约测试，内存实现已通过，`createStoreRepository` 在 2.2 也要通过）。`tests/dependency-rules.test.ts` 加样例：core 不能 import cordis、`node:*`、store，也不能 import platform 的值。M1 检查点经人确认和 M2 并行。没有改已有的断言。共 1303 个测试（16 个按平台、实现或能力跳过） | 无 |
 | 2026-11-20 | 2.2 | `task/2.2-submit-evidence` | `submitEvidence(ports, input)`：校验 schema（错误的文件位置是 `<input>`）；`created_at` 最多比 `clock.now()` 晚 `EVIDENCE_CLOCK_TOLERANCE_MS`（5 分钟，边界两侧都有测试）；Concept 存在、读得了、不是 `archived`（`draft` 和 `active` 接受）；criteria 存在、读得了、版本相同，证据打分的维度都是 criteria 考察的维度；有会话时会话存在、读得了，`concept_id`、`criteria_version` 一致，打分的维度在会话里都有分数，证据不早于会话完成时间；一个会话只产生一条证据；追加写入后发出 `evidence/submitted`。不算掌握度。新增错误码 `core.concept_archived`、`core.criteria_unreadable`、`core.dimension_not_assessed`、`core.session_unreadable`、`core.session_already_used`、`core.evidence_before_session`、`core.evidence_in_future`。新建 `@mastery/core-store`（README 第 5、6 节和 dependency-cruiser 补上 `core-store ← core, store, schema, platform`，`tests/dependency-rules.test.ts` 加样例）：`createStoreRepository(store)` 通过 2.1 的 Repository 契约测试；不变量 9 用 ws-transformers fixture 和真实的 store 测试 18 种拒绝情况，每种都比较提交前后全部文件的内容。真实的 store 里，别的 Concept 目录下的会话是 `session_not_found`，放错目录的会话文件是 `session_unreadable`；`concept_id` 不一致的检查是防御性的，用替换了 `getSession` 的 Repository 测试。没有改已有的断言。共 1370 个测试（16 个按平台、实现或能力跳过） | 按会话查证据改用索引、validate 对没有证据的会话报警告、`plugin-core` 的白名单等见“待整理” |
+| 2026-11-20 | 2.3 | `task/2.3-rules-v1-aggregation` | `core` 的 `Rules` 接口加上 `aggregate(evidence) → Aggregate`（`dimensions`、`confidence`、`perDimension` 的 `{ score, confidence, evidenceCount }`），`@mastery/core/testing` 加 `stubRules(version)`。新建 `@mastery/rules-v1`（README 第 6 节和 dependency-cruiser 已有它的规则，没有改）：`aggregateV1`、`rulesV1`、冻结的 `V1_PARAMETERS`。每个维度只看给它打了分的证据；年龄从**这个维度**最新的证据算起（不用 `now`）；双曲衰减 `H / (H + ageDays)`，H = 30；类型权重 1.0 / 0.6 / 0.3；证据的 `confidence` 只影响置信度；维度置信度 = `C / (C + 1)` × (1 − 2 × 加权平均绝对偏差)；总置信度是有分数的维度的平均；所有 criteria 版本一起聚合；只用加减乘除和绝对值；按 id 排序后求和；输出 4 位小数，没有 `-0`。参数写进 ADR-0007（暂定，M5 检查点后复审）。测试：19 个表格场景（期望值用分数精确算出），另有 5 个测试（五个维度互不影响、空输入、版本号、参数冻结、不修改输入），6 个 fast-check 属性（只有 `null` 的维度仍是 `null`、0..1 且不是 `-0`、最多 4 位小数、打乱顺序不变、加不打分的证据不变、两次字节相同）；把参考时间临时改成全部证据里最新的时间，表格和属性测试各有一个失败（验证过）。**改了 `core.test.ts` 里 2 处断言**（经人确认）：`registry.get(1)` 和 `registry.current()` 从 `toEqual({ version: … })` 改为 `toBe(同一个规则对象)`，含义不变，因为规则对象现在带有 `aggregate` 函数；`core` 和 `core-store` 测试里的 `{ version: 1 }` 换成 `stubRules(1)`（只是测试准备）。共 1400 个测试（16 个按平台、实现或能力跳过） | 排序的测试覆盖、ADR-0007 在 2.4 怎么补、生产环境的 RulesRegistry 等见“待整理” |
