@@ -71,4 +71,15 @@ describe('dependency rules', () => {
       'type-only:core->platform packages/core/src/uses-platform-value.ts -> packages/platform/src/index.ts',
     ]);
   });
+
+  it('lets core-store use core, store and platform only (ROADMAP 2.2)', async () => {
+    const found = (await violations('dependency-rules-core-store'))
+      .map((v) => `${v.rule.name} ${v.from} -> ${v.to}`)
+      .sort();
+    expect(found).toEqual([
+      'allowlist:core-store packages/core-store/src/uses-platform-node.ts -> packages/platform-node/src/index.ts',
+      'no-node-builtins packages/core-store/src/uses-node.ts -> fs',
+      'platform-memory-only-in-tests packages/core-store/src/uses-platform-memory.ts -> packages/platform-memory/src/index.ts',
+    ]);
+  });
 });

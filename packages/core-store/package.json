@@ -1,0 +1,32 @@
+{
+  "name": "@mastery/core-store",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Mastery Core 的 Repository 端口基于 store 的实现（createStoreRepository）。",
+  "type": "module",
+  "exports": {
+    ".": {
+      "@mastery/source": "./src/index.ts",
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsup src/index.ts --format esm --dts --clean",
+    "test": "vitest run --config ../../vitest.config.ts --root .",
+    "typecheck": "tsc -p tsconfig.json"
+  },
+  "dependencies": {
+    "@mastery/core": "workspace:*",
+    "@mastery/platform": "workspace:*",
+    "@mastery/schema": "workspace:*",
+    "@mastery/store": "workspace:*"
+  },
+  "devDependencies": {
+    "@mastery/platform-memory": "workspace:*",
+    "@mastery/testkit": "workspace:*"
+  }
+}

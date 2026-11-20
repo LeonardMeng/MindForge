@@ -2,7 +2,7 @@
 
 Mastery Core（ADR-0002）：纯领域逻辑。不依赖 Cordis，不做 I/O，不用 `node:*`；只依赖 `schema` 和 `platform` 的**类型**（dependency-cruiser 检查，`tests/dependency-rules.test.ts` 有样例）。
 
-2.1 只有端口、结果类型、领域错误和领域事件，逻辑从 2.2 开始。
+2.1 是端口、结果类型、领域错误和领域事件；2.2 起是领域操作（`submitEvidence`）。
 
 ## 端口（`Ports`）
 
@@ -25,7 +25,30 @@ Mastery Core（ADR-0002）：纯领域逻辑。不依赖 Cordis，不做 I/O，�
 
 `Result<T, E>` 是 `{ ok: true, value } | { ok: false, error }`，用 `ok()`、`err()` 构造。领域规则不允许的情况用它返回，不抛出。
 
-领域错误是普通数据 `{ code, params, message, issues }`，不是异常。`message` 只从消息表生成（ADR-0013），测试只断言 `code`。类型名和 ROADMAP 一致：`ConceptNotFound`、`ConceptUnreadable`、`CriteriaNotFound`、`CriteriaVersionMismatch`、`SessionNotFound`、`SessionMismatch`、`EvidenceAlreadyExists`、`EvidenceInvalid`、`RulesVersionUnknown`、`EvidenceVersionTooNew`。
+领域错误是普通数据 `{ code, params, message, issues }`，不是异常。`message` 只从消息表生成（ADR-0013），测试只断言 `code`。类型名和 ROADMAP 一致：`ConceptNotFound`、`ConceptUnreadable`、`ConceptArchived`、`CriteriaNotFound`、`CriteriaUnreadable`、`CriteriaVersionMismatch`、`DimensionNotAssessed`、`SessionNotFound`、`SessionUnreadable`、`SessionMismatch`、`SessionAlreadyUsed`、`EvidenceBeforeSession`、`EvidenceInFuture`、`EvidenceAlreadyExists`、`EvidenceInvalid`、`RulesVersionUnknown`、`EvidenceVersionTooNew`。
+
+## 提交证据：`submitEvidence(ports, input)`
+
+`input` 是未校验的数据（Agent 或 `mastery evidence add` 给的 JSON）。返回 `Result<Evidence, SubmitEvidenceError>`；**这里不算掌握度**，投影由 2.5 根据全部证据重算。
+
+按顺序检查，第一个不通过的检查决定错误，**拒绝时什么都不写**（不变量 9，`@mastery/core-store` 用真实的 store 测试）：
+
+| 检查 | 错误码 |
+|---|---|
+| 符合 schema（错误的 `file` 是 `EVIDENCE_INPUT_FILE`，即 `<input>`） | `core.evidence_invalid` |
+| `created_at` 不比 `clock.now()` 晚超过 `EVIDENCE_CLOCK_TOLERANCE_MS`（5 分钟，刚好 5 分钟可以） | `core.evidence_in_future` |
+| Concept 存在、读得了、不是 `archived`（`draft` 和 `active` 都接受） | `core.concept_not_found`、`core.concept_unreadable`、`core.concept_archived` |
+| 评测标准存在、读得了、版本相同 | `core.criteria_not_found`、`core.criteria_unreadable`、`core.criteria_version_mismatch` |
+| 证据打分的维度都是标准考察的维度 | `core.dimension_not_assessed` |
+| 有 `session_id` 时：会话存在、读得了 | `core.session_not_found`、`core.session_unreadable` |
+| 会话的 `concept_id`、`criteria_version` 和证据相同，证据打分的维度在会话里都有分数 | `core.session_mismatch`（`field` 是 `concept_id`、`criteria_version` 或 `dimensions`） |
+| 证据不早于会话完成的时间（同一秒可以） | `core.evidence_before_session` |
+| 一个会话只产生一条证据（1.3） | `core.session_already_used` |
+| 写入：同一个 id 不存在 | `core.evidence_already_exists` |
+
+- 会话按证据的 Concept 目录查找，所以真实的 store 里别的 Concept 的会话是 `session_not_found`；放错目录、`concept_id` 不对的会话文件是 `session_unreadable`（store 的路径检查）。`concept_id` 的检查是防御性的，用替换了 `getSession` 的 Repository 测试。
+- “会话已经用过”现在扫一遍 `listEvidence`，只看得到读得了的证据（3.x 改由索引回答）。
+- 写入成功后发出 `evidence/submitted`，`at` 是 `clock.now()`。
 
 ## 领域事件
 

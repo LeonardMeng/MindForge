@@ -70,6 +70,11 @@ export default {
     ),
     allowlist('store', ['platform'], 'store ← schema, platform'),
     allowlist('core', ['platform'], 'core ← schema, platform'),
+    allowlist(
+      'core-store',
+      ['core', 'store', 'platform'],
+      'core-store ← core, store, schema, platform',
+    ),
     allowlist('rules-v1', ['core'], 'rules-v1 ← schema, core'),
     allowlist(
       'index',

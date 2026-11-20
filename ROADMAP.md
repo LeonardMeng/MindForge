@@ -31,7 +31,7 @@
 ## 当前状态
 
 - **当前里程碑：** M1
-- **下一个任务：** 2.2（🏁 M1 检查点和 M2 并行进行，见下面 M1 检查点的说明）
+- **下一个任务：** 2.3（🏁 M1 检查点和 M2 并行进行，见下面 M1 检查点的说明）
 - **阻塞项：** 无
 
 ---
@@ -200,7 +200,7 @@
 - **验收**：只有类型和最小测试；dependency-cruiser 确认没有 import `cordis` 或 `node:*`。
 - **不做**：逻辑。
 
-### [ ] 2.2 🔍 提交证据
+### [x] 2.2 🔍 提交证据
 - **包**：`core`
 - **依赖**：2.1
 - **产出**：`submitEvidence()`：校验 Concept 是否存在、criteria 版本是否匹配、会话是否存在；通过后追加写入并发出 `evidence/submitted` 事件。新建 `@mastery/core-store`（`createStoreRepository(store)`，通过 2.1 的 Repository 契约测试），同时补上 README 第 6 节和 dependency-cruiser（2.1 时经人确认）。
@@ -627,6 +627,11 @@
 - （来自 1.1）`packages/schema/src/testing.ts` 的测试构造函数目前只在 schema 包内部使用。其他包的测试要用时，再决定放在哪里（比如 `testkit` 包），不从 schema 的公共 API 导出。
 
 ---
+- （来自 2.2，3.x 处理）“一个会话只产生一条证据”现在由 `submitEvidence` 扫一遍 `listEvidence(conceptId)` 检查，只看得到读得了的证据（版本过新、读不了的证据里的 `session_id` 看不到），证据多了也慢。有索引后改为按 `session_id` 查索引。
+- （来自 2.2，`mastery validate` 处理）没有任何证据指向的评测会话（比如会话写入之后证据被拒绝）应该报**警告**，不是错误：会话是只追加的记录，这种情况是正常的。
+- （来自 2.2，4.2 决定）`plugin-core` 的白名单（README 第 6 节）还没有 `core-store`；4.2 用 `createStoreRepository` 接上 Core 时要补上（或者改由 CLI / runtime 注入 Repository）。另外，README 第 6 节硬性禁止第 1 条（不能 import cordis）的包列表里没有 `core-store`，它的白名单也不允许 cordis 以外的内部包，但 cordis 是第三方包，白名单挡不住；要不要把 `core-store` 加进第 1 条，由人决定。
+- （来自 2.2）`createStoreRepository` 的 `appendHistory`：store 报的“读取之后被改过”（两个进程同时创建 history 文件）和非法的 Concept slug 都归为 `unreadable`。2.5 如果需要区分（比如重试），再给 `AppendHistoryResult` 加原因。
+
 
 ## 完成记录
 
@@ -657,3 +662,4 @@
 | 2026-11-20 | 1.14 | `task/1.14-device` | 新建 `@mastery/device`（README 第 6 节和 dependency-cruiser 改为 `device ← schema, platform, store`）：`loadDevice` / `saveDevice`（读取之后被改过时报 `device.modified_since_read`，只改动变化的部分）、`initDevice`（生成设备 ULID）、`regenerateDevice`（新的 id、不含 Workspace、返回需要确认路径的 Workspace）、`profile.store: cloud` 报 `device.cloud_profile_unsupported`；`workspaceStates` 只根据配置给出 `configured` / `not_configured` / `unregistered_local`（`sync: on-demand` 不参与判断，README 和 schema 注释里“on-demand 表示没有拉取到本机”的说法已改正）；`initDevice` 和 `regenerateDevice` 在设备目录创建只含 `*` 的 `.gitignore`（已有的不动）；`checkDeviceLocation` 检查设备目录是否落在 Profile 或 Workspace 里；`SecretStore` 端口和 `MemorySecretStore`，错误在任何渲染方式下都不含值（有测试）。store 新增通用的 `yamlFile(fs, path, kind)`：把 `createStore` 内部的读写逻辑抽成共用的一层，`createStore` 和 `yamlFile` 走同一条代码路径（store 原有的 118 个测试不变且全部通过）。“`init` 生成的 `.gitignore` 和 Profile 目录”的验收移到 1.15（经人确认）。没有改已有的断言。共 1241 个测试（16 个按平台、实现或能力跳过） | CLI 细分 configured、`~/.mastery` 在 Git 工作区里的警告、device.yaml 并发写入等见“待整理” |
 | 2026-11-20 | 1.15 | `task/1.15-cli` | 新建 `@mastery/cli`（README 第 6 节和 dependency-cruiser 补上 `cli` 的依赖；用 `node:util` 的 `parseArgs`，没有新依赖；消息英文）：`mastery profile init [dir]`（默认 `~/MasteryProfile`，Profile 的 `.gitignore` 含 `.mastery/` 和 `.mastery-tmp-*`；目录里已有 Profile 而 `device.yaml` 丢失时直接用它并重新生成 `device.yaml`；设备目录在 Git 工作区里时警告）、`mastery profile show [--json]`（`configured` 按目录是否存在细分为 pulled / missing）、`mastery init <dir>`（先检查全部前提，再写文件、注册、写 `device.yaml`；**可以重跑**：中途崩溃后再运行一次补上缺少的步骤，不覆盖已写的文件；其他非空目录拒绝）、`mastery validate <dir> [--json]`（store 读取全部文件 + 引用检查，依赖环报出路径，不需要 Profile）。设备目录默认 `~/.mastery`，可用 `MASTERY_HOME` 改；路径写成 `~/…`；还不创建 Git 仓库，成功后提示 `cd <dir> && git init`。`run()` 在同一个进程里运行，测试都在真实磁盘的临时目录里：完整流程、`init` 在每一步之后崩溃再重跑、用真实的 `git add` 证明 `device.yaml` 不会进入提交（包括整个 home 是 Git 仓库的情况）、真实文件系统上的 Profile 监听。构建出的 `mastery` 命令手动试过。没有改已有的断言。共 1277 个测试（16 个按平台、实现或能力跳过） | `--adopt`、通过 Git 端口建仓库见“待整理” |
 | 2026-11-20 | 2.1 | `task/2.1-core-ports` | 新建 `@mastery/core`（只依赖 schema 和 platform 的类型）：`Ports`（`Repository`、`Clock`、`EventSink`、`RulesRegistry`）、`Result<T, E>` 和 `ok()` / `err()`、领域错误（普通数据，消息只从消息表生成，类型名和 ROADMAP 一致）、领域事件（`evidence/submitted`、`mastery/changed`）。`Repository` 只有 2.2 和 2.5 需要的操作；`listEvidence` 返回 `{ items, tooNew, unreadable }`，不会悄悄丢掉用不了的证据。`EventSink` 约定：只在写入成功后发出；事件可能丢失，使用者要能根据文件对账；`publish()` 把监听者的错误交给 `reportError`，不影响操作结果。`@mastery/core/testing`（内存 Repository、事件记录器、规则表）和 `@mastery/core/contract`（Repository 契约测试，内存实现已通过，`createStoreRepository` 在 2.2 也要通过）。`tests/dependency-rules.test.ts` 加样例：core 不能 import cordis、`node:*`、store，也不能 import platform 的值。M1 检查点经人确认和 M2 并行。没有改已有的断言。共 1303 个测试（16 个按平台、实现或能力跳过） | 无 |
+| 2026-11-20 | 2.2 | `task/2.2-submit-evidence` | `submitEvidence(ports, input)`：校验 schema（错误的文件位置是 `<input>`）；`created_at` 最多比 `clock.now()` 晚 `EVIDENCE_CLOCK_TOLERANCE_MS`（5 分钟，边界两侧都有测试）；Concept 存在、读得了、不是 `archived`（`draft` 和 `active` 接受）；criteria 存在、读得了、版本相同，证据打分的维度都是 criteria 考察的维度；有会话时会话存在、读得了，`concept_id`、`criteria_version` 一致，打分的维度在会话里都有分数，证据不早于会话完成时间；一个会话只产生一条证据；追加写入后发出 `evidence/submitted`。不算掌握度。新增错误码 `core.concept_archived`、`core.criteria_unreadable`、`core.dimension_not_assessed`、`core.session_unreadable`、`core.session_already_used`、`core.evidence_before_session`、`core.evidence_in_future`。新建 `@mastery/core-store`（README 第 5、6 节和 dependency-cruiser 补上 `core-store ← core, store, schema, platform`，`tests/dependency-rules.test.ts` 加样例）：`createStoreRepository(store)` 通过 2.1 的 Repository 契约测试；不变量 9 用 ws-transformers fixture 和真实的 store 测试 18 种拒绝情况，每种都比较提交前后全部文件的内容。真实的 store 里，别的 Concept 目录下的会话是 `session_not_found`，放错目录的会话文件是 `session_unreadable`；`concept_id` 不一致的检查是防御性的，用替换了 `getSession` 的 Repository 测试。没有改已有的断言。共 1370 个测试（16 个按平台、实现或能力跳过） | 按会话查证据改用索引、validate 对没有证据的会话报警告、`plugin-core` 的白名单等见“待整理” |

@@ -19,6 +19,20 @@ const MESSAGES_EN = {
     `concept "${text(p.concept_id)}" does not exist`,
   'core.concept_unreadable': (p: Params) =>
     `concept "${text(p.concept_id)}" cannot be read; fix the file first (see the issues)`,
+  'core.concept_archived': (p: Params) =>
+    `concept "${text(p.concept_id)}" is archived; it no longer accepts evidence`,
+  'core.criteria_unreadable': (p: Params) =>
+    `the assessment criteria of "${text(p.concept_id)}" cannot be read; fix the file first (see the issues)`,
+  'core.dimension_not_assessed': (p: Params) =>
+    `the evidence scores ${text(p.dimension)}, but the criteria of "${text(p.concept_id)}" do not assess that dimension`,
+  'core.session_unreadable': (p: Params) =>
+    `assessment session "${text(p.session_id)}" cannot be read; fix the file first (see the issues)`,
+  'core.session_already_used': (p: Params) =>
+    `assessment session "${text(p.session_id)}" already has evidence "${text(p.evidence_id)}"; each session produces one piece of evidence`,
+  'core.evidence_before_session': (p: Params) =>
+    `the evidence was created at ${text(p.created_at)}, before its session was completed at ${text(p.completed_at)}`,
+  'core.evidence_in_future': (p: Params) =>
+    `the evidence was created at ${text(p.created_at)}, more than ${text(p.tolerance_minutes)} minutes after now (${text(p.now)})`,
   'core.criteria_not_found': (p: Params) =>
     `concept "${text(p.concept_id)}" has no assessment criteria`,
   'core.criteria_version_mismatch': (p: Params) =>
@@ -76,12 +90,26 @@ export type CriteriaVersionMismatch =
   CoreError<'core.criteria_version_mismatch'>;
 /** 证据引用的评测会话不存在。 */
 export type SessionNotFound = CoreError<'core.session_not_found'>;
-/** 证据和它的会话对不上（Concept 或评测标准版本不同）。 */
+/** 证据和它的会话对不上（Concept、评测标准版本或打分的维度不同）。 */
 export type SessionMismatch = CoreError<'core.session_mismatch'>;
 /** 同一个 id 的证据已经存在（不变量 2）。 */
 export type EvidenceAlreadyExists = CoreError<'core.evidence_already_exists'>;
 /** 证据不符合 schema。 */
 export type EvidenceInvalid = CoreError<'core.evidence_invalid'>;
+/** Concept 已归档，不再接受证据。 */
+export type ConceptArchived = CoreError<'core.concept_archived'>;
+/** 评测标准文件读不了。 */
+export type CriteriaUnreadable = CoreError<'core.criteria_unreadable'>;
+/** 证据给了评测标准不考察的维度打分。 */
+export type DimensionNotAssessed = CoreError<'core.dimension_not_assessed'>;
+/** 证据引用的评测会话读不了。 */
+export type SessionUnreadable = CoreError<'core.session_unreadable'>;
+/** 这个评测会话已经有证据了（一个会话只产生一条证据）。 */
+export type SessionAlreadyUsed = CoreError<'core.session_already_used'>;
+/** 证据的时间早于会话完成的时间。 */
+export type EvidenceBeforeSession = CoreError<'core.evidence_before_session'>;
+/** 证据的时间比现在晚得太多。 */
+export type EvidenceInFuture = CoreError<'core.evidence_in_future'>;
 /** 要用的规则版本不存在。 */
 export type RulesVersionUnknown = CoreError<'core.rules_version_unknown'>;
 /** 有更新版本写的证据：不能重算（1.6 的规则，2.5 使用）。 */

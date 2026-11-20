@@ -149,6 +149,7 @@ mastery-os/
 │   ├── platform-tauri/       Tauri 实现的 TS 侧封装（Rust 部分在 apps/desktop/src-tauri）
 │   ├── store/                Markdown/YAML/JSON 读写、frontmatter、原子写、锁
 │   ├── core/                 Mastery Core（纯领域逻辑）
+│   ├── core-store/           Core 的 Repository 端口基于 store 的实现
 │   ├── rules-v1/             掌握度规则 v1
 │   ├── index/                SQLite 索引、FTS、wikilink、重建
 │   ├── git/                  事务提交、同步、merge driver
@@ -183,6 +184,7 @@ testkit       ← schema, platform, platform-memory（只给测试用：加载 f
 platform-node ← schema, platform（Node 实现，CLI 用；可以用 node:*）
 store         ← schema, platform
 core          ← schema, platform（只用端口类型）
+core-store    ← core, store, schema, platform（Core 的 Repository 端口基于 store 的实现）
 rules-v1      ← schema, core（只用规则接口）
 index, git    ← schema, platform, store
 profile       ← schema（ProfileStore 和 ProfileBackend 两个端口；createProfileStore 执行全部领域规则；测试用的内存实现）
