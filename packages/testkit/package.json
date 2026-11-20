@@ -1,0 +1,21 @@
+{
+  "name": "@mastery/testkit",
+  "version": "0.0.0",
+  "private": true,
+  "description": "只给测试用：把 fixtures/ 下的示例 Workspace 加载进 MemoryFileSystem。",
+  "type": "module",
+  "exports": {
+    ".": {
+      "@mastery/source": "./src/index.ts",
+      "default": "./src/index.ts"
+    }
+  },
+  "scripts": {
+    "test": "vitest run --config ../../vitest.config.ts --root .",
+    "typecheck": "tsc -p tsconfig.json"
+  },
+  "dependencies": {
+    "@mastery/platform": "workspace:*",
+    "@mastery/platform-memory": "workspace:*"
+  }
+}

@@ -5,12 +5,11 @@ import { describe, expect, it } from 'vitest';
 
 import config from '../.dependency-cruiser.js';
 
-const FIXTURES = `${import.meta.dirname}/fixtures/dependency-rules`;
-
-async function violations(): Promise<IViolation[]> {
+/** 在 fixtures/<fixture> 这个样例仓库上运行规则。 */
+async function violations(fixture: string): Promise<IViolation[]> {
   const result = await cruise(['packages'], {
     ...config.options,
-    baseDir: FIXTURES,
+    baseDir: `${import.meta.dirname}/fixtures/${fixture}`,
     validate: true,
     ruleSet: { forbidden: config.forbidden },
   });
@@ -20,7 +19,7 @@ async function violations(): Promise<IViolation[]> {
 
 describe('dependency rules', () => {
   it('lets only test files import platform-memory', async () => {
-    const found = (await violations()).map((v) => ({
+    const found = (await violations('dependency-rules')).map((v) => ({
       rule: v.rule.name,
       from: v.from,
       to: v.to,
@@ -30,6 +29,21 @@ describe('dependency rules', () => {
         rule: 'platform-memory-only-in-tests',
         from: 'packages/store/src/uses-memory.ts',
         to: 'packages/platform-memory/src/index.ts',
+      },
+    ]);
+  });
+
+  it('lets only test files import testkit, and lets testkit use platform-memory', async () => {
+    const found = (await violations('dependency-rules-testkit')).map((v) => ({
+      rule: v.rule.name,
+      from: v.from,
+      to: v.to,
+    }));
+    expect(found).toEqual([
+      {
+        rule: 'testkit-only-in-tests',
+        from: 'packages/store/src/uses-testkit.ts',
+        to: 'packages/testkit/src/index.ts',
       },
     ]);
   });

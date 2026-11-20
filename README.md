@@ -144,6 +144,7 @@ mastery-os/
 │   ├── schema/               zod schema、JSON Schema 导出、schema_version、迁移
 │   ├── platform/             Platform 端口接口、所有实现共用的少量代码；契约测试（/contract）
 │   ├── platform-memory/      内存实现，测试用
+│   ├── testkit/              测试工具：把 fixtures/ 加载进内存实现，只给测试用
 │   ├── platform-node/        Node 实现，CLI 用
 │   ├── platform-tauri/       Tauri 实现的 TS 侧封装（Rust 部分在 apps/desktop/src-tauri）
 │   ├── store/                Markdown/YAML/JSON 读写、frontmatter、原子写、锁
@@ -178,6 +179,7 @@ mastery-os/
 schema        ← 不依赖任何内部包
 platform      ← 只依赖 schema（接口 + 所有实现共用的少量代码，同样不用 node:*、不做 I/O）
 platform-memory ← schema, platform（测试用的内存实现）
+testkit       ← schema, platform, platform-memory（只给测试用：加载 fixtures/，不 build）
 platform-node ← schema, platform（Node 实现，CLI 用；可以用 node:*）
 store         ← schema, platform
 core          ← schema, platform（只用端口类型）
@@ -194,7 +196,7 @@ ui-*          ← schema, rpc, ui-kit（永远不 import runtime、core、platfo
 
 **所有包都可以依赖 `schema`**，包括 `ui-*`（6.6 的编辑器要在保存前直接调用 schema 的校验函数）。上图中其他包的依赖列表里没有逐一写出 schema。
 
-**测试文件（`*.test.ts`）可以依赖 `platform-memory`**，普通源文件不行。`ui-*` 和 `agents/*` 除外：它们本来就不能用 platform，测试也一样。
+**测试文件（`*.test.ts`）可以依赖 `platform-memory` 和 `testkit`**，普通源文件不行。`ui-*` 和 `agents/*` 除外：它们本来就不能用 platform，测试也一样。
 
 没有出现在上图里的包，暂时只受下面“硬性禁止”的约束；新建包时要按第 12 节第 10 条补上它的依赖列表。
 

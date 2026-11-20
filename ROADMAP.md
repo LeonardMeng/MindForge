@@ -31,7 +31,7 @@
 ## 当前状态
 
 - **当前里程碑：** M1
-- **下一个任务：** 1.10
+- **下一个任务：** 1.11
 - **阻塞项：** 无
 
 ---
@@ -137,7 +137,7 @@
 - **验收**：读后再写，文件逐字节不变；Evidence 写入已存在的 ID 会被拒绝；模拟崩溃后不会留下半截文件（不变量 2、6）。
 - **不做**：索引、Git。
 
-### [ ] 1.10 示例 Workspace
+### [x] 1.10 示例 Workspace
 - **包**：`fixtures/ws-transformers/`
 - **依赖**：1.9
 - **产出**：8–10 个 Concept（matrix-multiplication、probability、softmax、embedding、self-attention、multi-head-attention、positional-encoding、transformer…），带前置依赖；其中 3 个有 criteria；几篇带 wikilink 的笔记。
@@ -587,7 +587,7 @@
 - （来自 0.1）TypeScript 暂用 5.9。7.x（Go 原生实现）已发布，但 typescript-eslint 8.x 只支持 `<6.1`，tsup 的 `.d.ts` 生成也依赖 TS 的 JS API。等生态支持后再评估升级。
 - （来自 0.1）Vitest 暂用 4.1、tsup 暂用 8.5，它们的新大版本（Vitest 5、tsup 9）都刚发布一个月左右，稳定后再评估。
 - （来自 0.2）README 第 6 节依赖图里没有列出的包（platform-memory、platform-node、platform-tauri、llm、providers/*、superagent、supervisor、rpc、cli、mcp、tools/*、ui-kit 等）暂时只受“硬性禁止”约束，没有白名单。按 README 第 12 节第 10 条，在建这些包的任务里补上。
-- （来自 0.2）测试同样不能用 `node:*`。将来测试要读 `fixtures/` 时，新建一个 `testkit` 包，作为唯一允许在测试里用 `node:*` 的例外，负责把 fixture 加载进 `platform-memory`。
+- （来自 0.2，1.10 已处理）测试同样不能用 `node:*`。原计划新建一个 `testkit` 包，作为唯一允许在测试里用 `node:*` 的例外。1.10 新建了 `@mastery/testkit`，但**不需要这个例外**：fixture 的内容由 Vite 的 `import.meta.glob(..., { query: '?raw' })` 在测试启动时读入，再写进 `MemoryFileSystem`。代价是 testkit 不能 build，只能在 Vitest 里运行，fixture 里只能放 UTF-8 文本文件。
 - （来自 0.2）dependency-cruiser 只看 import，看不到全局对象：Tauri 的 `window.__TAURI__`（以及 Node 的 `process`、`Buffer`，目前只靠 `types: []` 在类型层面挡住）需要另外的检查，比如 eslint 的 `no-restricted-globals`。
 - （来自 0.2）行内写法 `import { type X } from '…'` 会被 dependency-cruiser 当成“只引用类型”，但在 `verbatimModuleSyntax` 下运行时会留下一个空的副作用 import。可以考虑开启 eslint 的 `@typescript-eslint/no-import-type-side-effects`，统一写成 `import type`。
 - （来自 1.1，2.7 处理）复习日期可能需要只有日期的类型 `IsoDate`（`YYYY-MM-DD`），到时再加。
@@ -610,7 +610,7 @@
 - （来自 1.9）`createFile` 在 Node 上用硬链接实现，FAT、exFAT 这类不支持硬链接的文件系统（比如一些 U 盘）上会失败。如果要支持把 Workspace 放在这样的磁盘上，需要另想办法（并保证仍然是独占的）。
 - （来自 1.9）JSON 文件用 `JSON.parse` 解析，重复的键不会报错（后面的覆盖前面的），和 YAML 的严格程度不一致。这些文件都由应用写出，风险小；需要时换成能报告重复键的解析。
 - （来自 1.9，第一个真正的迁移时处理）旧版本的可修改文件保存时写成当前版本的规范形式，注释不保留。有了真正的迁移以后，考虑在迁移后的文档上修改，保留注释。
-- （来自 1.9，testkit 参考）store 的测试用 Vite 的 `import.meta.glob(..., { query: '?raw' })` 读取 `docs/protocol/*.md`，不需要 `node:*`。以后测试要读 fixture 时，可以先考虑这种做法，再决定是否需要 `testkit` 包。
+- （来自 1.10，3.x 决定）wikilink 的解析规则还没有正式定义。fixture 的测试按 Obsidian 的做法：按文件名（不含 `.md`）找 Concept 或笔记，`#标题` 要能找到对应的标题行，文件名不能重名。3.x 实现索引的 wikilink 时，要定下重名、大小写、找不到时怎么处理，并决定 `mastery validate` 是否检查 wikilink。
 - （来自 1.4，7.2 处理）验证证据和干预的关联：优先考虑在 Intervention 里记录验证证据的 id（Intervention 文件本来就可以修改），这样不用改 Evidence 的格式，关联关系也只存一处。
 - （来自 1.4，8.3 决定）引入跨 Workspace 的前置依赖后，Blindspot 的 `prerequisite_id` 可能需要支持 `GlobalConceptRef`。
 - （来自 1.1）`packages/schema/src/testing.ts` 的测试构造函数目前只在 schema 包内部使用。其他包的测试要用时，再决定放在哪里（比如 `testkit` 包），不从 schema 的公共 API 导出。
@@ -638,3 +638,4 @@
 | 2026-11-20 | 1.7 | `task/1.7-platform-ports` | 新建 `@mastery/platform`（`FileSystem`、`Clock`、`IdGenerator`、`Lock` 接口；`PlatformError` 和 `platform.*` 错误码；路径规则：`/` 分隔、NFC、Windows 不允许的名字；契约测试从 `/contract` 子路径导出，vitest 是可选的 peerDependency）和 `@mastery/platform-memory`（通过全部契约测试，可以模拟写入中途崩溃）；README 第 5、6 节和 dependency-cruiser 补上两个包的白名单；共 694 个测试 | `.gitignore` 的临时文件、Workspace 写锁见“待整理” |
 | 2026-11-20 | 1.8 | `task/1.8-platform-node` | 新建 `@mastery/platform-node`：`NodeFileSystem`（原子写：临时文件 + fsync + rename + 目录 fsync，Windows 上 rename 短暂占用时重试；跟随符号链接，真实路径在根目录外报 `platform.outside_root`；`list` 跳过断开的链接、特殊文件和不合法的名字，名字转 NFC）、`SystemClock`、`NodeIdGenerator`、`NodeLock`（锁文件带令牌、进程号、主机名，修改时间作心跳；心跳超过 2 分钟或同主机进程已不在视为过期；接管时先 rename 成唯一名字再 `wx` 创建，竞争有测试；清除过期锁通过 `onStaleLock` 留下记录）、`createNodePlatform`。契约新增 `platform.outside_root` 错误码和符号链接测试组（`{ symlinks: true }` 时运行，Tauri 实现也要通过）。**修改了 1.7 契约测试里 1 处断言**（经人确认）：watch 测试改写已有文件后，原来要求事件是 `modified`，现在 `modified` 或 `created` 都算通过。原因：Linux 的 inotify 和 macOS 的 FSEvents 在原子写（临时文件 rename 覆盖目标）时报的是改名，Node 无法区分“覆盖”和“新建”；接口文档同时写明 watch 事件只是提示，可能合并、重复或丢失，使用者必须通过重新扫描对账（3.3 和启动对账就是这样设计的）。README 第 6 节和 dependency-cruiser 补上 platform-node 的白名单；共 776 个测试（5 个按平台或实现跳过） | Linux 的 NFD 文件名、被跳过的不合法名字、过期锁记录接入日志，见“待整理” |
 | 2026-11-20 | 1.9 | `task/1.9-store` | 新建 `@mastery/store`（依赖 `yaml` 2.9，README 第 10 节补上）：按类型读写全部 10 种文件；YAML 用 1.2 core schema 严格解析（锚点、别名、`<<`、所有标签、重复键、非字符串键、多文档、指令一律报错，时间戳保持字符串）；保存可修改文件时比较读取时的 SHA-256，被外部改过就报 `store.modified_since_read`、不覆盖；只改动变化的部分（单行标量原地替换，其余字节不变；结构变化时保留注释和顺序），每次写出都重新解析验证；新文件和派生文件写成规范形式；Evidence 和评测会话只有 `append`；版本过新的文件只读；旧版本在内存迁移、保存时写成当前版本；路径和内容不一致报 `store.path_mismatch`；`docs/protocol/*.md` 的 YAML 示例由测试校验。Platform 新增 `createFile` / `createTextFile`（原子、独占地创建；Node 用临时文件 + `link`），契约测试新增 7 个，没有改已有的断言。依赖规则：测试文件可以 import `platform-memory`（README 第 6 节、dependency-cruiser，`tests/dependency-rules.test.ts` 在样例仓库上验证普通源文件仍被拒绝）。根目录加 `fast-check` 和 `tests/` 目录（vitest、tsconfig 的 include）。共 897 个测试（6 个按平台或实现跳过） | 写锁、Proposal 冲突检查、FAT 上的硬链接、JSON 重复键等见“待整理” |
+| 2026-11-20 | 1.10 | `task/1.10-example-workspace` | 新建 `fixtures/ws-transformers/`：10 个 Concept（前置依赖无环；`transformer` 是唯一的 `draft`，没有 Concept 依赖它）、3 份评测标准、1 个 Project、3 篇带 wikilink 的笔记（`[[slug]]`、`[[slug\|别名]]`、`[[slug#标题]]`，一篇在子目录）、`.gitignore`（`.mastery/`、`.mastery-tmp-*`）和说明为什么故意不放 `.gitattributes` 的 README。新建只给测试用的 `@mastery/testkit`：`loadFixture()` 每次返回新的、独立的 `MemoryFileSystem`（有测试），用 `import.meta.glob` 读入，不需要 `node:*`；dependency-cruiser 只允许 `*.test.ts` import 它（`tests/dependency-rules.test.ts` 加一个样例仓库验证，原有断言不变）。store 的验收测试：全部文件读取无错误、无警告，保存回去逐字节不变，引用都能找到；把 fixture 改坏的四种方式都会让它失败。`fixtures/` 不交给 Prettier。CLAUDE.md 的流程加上“开始任务时提醒人创建分支”。共 909 个测试（6 个按平台或实现跳过） | wikilink 的解析规则见“待整理” |

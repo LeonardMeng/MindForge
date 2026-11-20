@@ -1,0 +1,13 @@
+schema_version: 1
+concept_id: multi-head-attention
+version: 1
+dimensions:
+  recall: null
+  understanding: { focus: [解释多个头比一个大头好在哪里], threshold: 0.7 }
+  reasoning: null
+  application:
+    focus: [计算 8 个头、模型维度 512 时每个头的维度]
+    threshold: 0.7
+  transfer:
+    focus: [把多头的思路用到图神经网络的注意力上]
+    threshold: 0.5

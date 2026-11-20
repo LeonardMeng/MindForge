@@ -3,3 +3,5 @@
 pnpm-lock.yaml
 # 生成的 JSON Schema，由 pnpm --filter @mastery/schema gen 写出，不手工排版。
 docs/protocol/schemas/
+# 示例 Workspace：文件逐字节有意义（store 的读后再写测试），也要像用户手写的样子，不交给 Prettier。
+fixtures/

@@ -21,7 +21,7 @@ const thirdParty = (pattern) =>
 /**
  * 白名单（README 第 6 节依赖图）：from 包只能依赖自己和 allowed 里的内部包。
  * schema 对所有包开放（README 第 6 节的补充说明），这里统一加上。
- * platform-memory 也放进来，但只有测试文件能用它，由 platform-memory-only-in-tests 检查。
+ * platform-memory 和 testkit 也放进来，但只有测试文件能用它们，由 *-only-in-tests 两条规则检查。
  */
 const allowlist = (pkg, allowed, readme) => ({
   name: `allowlist:${pkg}`,
@@ -30,7 +30,7 @@ const allowlist = (pkg, allowed, readme) => ({
   from: { path: src(pkg) },
   to: {
     path: ANY_INTERNAL,
-    pathNot: pkgs(pkg, 'schema', 'platform-memory', ...allowed),
+    pathNot: pkgs(pkg, 'schema', 'platform-memory', 'testkit', ...allowed),
   },
 });
 
@@ -57,6 +57,11 @@ export default {
       'platform-memory',
       ['platform'],
       'platform-memory ← schema, platform（测试用的内存实现）',
+    ),
+    allowlist(
+      'testkit',
+      ['platform'],
+      'testkit ← schema, platform, platform-memory（只给测试用，加载 fixtures/）',
     ),
     allowlist(
       'platform-node',
@@ -112,9 +117,17 @@ export default {
         'README 第 6 节依赖图的补充说明：platform-memory 是测试用的实现，只有测试文件（*.test.ts）能 import 它；ui-* 和 agents/* 的测试也不能（它们本来就不能用 platform）',
       from: {
         path: ANY_SRC,
-        pathNot: ['\\.test\\.ts$', src('platform-memory')],
+        pathNot: ['\\.test\\.ts$', src('platform-memory'), src('testkit')],
       },
       to: { path: pkgs('platform-memory') },
+    },
+    {
+      name: 'testkit-only-in-tests',
+      severity: 'error',
+      comment:
+        'README 第 6 节依赖图的补充说明：testkit 只给测试用（不 build，依赖 Vite 的 import.meta.glob），只有测试文件（*.test.ts）能 import 它；ui-* 和 agents/* 的测试也不能',
+      from: { path: ANY_SRC, pathNot: ['\\.test\\.ts$', src('testkit')] },
+      to: { path: pkgs('testkit') },
     },
 
     // ── 只能引用类型：README 第 6 节依赖图里标注“类型”的依赖 ────────────────
