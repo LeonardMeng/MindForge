@@ -1,0 +1,26 @@
+{
+  "name": "@mastery/rules-v1",
+  "version": "0.0.0",
+  "private": true,
+  "description": "掌握度规则 v1：维度聚合（2.3）；状态机在 2.4。参数见 ADR-0007。",
+  "type": "module",
+  "exports": {
+    ".": {
+      "@mastery/source": "./src/index.ts",
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsup src/index.ts --format esm --dts --clean",
+    "test": "vitest run --config ../../vitest.config.ts --root .",
+    "typecheck": "tsc -p tsconfig.json"
+  },
+  "dependencies": {
+    "@mastery/core": "workspace:*",
+    "@mastery/schema": "workspace:*"
+  }
+}

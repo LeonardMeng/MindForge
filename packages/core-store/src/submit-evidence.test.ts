@@ -6,6 +6,7 @@ import { CORE_ERROR_CODES, submitEvidence, type Ports } from '@mastery/core';
 import {
   createEventRecorder,
   createRulesRegistry,
+  stubRules,
 } from '@mastery/core/testing';
 import { FakeClock, type MemoryFileSystem } from '@mastery/platform-memory';
 import { createStore } from '@mastery/store';
@@ -90,7 +91,7 @@ beforeEach(async () => {
     repository: createStoreRepository(createStore(fs)),
     clock: new FakeClock(NOW),
     events,
-    rules: createRulesRegistry([{ version: 1 }]),
+    rules: createRulesRegistry([stubRules(1)]),
   };
 });
 

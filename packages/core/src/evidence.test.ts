@@ -13,6 +13,7 @@ import {
   createEventRecorder,
   createMemoryRepository,
   createRulesRegistry,
+  stubRules,
   type RepositorySeed,
 } from './testing/index.js';
 
@@ -131,7 +132,7 @@ async function setup(
     repository,
     clock,
     events,
-    rules: createRulesRegistry([{ version: 1 }]),
+    rules: createRulesRegistry([stubRules(1)]),
   };
   return { ports, repository: memory.repository, seed, events };
 }

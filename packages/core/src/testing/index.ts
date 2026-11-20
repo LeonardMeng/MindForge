@@ -311,6 +311,35 @@ export function createEventRecorder(
 }
 
 /**
+ * 测试用的规则：`aggregate` 总是返回“没有分数”（所有维度 `null`、置信度 0）。
+ * 不关心聚合结果的测试用它；要测聚合本身，用规则包（比如 `rules-v1`）。
+ *
+ * @param version - 规则版本
+ */
+export function stubRules(version: number): Rules {
+  return {
+    version,
+    aggregate: () => ({
+      dimensions: {
+        recall: null,
+        understanding: null,
+        reasoning: null,
+        application: null,
+        transfer: null,
+      },
+      confidence: 0,
+      perDimension: {
+        recall: null,
+        understanding: null,
+        reasoning: null,
+        application: null,
+        transfer: null,
+      },
+    }),
+  };
+}
+
+/**
  * 一个固定的规则表，测试用：`current` 是最大的版本。
  *
  * @param versions - 可用的规则（至少一个）

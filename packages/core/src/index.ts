@@ -53,4 +53,10 @@ export type {
   UnusableEvidence,
   WriteMasteryResult,
 } from './repository.js';
-export type { Ports, Rules, RulesRegistry } from './ports.js';
+export type {
+  Aggregate,
+  DimensionAggregate,
+  Ports,
+  Rules,
+  RulesRegistry,
+} from './ports.js';

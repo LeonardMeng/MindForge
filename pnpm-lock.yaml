@@ -343,6 +343,15 @@ importers:
         specifier: workspace:*
         version: link:../platform-memory
 
+  packages/rules-v1:
+    dependencies:
+      '@mastery/core':
+        specifier: workspace:*
+        version: link:../core
+      '@mastery/schema':
+        specifier: workspace:*
+        version: link:../schema
+
   packages/schema:
     dependencies:
       zod:

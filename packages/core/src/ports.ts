@@ -1,13 +1,42 @@
 import type { Clock } from '@mastery/platform';
+import type { Dimension, DimensionScores, Evidence } from '@mastery/schema';
 
 import type { EventSink } from './events.js';
 import type { Repository } from './repository.js';
 
+/** 一个维度的聚合结果。 */
+export interface DimensionAggregate {
+  /** 加权平均分，`0..1`。 */
+  readonly score: number;
+  /** 这个维度的置信度，`0..1`。 */
+  readonly confidence: number;
+  /** 给这个维度打了分（不是 `null`）的证据条数。 */
+  readonly evidenceCount: number;
+}
+
+/** 一组证据的维度聚合结果（不含状态，状态在 2.4）。 */
+export interface Aggregate {
+  /** 每个维度的分数；没有任何证据给它打分时为 `null`（不变量 5）。 */
+  readonly dimensions: DimensionScores;
+  /** 总的置信度，`0..1`；没有证据时为 0。 */
+  readonly confidence: number;
+  /** 每个维度的细节，2.4 写 explanation 时用；没有分数的维度为 `null`。 */
+  readonly perDimension: Readonly<Record<Dimension, DimensionAggregate | null>>;
+}
+
 /**
- * 掌握度规则（2.3 补全）。现在只有版本号：每个投影都记录算它用的 `rules_version`。
+ * 掌握度规则（规则包实现，比如 `rules-v1`）。每个投影都记录算它用的 `rules_version`。
+ * 2.4 再加状态机。
  */
 export interface Rules {
   readonly version: number;
+  /**
+   * 聚合一组证据的维度分数和置信度。必须是纯函数：不读时钟、不做 I/O，证据的顺序不影响结果，
+   * 同样的输入逐字节相同（不变量 3）。
+   *
+   * @param evidence - 一个 Concept 的证据（任意顺序）
+   */
+  aggregate(evidence: readonly Evidence[]): Aggregate;
 }
 
 /** 可用的规则版本。 */
