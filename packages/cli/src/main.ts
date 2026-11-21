@@ -25,4 +25,9 @@ process.exitCode = await run(process.argv.slice(2), {
   username,
   locale: Intl.DateTimeFormat().resolvedOptions().locale,
   platform: process.platform,
+  readStdin: async () => {
+    const chunks: Buffer[] = [];
+    for await (const chunk of process.stdin) chunks.push(chunk as Buffer);
+    return Buffer.concat(chunks).toString('utf8');
+  },
 });

@@ -12,7 +12,7 @@ import {
 
 import type { RepositoryIssue } from '../errors.js';
 import type { DomainEvent, EventSink } from '../events.js';
-import type { Aggregate, Rules, RulesRegistry } from '../ports.js';
+import type { Aggregate, Rules } from '../ports.js';
 import type {
   EvidenceList,
   Repository,
@@ -383,20 +383,4 @@ export function stubRules(version: number): Rules {
   };
 }
 
-/**
- * 一个固定的规则表，测试用：`current` 是最大的版本。
- *
- * @param versions - 可用的规则（至少一个）
- */
-export function createRulesRegistry(versions: readonly Rules[]): RulesRegistry {
-  if (versions.length === 0)
-    throw new Error('at least one rules version is required');
-  const byVersion = new Map(versions.map((rules) => [rules.version, rules]));
-  const latest = [...versions].sort(
-    (a, b) => b.version - a.version,
-  )[0] as Rules;
-  return {
-    get: (version) => byVersion.get(version) ?? null,
-    current: () => latest,
-  };
-}
+export { createRulesRegistry } from '../rules-registry.js';

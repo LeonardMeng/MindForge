@@ -216,6 +216,12 @@ importers:
 
   packages/cli:
     dependencies:
+      '@mastery/core':
+        specifier: workspace:*
+        version: link:../core
+      '@mastery/core-store':
+        specifier: workspace:*
+        version: link:../core-store
       '@mastery/device':
         specifier: workspace:*
         version: link:../device
@@ -231,12 +237,19 @@ importers:
       '@mastery/profile-store-git':
         specifier: workspace:*
         version: link:../profile-store-git
+      '@mastery/rules-v1':
+        specifier: workspace:*
+        version: link:../rules-v1
       '@mastery/schema':
         specifier: workspace:*
         version: link:../schema
       '@mastery/store':
         specifier: workspace:*
         version: link:../store
+    devDependencies:
+      '@mastery/platform-memory':
+        specifier: workspace:*
+        version: link:../platform-memory
 
   packages/core:
     dependencies:

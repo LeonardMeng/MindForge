@@ -15,6 +15,8 @@ const KNOWN = [
   /^projects\/[^/]+\/project\.yaml$/,
   /^concepts\/[^/]+\.md$/,
   /^assessments\/[^/]+\/criteria\.yaml$/,
+  /^assessments\/[^/]+\/sessions\/[0-9A-Z]{26}\.json$/,
+  /^evidence\/[^/]+\/[0-9A-Z]{26}\.json$/,
   /^notes\/.+\.md$/,
 ];
 
@@ -72,14 +74,44 @@ describe('fixtures/ws-transformers', () => {
       'softmax',
     ]);
     expect(all.projects.map((p) => p.id)).toEqual(['read-attention-paper']);
-    // 没有 Evidence 等（M2 再加），也没有盲区和干预。
+    // Evidence 和评测会话只有 self-attention 和 multi-head-attention 有（2.8）；没有掌握度投影
+    // （派生数据，由测试重算），也没有盲区和干预。
     expect(await store.blindspots.list()).toEqual({ ids: [], issues: [] });
     expect(await store.interventions.list()).toEqual({ ids: [], issues: [] });
     expect(await store.mastery.list()).toEqual({ ids: [], issues: [] });
+    const EVIDENCE: Record<string, string[]> = {
+      'self-attention': [
+        '01JCZ1N0P1Q2R3S4T5V6W7X8Y9',
+        '01JCZ2N0P1Q2R3S4T5V6W7X8Y9',
+        '01JCZ4M9A0B1C2D3E4F5G6H7J8',
+      ],
+      'multi-head-attention': [
+        '01JCZ6N0P1Q2R3S4T5V6W7X8Y9',
+        '01JCZ7N0P1Q2R3S4T5V6W7X8Y9',
+      ],
+    };
+    const SESSIONS: Record<string, string[]> = {
+      'self-attention': ['01JCZ4M8A0B1C2D3E4F5G6H7J8'],
+    };
     for (const concept of all.concepts) {
       const id = concept.frontmatter.id;
-      expect(await store.evidence.list(id)).toEqual({ ids: [], issues: [] });
-      expect(await store.sessions.list(id)).toEqual({ ids: [], issues: [] });
+      expect(await store.evidence.list(id)).toEqual({
+        ids: EVIDENCE[id] ?? [],
+        issues: [],
+      });
+      expect(await store.sessions.list(id)).toEqual({
+        ids: SESSIONS[id] ?? [],
+        issues: [],
+      });
+      for (const e of EVIDENCE[id] ?? []) {
+        clean(await store.evidence.read(id, e), `evidence/${id}/${e}.json`);
+      }
+      for (const s of SESSIONS[id] ?? []) {
+        clean(
+          await store.sessions.read(id, s),
+          `assessments/${id}/sessions/${s}.json`,
+        );
+      }
     }
   });
 

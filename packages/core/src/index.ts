@@ -53,6 +53,7 @@ export {
   type PrerequisiteRisksError,
 } from './prerequisites.js';
 export { reviewStatus, type ReviewStatus } from './review.js';
+export { createRulesRegistry } from './rules-registry.js';
 export {
   publish,
   type DomainEvent,

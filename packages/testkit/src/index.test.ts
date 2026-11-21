@@ -48,7 +48,7 @@ describe('loadFixture', () => {
     const original = fixtureFiles('ws-transformers').get('workspace.yaml');
     for (const fs of [second, await loadFixture('ws-transformers')]) {
       expect(await fs.readTextFile('workspace.yaml')).toBe(original);
-      expect(await fs.stat('evidence')).toBeNull();
+      expect(await fs.stat('evidence/softmax/x.json')).toBeNull();
       expect(await fs.stat('notes/softmax-numerics.md')).not.toBeNull();
     }
   });

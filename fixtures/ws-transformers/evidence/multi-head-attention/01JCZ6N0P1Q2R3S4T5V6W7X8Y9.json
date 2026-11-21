@@ -1,0 +1,21 @@
+{
+  "schema_version": 1,
+  "id": "01JCZ6N0P1Q2R3S4T5V6W7X8Y9",
+  "concept_id": "multi-head-attention",
+  "session_id": null,
+  "assessment_type": "practice",
+  "criteria_version": 1,
+  "dimensions": {
+    "recall": null,
+    "understanding": 0.6,
+    "reasoning": null,
+    "application": 0.5,
+    "transfer": null
+  },
+  "confidence": 0.7,
+  "evaluator": {
+    "kind": "human"
+  },
+  "note": "练习：算每个头的维度，算错了一次",
+  "created_at": "2026-11-15T21:00:00Z"
+}

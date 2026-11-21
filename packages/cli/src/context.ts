@@ -1,3 +1,5 @@
+import type { Clock, IdGenerator } from '@mastery/platform';
+
 /** 写出文字的地方（标准输出、标准错误，测试里换成内存缓冲）。 */
 export interface Writer {
   write(text: string): void;
@@ -27,6 +29,12 @@ export interface CliContext {
   readonly locale: string;
   /** `process.platform`。 */
   readonly platform: string;
+  /** 时钟（默认系统时钟）；测试里换成假时钟（2.8）。 */
+  readonly clock?: Clock;
+  /** ID 生成器（默认 `NodeIdGenerator`）；测试里换成确定的（2.8）。 */
+  readonly ids?: IdGenerator;
+  /** 读取全部标准输入（`evidence add -`）；没有时不支持 `-`。 */
+  readonly readStdin?: () => Promise<string>;
   /** 只给测试用的钩子。 */
   readonly hooks?: {
     /** `init` 完成一个步骤之后调用；抛出错误可以模拟崩溃。 */
@@ -34,7 +42,15 @@ export interface CliContext {
   };
 }
 
-/** 退出码：0 成功（可以有警告），1 校验或领域错误，2 用法错误。 */
-export const EXIT = { ok: 0, failed: 1, usage: 2 } as const;
+/**
+ * 退出码：0 成功（可以有警告），1 校验或领域错误（证据被拒绝时什么都没写），2 用法错误，
+ * 3 证据**已经保存**但重算失败（2.8：不要重试 `evidence add`，否则会记下重复的证据）。
+ */
+export const EXIT = {
+  ok: 0,
+  failed: 1,
+  usage: 2,
+  savedNotRecomputed: 3,
+} as const;
 /** 退出码。 */
 export type ExitCode = (typeof EXIT)[keyof typeof EXIT];

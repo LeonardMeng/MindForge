@@ -1,0 +1,21 @@
+{
+  "schema_version": 1,
+  "id": "01JCZ7N0P1Q2R3S4T5V6W7X8Y9",
+  "concept_id": "multi-head-attention",
+  "session_id": null,
+  "assessment_type": "self_assessment",
+  "criteria_version": 1,
+  "dimensions": {
+    "recall": null,
+    "understanding": 0.7,
+    "reasoning": null,
+    "application": null,
+    "transfer": null
+  },
+  "confidence": 0.5,
+  "evaluator": {
+    "kind": "human"
+  },
+  "note": "重读之后的自评",
+  "created_at": "2026-11-18T21:30:00Z"
+}

@@ -108,8 +108,11 @@ export default {
         'profile',
         'profile-store-git',
         'device',
+        'core',
+        'core-store',
+        'rules-v1',
       ],
-      'cli ← schema, platform, platform-node, store, profile, profile-store-git, device（可以用 node:*）',
+      'cli ← schema, platform, platform-node, store, profile, profile-store-git, device, core, core-store, rules-v1（可以用 node:*）',
     ),
     {
       name: 'allowlist:agents/*',
