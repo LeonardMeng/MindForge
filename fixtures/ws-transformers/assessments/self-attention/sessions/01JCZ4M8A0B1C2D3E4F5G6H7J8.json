@@ -1,0 +1,56 @@
+{
+  "schema_version": 1,
+  "id": "01JCZ4M8A0B1C2D3E4F5G6H7J8",
+  "concept_id": "self-attention",
+  "criteria_version": 2,
+  "started_at": "2026-11-12T09:30:00Z",
+  "completed_at": "2026-11-12T10:00:00Z",
+  "items": [
+    {
+      "dimensions": [
+        "recall"
+      ],
+      "question": "写出缩放点积注意力的公式。",
+      "answer": "softmax(QK^T / √d) V",
+      "rationale": "公式完整正确。",
+      "scores": {
+        "recall": 0.9,
+        "understanding": null,
+        "reasoning": null,
+        "application": null,
+        "transfer": null
+      }
+    },
+    {
+      "dimensions": [
+        "understanding",
+        "reasoning"
+      ],
+      "question": "Q、K、V 各起什么作用？如果所有 Key 都相同，输出是什么？",
+      "answer": "Q 去匹配 K，V 是被加权的内容；Key 都相同时权重平均，输出是 V 的平均。",
+      "rationale": "作用解释清楚；推理正确，但没有说明和 Query 无关。",
+      "scores": {
+        "recall": null,
+        "understanding": 0.8,
+        "reasoning": 0.75,
+        "application": null,
+        "transfer": null
+      }
+    },
+    {
+      "dimensions": [
+        "application"
+      ],
+      "question": "用一个 2×2 的例子手算注意力权重。",
+      "answer": "算出权重 [0.73, 0.27]。",
+      "rationale": "计算正确，步骤略有跳跃。",
+      "scores": {
+        "recall": null,
+        "understanding": null,
+        "reasoning": null,
+        "application": 0.7,
+        "transfer": null
+      }
+    }
+  ]
+}

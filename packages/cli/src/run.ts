@@ -3,6 +3,11 @@ import { parseArgs } from 'node:util';
 import { initCommand } from './commands/init.js';
 import { CommandError, profileInit, profileShow } from './commands/profile.js';
 import { validateCommand } from './commands/validate.js';
+import { dueCommand } from './commands/due.js';
+import { evidenceAdd } from './commands/evidence.js';
+import { recomputeCommand } from './commands/recompute.js';
+import { statusCommand } from './commands/status.js';
+import { DIMENSIONS } from '@mastery/schema';
 import { EXIT, type CliContext, type ExitCode } from './context.js';
 
 export const HELP = `Usage: mastery <command> [options]
@@ -20,11 +25,37 @@ Commands:
       --remote <url>           Git remote, for example git@github.com:me/ai.git
   validate <dir>       Check every file of a workspace and the references between them
       --json                   Machine-readable output
+  evidence add [file]  Add a piece of evidence, then recompute its concept
+                       file: a JSON evidence object (- for standard input); id and created_at may be left out
+      --concept <slug>         Without a file: the concept
+      --type <type>            independent_verification, practice or self_assessment
+      --recall, --understanding, --reasoning, --application, --transfer <0..1>
+                               Scores; leave a dimension out if it was not tested
+      --confidence <0..1>      How sure the evaluator is
+      --note <text>            Where the evidence comes from (required without --session)
+      --session <ulid>         The assessment session it came from
+      --criteria-version <n>   Default: the concept's current criteria version
+      --json                   Machine-readable output
+  recompute [concept]  Recompute mastery for one concept, or every concept with criteria
+      --json                   Machine-readable output
+  status [concept]     Show mastery (— means not tested, not 0); with a concept, also why and prerequisite risks
+      --json                   Machine-readable output
+  due                  List concepts that need review
+      --within <days>          Also list reviews coming up within this many days
+      --json                   Machine-readable output
+
+  evidence, recompute, status and due take --workspace <dir>; by default they use the
+  nearest folder with a workspace.yaml, from the current folder upwards.
 
 Environment:
   MASTERY_HOME         Device folder (default ~/.mastery)
 
-Exit codes: 0 success (warnings allowed), 1 errors found or the command failed, 2 wrong usage.
+Exit codes:
+  0  success (warnings allowed)
+  1  errors found, the evidence was refused (nothing written), or the command failed
+  2  wrong usage
+  3  the evidence was saved, but recomputing its concept failed: do not add it again;
+     fix the problem and run \`mastery recompute\`
 `;
 
 /** 用法错误：说明哪里不对，并提示 `--help`。 */
@@ -142,6 +173,98 @@ export async function run(
         p.positionals[0] ?? '',
         p.flag('json'),
       );
+    }
+    if (command === 'evidence') {
+      const [sub, ...args] = rest;
+      if (sub !== 'add') {
+        throw new UsageError(
+          `unknown command "evidence ${sub ?? ''}"`.trimEnd(),
+        );
+      }
+      const scoreOptions = Object.fromEntries(
+        DIMENSIONS.map((d) => [d, { type: 'string' as const }]),
+      );
+      const p = parse(
+        args,
+        {
+          workspace: { type: 'string' },
+          concept: { type: 'string' },
+          type: { type: 'string' },
+          ...scoreOptions,
+          confidence: { type: 'string' },
+          note: { type: 'string' },
+          session: { type: 'string' },
+          'criteria-version': { type: 'string' },
+          json: { type: 'boolean' },
+        },
+        { min: 0, max: 1 },
+      );
+      const file = p.positionals[0];
+      const flagNames = [
+        'concept',
+        'type',
+        ...DIMENSIONS,
+        'confidence',
+        'note',
+        'session',
+        'criteria-version',
+      ];
+      const used = flagNames.filter((name) => p.value(name) !== undefined);
+      if (file !== undefined && used.length > 0) {
+        throw new UsageError(
+          `give either a JSON file or --${used[0] ?? ''} and the other options, not both`,
+        );
+      }
+      return await evidenceAdd(context, {
+        workspace: p.value('workspace'),
+        file,
+        json: p.flag('json'),
+        flags: {
+          concept: p.value('concept'),
+          type: p.value('type'),
+          scores: Object.fromEntries(
+            DIMENSIONS.flatMap((d) => {
+              const v = p.value(d);
+              return v === undefined ? [] : [[d, v]];
+            }),
+          ),
+          confidence: p.value('confidence'),
+          note: p.value('note'),
+          session: p.value('session'),
+          criteriaVersion: p.value('criteria-version'),
+        },
+      });
+    }
+    if (command === 'recompute' || command === 'status') {
+      const p = parse(
+        rest,
+        { workspace: { type: 'string' }, json: { type: 'boolean' } },
+        { min: 0, max: 1 },
+      );
+      const options = {
+        workspace: p.value('workspace'),
+        concept: p.positionals[0],
+        json: p.flag('json'),
+      };
+      return command === 'recompute'
+        ? await recomputeCommand(context, options)
+        : await statusCommand(context, options);
+    }
+    if (command === 'due') {
+      const p = parse(
+        rest,
+        {
+          workspace: { type: 'string' },
+          within: { type: 'string' },
+          json: { type: 'boolean' },
+        },
+        { min: 0, max: 0 },
+      );
+      return await dueCommand(context, {
+        workspace: p.value('workspace'),
+        within: p.value('within'),
+        json: p.flag('json'),
+      });
     }
     throw new UsageError(`unknown command "${command}"`);
   } catch (error) {

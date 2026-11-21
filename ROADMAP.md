@@ -31,7 +31,7 @@
 ## 当前状态
 
 - **当前里程碑：** M1
-- **下一个任务：** 2.8（🏁 M1 检查点和 M2 并行进行，见下面 M1 检查点的说明）
+- **下一个任务：** 3.1（M2 的任务 2.1–2.8 全部完成；🏁 M1 检查点还在进行，见下面 M1 检查点的说明）
 - **阻塞项：** 无
 
 ---
@@ -242,7 +242,7 @@
 - **验收**：用假时钟测试一年内的复习序列。
 - **不做**：通知。
 
-### [ ] 2.8 CLI：证据和状态
+### [x] 2.8 CLI：证据和状态
 - **包**：`cli`
 - **依赖**：2.5、2.7
 - **产出**：`mastery evidence add`（从 JSON 文件或命令行参数读取）、`mastery recompute [concept]`、`mastery status [concept]`（表格显示维度、状态和 explanation）、`mastery due`（列出到期需要复习的概念）。
@@ -603,7 +603,7 @@
 - （来自 1.5）一致性测试：把 schema 现有的合法和非法样例，同时用 zod 和一个 JSON Schema 校验器（比如 ajv，只作为 devDependency，不违反 ADR-0013）各跑一遍，结果应该一致；因为跨字段规则而只被 zod 拒绝的样例，单独列出来并注明原因。
 - （来自 1.5，M6 之前不做）让 VS Code 这类编辑器在用户编辑 `workspace.yaml`、Concept 的 frontmatter 时，直接用 `docs/protocol/schemas/` 里的 JSON Schema 做自动补全和实时校验。
 - （来自 1.6，2.5 实现）如果某个 Concept 有任何证据是 `version_too_new`，就不重算这个 Concept 的掌握度，也不写投影，并提示用户升级 Mastery OS。否则会因为漏算证据而写出错误的投影，再通过 Git 同步到其他设备。
-- （来自 1.7，4.1 实现）同一个 Workspace 目录，同一时间只能有一个进程做写操作，用 1.7 的 Lock 端口实现（比如 `.mastery/runtime/write.lock`）。只读的 CLI 命令（validate、status、search）不需要拿锁。1.9 之后还要注意：store 的 `save(value, { base })` 是“先比较哈希再写入”，history 的 `write`（2.5 起取代 `append`）是“读出整个文件再原子写回”，两者在两个进程同时写时都需要这把锁才正确；2.5 的 `recalculate` 整个过程（读证据、写历史、写投影）也要在这把锁里；Evidence 和评测会话的 `append` 用独占创建，不依赖锁。
+- （来自 1.7，4.1 实现）同一个 Workspace 目录，同一时间只能有一个进程做写操作，用 1.7 的 Lock 端口实现（比如 `.mastery/runtime/write.lock`）。只读的 CLI 命令（validate、status、due、search）不需要拿锁；2.8 的 `evidence add` 和 `recompute` 要拿。1.9 之后还要注意：store 的 `save(value, { base })` 是“先比较哈希再写入”，history 的 `write`（2.5 起取代 `append`）是“读出整个文件再原子写回”，两者在两个进程同时写时都需要这把锁才正确；2.5 的 `recalculate` 整个过程（读证据、写历史、写投影）也要在这把锁里；Evidence 和评测会话的 `append` 用独占创建，不依赖锁。
 - （来自 1.8）Linux 上别的工具（比如从 macOS 拷来的压缩包）创建的 NFD 文件名：`list` 会把它报成 NFC，但用 NFC 名字读不到（Linux 不做规范化）。目前不处理；遇到时再考虑在打开文件时按 NFD 名字重试，或者由 `mastery doctor` 提示改名。
 - （来自 1.8）`list` 会跳过不是合法路径段的名字（Windows 保留名、`<>:"|?*`、控制字符、以点或空格结尾等），这些文件对 Mastery 不可见。以后 `mastery doctor` 应该列出它们，提示用户改名，而不是让它们悄悄消失。
 - （来自 1.8，4.1 使用）`NodeLock` 清除过期锁时默认用 `process.emitWarning` 留下记录。4.1 接入 CLI 时，应该把 `onStaleLock` 接到正式的日志或事件上。
@@ -635,7 +635,7 @@
 - （来自 2.3）“打乱证据顺序结果不变”的属性测试，在去掉排序后仍然通过（验证过）：输出舍入到 4 位小数，求和顺序带来的最后一位差异几乎总被舍入抹掉。排序保证的是恰好落在舍入边界上的情况，没有测试能稳定地覆盖到。可以考虑导出一个不舍入的内部函数专门测它，由人决定。
 - （来自 2.3，2.4 已处理：状态机追加进 ADR-0007，ADR 的状态里写明分两次写成）ADR 模板规定“已定的 ADR 不改写内容”，但 ROADMAP 计划 ADR-0007 在 2.3 和 2.4 两次决定。2.4 的状态机阈值是追加进 ADR-0007，还是另写一份 ADR，到 2.4 再定。
 - （来自 2.3，2.4 已处理：没测过的考察维度不影响置信度，但让 P 不成立，explanation 列为 `missing.untested`）总置信度只平均**有分数**的维度。criteria 考察、但还没有任何证据的维度要不要拉低置信度或影响状态，属于 2.4（aggregate 不读 criteria）。
-- （来自 2.3，2.5 / 2.8 处理）生产环境的 RulesRegistry（注册 `rulesV1`）由谁组装：CLI（2.8，README 第 6 节 `cli` 的依赖要加上 `core`、`core-store`、`rules-v1`）还是 `plugin-core`（4.2）。
+- （来自 2.3，**2.8 已处理（CLI）**：CLI 用 `createRulesRegistry([rulesV1])`，`createRulesRegistry` 移到 `@mastery/core` 主入口；`plugin-core` 在 4.2 自己组装）生产环境的 RulesRegistry（注册 `rulesV1`）由谁组装：CLI（2.8，README 第 6 节 `cli` 的依赖要加上 `core`、`core-store`、`rules-v1`）还是 `plugin-core`（4.2）。
 - （来自 2.4，**2.7 已确认并实现**：投影的 `review_due_at`，Core 的 `reviewStatus` 在读取时推导到期；保存的 `needs_review` 只来自证据）按时间的 `mastered → needs_review` 不能写进保存的投影：它取决于今天的日期，会破坏不变量 3 和 merge driver 的重算。建议的方向：保存的投影只包含由证据决定的状态，加上一个根据证据确定地算出的 `review_due_at`；“到期需要复习”在读取投影时推导（status、UI、Supervisor）。这样保存的状态里，`needs_review` 只来自证据（从 `mastered` 退步）。
 - （来自 2.4）状态机每一步都重新聚合前面的全部证据，代价随证据数量平方增长。现在的数量下没有问题；证据很多时可以改成增量聚合（结果必须逐字节相同）。
 - （来自 2.4）“进入 `mastered` 要求这一步的证据是通过的独立验证”也影响第一次掌握：两次相隔 7 天的通过的独立验证之后，如果 P 是靠一次练习才恢复的，状态停在 `provisional_mastery`，等下一次通过的独立验证。M5 检查点复审时看是否合理。
@@ -645,9 +645,10 @@
 - （来自 2.5）README 第 9 节不变量 4 只写了“投影只能由 Mastery Core 写出”。历史现在也是派生数据、也只由 Core 写出，要不要把不变量 4 改成“投影和历史”，由人决定（2.5 没有改）。
 - （来自 2.6）`prerequisiteRisks` 在 `provisional_mastery` 和 `mastered` 处剪枝，不往下找。如果 UI 需要看完整的前置依赖树（包括安全节点下面的），可以加一个不剪枝的选项。
 - （来自 2.6，**2.7 已处理**：到期的 `mastered` 报 `review_due`，不剪枝）`prerequisiteRisks` 只看保存的投影里的状态。按 2.4 那条的方向，“到期需要复习”在读取投影时推导，2.7 要把到期的 `mastered` 也算作风险（并且不在它那里剪枝）。
-- （来自 2.7，2.8 处理）`mastery due` 要列出所有 Concept 里到期的：Repository 还没有“列出所有 Concept / 所有投影”的操作，2.8 加上（或者由索引回答，3.x）。
+- （来自 2.7，**2.8 已处理（CLI）**：CLI 直接用 store 列出 Concept，Repository 端口不变；以后可以由索引回答，3.x）`mastery due` 要列出所有 Concept 里到期的：Repository 还没有“列出所有 Concept / 所有投影”的操作，2.8 加上（或者由索引回答，3.x）。
 - （来自 2.7，M5 检查点复审）`provisional_mastery` 没有复习时刻，所以 `mastery due` 不会提示“该做第二次独立验证了”（M 要求相隔 7 天）。要不要给它一个“下次验证”的时刻，M5 时看。
 - （来自 2.7，第一次发布前）ADR-0014：派生文件（投影、历史）在第一次发布之后也不能再原地修改 schema，发布清单里要写上。
+- （来自 2.8，**M5 检查点决定**）人手动录入、没有评测会话的独立验证（`evidence add` 的命令行参数，或 `evaluator.kind: human` 且 `session_id: null` 的 JSON）现在照样接受、完全计入掌握度，只打印提示“这是自己报告的”。M5 时决定：完全计入、降低权重，还是要求明确的标记（比如 `--external`，表示由别人评分的考试）。
 
 
 ## 完成记录
@@ -685,3 +686,4 @@
 | 2026-11-20 | 2.5 | `task/2.5-recalculate` | `recalculate(ports, conceptId)`：读 Concept（归档的也重算）、criteria、全部证据，用 `rules.current()` 判定，写出投影和**由证据推导的历史**（`deriveHistory`：第一步一条，之后 `state`、`dimensions` 或 `confidence` 变了的每一步一条，`at` 是证据的 `created_at`，`cause` 是那条证据）。拒绝时什么都不写：有更新版本写的证据（`core.evidence_version_too_new`）或读不了的证据（新增 `core.evidence_unreadable`），已有投影是更新的规则算的（`core.rules_version_unknown`，不降级），投影或历史文件是更新版本写的（新增 `core.mastery_version_too_new`）；读不了的投影和历史直接覆盖。没有证据文件也没有投影时什么都不写；没有证据文件但有投影时写成 `not_assessed`；有证据但版本过新或读不了时报错，绝不退回 `not_assessed`。投影按值比较，值变了才写并发出 `mastery/changed`（`cause` 是最后一条证据，规则版本变了时是 `rules`），只是格式不同时写回规范形式、不发事件；历史每次都和推导结果对齐，字节相同时不写，所以两次写之间崩溃后再算一次就能补齐。**写历史的方式改为整个写出**（经人确认）：store 的 `history.write`、Repository 的 `writeHistory`（契约测试 7 个）；**删除了 `appendHistory`**（Repository 端口、契约、内存实现、store 的 `history.append`、core-store），连同它的测试：store 4 个、契约 3 个（两个实现各跑一次，共 6 次）。功能删除，不是为了让测试通过而改预期。README 第 7 节和不变量 3（投影**和历史**逐字节相同，并写明取决于 criteria）、协议说明页（历史是派生的；描述证据表明的路径，不是应用当时显示过什么，后者在 Git 历史里；示例的 explanation 换成 v1 的 code）、schema 的注释和 JSON Schema 描述同步更新。core-store 的测试用 rules-v1 做端到端检查：dependency-cruiser 只允许 core-store 的 `*.test.ts` import rules-v1，新样例证明普通源文件仍被拒绝。端到端测试（真实 store、fixture、规则 v1）：投影和历史的内联快照；再算一次什么都不写；两个 Workspace 按不同顺序写入同样的证据，投影和历史逐字节相同；一条条加证据和一次加完结果相同；晚到的证据重写历史的中间部分；`submitEvidence` 之后重算；每种拒绝前后全部文件不变，包括只有一条版本过新的证据时 `mastered` 投影不动。把“有版本过新的证据就拒绝”临时去掉时，4 个测试失败（验证过）。没有改已有测试的预期。共 1492 个测试（16 个按平台、实现或能力跳过） | `cause` 表达不了 criteria 变化、两次写之间的顺序、不变量 4 要不要包括历史等见“待整理” |
 | 2026-11-20 | 2.6 | `task/2.6-prerequisite-risks` | `prerequisiteRisks(ports, conceptId)`（只读）：沿前置依赖传递地按广度优先往下找，每个 Concept 只报一次，用最短的路径（同样长时按 slug 的字典序），结果按 `(depth, conceptId)` 排序，每项带 `depth`、`via` 和 `reason`。风险：`not_assessed`（包括没有投影）、`diagnosed`、`learning`、`needs_review`（`RISKY_STATES`），以及 `concept_missing`、`concept_unreadable`、`mastery_unreadable`（带 `tooNew`）。在 `provisional_mastery` 和 `mastered` 处剪枝（经人确认）：不报，也不往下找；它下面的 Concept 能通过别的没被剪掉的路径到达时照样报；有风险的、投影读不了的节点照样往下找。状态来自保存的投影，文档写明结果只和投影一样新。被查询的 Concept 本身不存在或读不了时返回错误；有环时停下。测试：core 的单元测试 13 个；core-store 用 ws-transformers 的依赖图 6 个（transformer 依赖的 9 个 Concept 和各自的最短路径；self-attention 是 `mastered` 时 softmax 消失、probability 通过较弱的 layer-normalization 仍在、matrix-multiplication 改走 positional-encoding > embedding；layer-normalization 也安全后 probability 消失；悬空的前置依赖和读不了的投影）。把剪枝临时去掉时 5 个测试失败（验证过）。没有改已有的断言。共 1511 个测试（16 个按平台、实现或能力跳过） | 不剪枝的选项、2.7 的到期复习见“待整理” |
 | 2026-11-20 | 2.7 | `task/2.7-review-scheduling` | 确认了 2.4 那条的方向：投影 `mastery/<slug>.yaml` 加上 `review_due_at`（`IsoDateTime | null`，只有 `mastered` 有，schema 检查 `mastery.review_due_not_mastered`），由规则根据证据算出；到期只在读取时由 Core 的纯函数 `reviewStatus(projection, now)` 推导，到期的 `mastered` 读作 `needs_review`，保存的投影和历史不变（不写 `cause: time`）。规则 v1（`Evaluation.reviewDueAt`）：进入 `mastered` 的那次验证开始一段，第 0 级；保持 `mastered` 时，距起点至少过了当前间隔一半（`reviewMinElapsedFraction: 0.5`，经人确认）的通过的独立验证算一次复习，升一级；间隔 `reviewIntervalsDays` 7、14、30、60、120、180 天；离开 `mastered` 后从第 0 级重新开始；练习和自评不改变复习时刻。`prerequisiteRisks` 改为也用 `clock`（签名改为 `Pick<Ports, 'repository' \| 'clock'>`，测试只在准备里加固定时钟），到期的 `mastered` 报 `review_due`，不剪枝。ADR-0007 补上“复习间隔（2.7）”（暂定）；新写 ADR-0014：schema 只在一种文件第一次真正使用之前可以原地修改（派生文件到第一次发布，其他所有文件从 2026-11-20 起），`docs/adding-a-migration.md` 引用它。不需要 `IsoDate`。测试：rules-v1 的复习间隔（间隔表、升级、半个间隔前一秒和之后一秒、同一天多次验证、练习不改变、退步后重新开始）和一个 fast-check 属性；`reviewStatus` 的边界；`prerequisiteRisks` 的到期和未到期；用假时钟走完一年的复习序列（14、28、58、118、238 天，到期前一秒不到期，到期时读作 `needs_review` 且没有文件改变；提前的验证不改变序列）。把半个间隔的条件临时去掉时 4 个测试失败（验证过）。**按 ADR-0014 原地修改了 `mastery-projection` v1，因此改了这些已有的预期**（经人确认）：2.5 的投影 YAML 内联快照多了一行 `review_due_at`；生成的 JSON Schema 和协议说明页；core 的 `recalculate.test.ts` 里一处期望的投影对象加上 `review_due_at: null`；rules-v1 的 `V1_PARAMETERS` 期望值加上两个新参数。测试准备里的投影对象都加上了 `review_due_at: null`。共 1540 个测试（16 个按平台、实现或能力跳过） | `mastery due` 需要列出投影、`provisional_mastery` 没有复习时刻、发布前的 ADR-0014 提醒见“待整理” |
+| 2026-11-21 | 2.8 | `task/2.8-cli-evidence-status` | CLI 新增 `evidence add`、`recompute`、`status`、`due`（README 第 6 节和 dependency-cruiser 给 `cli` 加上 `core`、`core-store`、`rules-v1`）。`--workspace <dir>`，默认从当前目录往上找 `workspace.yaml`。端口：store 上的 Repository、系统时钟、`NodeIdGenerator`、`createRulesRegistry([rulesV1])`（`createRulesRegistry` 移到 `@mastery/core` 主入口，`@mastery/core/testing` 照样导出）。`evidence add`：JSON 文件或 `-`（只有 `id` 和 `created_at` 可以不写），或者命令行参数（`evaluator` 是 human，`criteria_version` 默认当前版本）；之后重算那个 Concept；人手动录入、没有会话的独立验证接受但打印提示（经人确认）；**新增退出码 3**：证据已保存但重算失败，打印证据 id，帮助里列出全部退出码（经人确认）。`recompute`：不给 Concept 时跳过没有评测标准的。`status`：表格、`—` 表示没测过、到期的 `mastered` 显示 `needs_review (due)`、证据和 `evidence_ids` 不同或规则版本不同时标 `stale`（经人确认）；单个 Concept 显示维度和阈值、explanation、前置依赖风险。`due`：到期的 `mastered`、保存的 `needs_review`、`--within`。fixture 补上证据：self-attention（自评、练习、一个评测会话和它的独立验证，重算后 `provisional_mastery`）和 multi-head-attention（练习、自评，重算后 `learning`）；会话都被证据引用，`validate` 零错误零警告；softmax 故意留空，2.2–2.7 的测试全部不变通过。测试：在 fixture 的副本上走通完整流程（validate、stale、recompute 全部、再算一次什么都不写、status 表格和详情、从 JSON 文件和命令行参数加证据、到 `mastered`、due 的到期前、`--within`、到期后、读取不改文件），以及自己报告的提示、拒绝、退出码 3、用法错误、找 Workspace、规则版本不同的 stale、退步排在前面。**改了已有的测试**（都经人确认）：`store/src/fixture-ws-transformers.test.ts` 里“没有 Evidence 和会话”的断言改为期望正好是新加的文件（并逐个读取，要求没有警告），它的路径白名单 `KNOWN` 加上证据和会话两种路径；`testkit/src/index.test.ts` 里证明副本互相独立的 `stat('evidence')` 改为 `stat('evidence/softmax/x.json')`（fixture 现在有 `evidence/` 目录）。共 1557 个测试（16 个按平台、实现或能力跳过） | 手动录入的独立验证怎么计入（M5）见“待整理” |

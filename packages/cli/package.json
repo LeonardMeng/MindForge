@@ -23,12 +23,18 @@
     "typecheck": "tsc -p tsconfig.json"
   },
   "dependencies": {
+    "@mastery/core": "workspace:*",
+    "@mastery/core-store": "workspace:*",
     "@mastery/device": "workspace:*",
     "@mastery/platform": "workspace:*",
     "@mastery/platform-node": "workspace:*",
     "@mastery/profile": "workspace:*",
     "@mastery/profile-store-git": "workspace:*",
+    "@mastery/rules-v1": "workspace:*",
     "@mastery/schema": "workspace:*",
     "@mastery/store": "workspace:*"
+  },
+  "devDependencies": {
+    "@mastery/platform-memory": "workspace:*"
   }
 }

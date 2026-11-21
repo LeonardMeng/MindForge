@@ -12,7 +12,11 @@ const fs = await loadFixture('ws-transformers'); // 每次调用都是一份新�
 - 3 份评测标准：softmax、self-attention、multi-head-attention。
 - 1 个 Project：read-attention-paper。
 - 3 篇笔记（其中一篇在子目录里），用 `[[slug]]`、`[[slug|别名]]`、`[[slug#标题]]` 链接 Concept 和其他笔记。
-- 没有 Evidence、评测会话、掌握度投影和历史（M2 再加），也没有盲区和干预。
+- Evidence 和评测会话（ROADMAP 2.8）：
+  - `self-attention`（criteria v2）：一次自评、一次练习，然后一次评测会话和它产生的独立验证（Evaluator agent）。重算后是 `provisional_mastery`。
+  - `multi-head-attention`：一次练习、一次自评。重算后是 `learning`。
+  - 会话都被它的证据引用（`mastery validate` 没有警告）。其他 Concept 没有证据，`softmax` 故意留空：2.2–2.7 的测试在它上面构造自己的证据。
+- 没有掌握度投影和历史（派生数据，由测试和 `mastery recompute` 算出），也没有盲区和干预。
 
 **零警告基线**：用 store 读取所有文件没有错误，也没有警告；所有前置依赖、Project 里的 Concept 和 wikilink 都能找到。`packages/store/src/fixture-ws-transformers.test.ts` 检查这些。需要有问题的文件时，在测试里另外构造，不要改这里。
 

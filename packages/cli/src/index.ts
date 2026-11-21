@@ -1,6 +1,7 @@
 /**
  * @packageDocumentation
- * `mastery` 命令（ROADMAP 1.15）：`profile init`、`profile show`、`init`、`validate`。
+ * `mastery` 命令（ROADMAP 1.15、2.8）：`profile init`、`profile show`、`init`、`validate`、
+ * `evidence add`、`recompute`、`status`、`due`。
  * 命令行入口是 `main.ts`；这里导出 {@link run}，测试在同一个进程里运行命令。
  */
 export { run, HELP } from './run.js';

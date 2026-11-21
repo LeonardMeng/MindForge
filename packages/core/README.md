@@ -100,5 +100,5 @@ Mastery Core（ADR-0002）：纯领域逻辑。不依赖 Cordis，不做 I/O，�
 
 ## 测试工具和契约测试
 
-- `@mastery/core/testing`：`createMemoryRepository()`（内存 Repository，store 的规则在这里同样成立：校验、路径和内容一致、只追加、版本过新只读）、`createEventRecorder()`、`createRulesRegistry()`、`stubRules(version)`（`aggregate` 总是返回“没有分数”，`evaluate` 总是 `not_assessed`，给不关心规则结果的测试用）。
+- `@mastery/core/testing`：`createMemoryRepository()`（内存 Repository，store 的规则在这里同样成立：校验、路径和内容一致、只追加、版本过新只读）、`createEventRecorder()`、`createRulesRegistry()`（2.8 起也从 `@mastery/core` 导出，CLI 用它注册规则包）、`stubRules(version)`（`aggregate` 总是返回“没有分数”，`evaluate` 总是 `not_assessed`，给不关心规则结果的测试用）。
 - `@mastery/core/contract`：`describeRepositoryContract(name, () => ({ repository, seed }))`。内存实现和 `createStoreRepository` 都要通过，测试用的假实现不会和真实的实现走样。依赖 vitest（可选的 peerDependency）。

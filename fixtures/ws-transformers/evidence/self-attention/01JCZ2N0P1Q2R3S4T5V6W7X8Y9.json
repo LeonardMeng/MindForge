@@ -1,0 +1,21 @@
+{
+  "schema_version": 1,
+  "id": "01JCZ2N0P1Q2R3S4T5V6W7X8Y9",
+  "concept_id": "self-attention",
+  "session_id": null,
+  "assessment_type": "practice",
+  "criteria_version": 2,
+  "dimensions": {
+    "recall": 0.8,
+    "understanding": null,
+    "reasoning": null,
+    "application": 0.6,
+    "transfer": null
+  },
+  "confidence": 0.8,
+  "evaluator": {
+    "kind": "human"
+  },
+  "note": "练习册第 2 章：8 道题对了 6 道",
+  "created_at": "2026-11-08T19:30:00Z"
+}
